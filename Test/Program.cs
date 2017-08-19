@@ -1,7 +1,11 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
+using NewLife;
 using NewLife.Caching;
 using NewLife.Log;
+using NewLife.Security;
+using NewLife.Threading;
 
 namespace Test
 {
@@ -26,6 +30,13 @@ namespace Test
                 cfg.Save();
             }
 
+            Test2();
+
+            Console.ReadKey();
+        }
+
+        static void Test1()
+        {
             //var ic = Cache.Default;
             var ic = Cache.Create("local");
             //var ic = Cache.Create("memory");
@@ -52,8 +63,35 @@ namespace Test
             Console.WriteLine(dic["xxx"].ToFullString());
 
             Console.WriteLine("共有缓存对象 {0} 个", ic.Count);
+        }
 
-            Console.ReadKey();
+        static void Test2()
+        {
+            var ic = Cache.Create("local");
+
+            // 简单操作
+            Console.WriteLine("共有缓存对象 {0} 个", ic.Count);
+
+            var count = 2000000;
+            Console.WriteLine("准备插入缓存{0:n0}项", count);
+            var sw = Stopwatch.StartNew();
+
+            var prg = 0;
+            var t = new TimerX(s =>
+            {
+                XTrace.WriteLine("已处理 {0:n0} 进度 {1:p2} 速度 {2:n0}tps", prg, (Double)prg / count, prg * 1000 / sw.ElapsedMilliseconds);
+            }, null, 1000, 1000);
+
+            var buf = Rand.NextBytes(2800);
+            for (int i = 0; i < count; i++)
+            {
+                var key = "BILL:" + (i + 1).ToString("000000000000");
+                ic.Set(key, buf, 48 * 3600);
+
+                prg++;
+            }
+
+            t.TryDispose();
         }
     }
 }
