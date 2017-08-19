@@ -19,7 +19,8 @@ namespace Test
                 set.Provider = "redis";
             }
 
-            var ic = Cache.Create("local");
+            var ic = Cache.Default;
+            //var ic = Cache.Create("local");
 
             // 简单操作
             Console.WriteLine("共有缓存对象 {0} 个", ic.Count);
