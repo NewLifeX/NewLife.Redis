@@ -32,6 +32,18 @@ namespace Test
             Thread.Sleep(1100);
             Console.WriteLine(ic.Get<DateTime>("time").ToFullString());
 
+            // 列表
+            var list = ic.GetList<DateTime>("list");
+            list.Add(DateTime.Now);
+            Console.WriteLine(list[list.Count - 1].ToFullString());
+
+            // 字典
+            var dic = ic.GetDictionary<DateTime>("dic");
+            dic.Add("xxx", DateTime.Now);
+            Console.WriteLine(dic["xxx"].ToFullString());
+
+            Console.WriteLine("共有缓存对象 {0} 个", ic.Count);
+
             Console.ReadKey();
         }
     }
