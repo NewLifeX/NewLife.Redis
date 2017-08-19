@@ -21,3 +21,4 @@ bld/
 *.htm
 *.nuspec
 *.nupkg
+/BinTest
