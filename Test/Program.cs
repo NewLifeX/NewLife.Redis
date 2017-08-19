@@ -13,14 +13,22 @@ namespace Test
 
             var cfg = CacheConfig.Current;
             var set = cfg.GetOrAdd("local");
-            if (set.Value.IsNullOrEmpty())
+            if (set.Provider.IsNullOrEmpty())
             {
                 set.Value = "127.0.0.1:6379";
                 set.Provider = "redis";
+                cfg.Save();
+            }
+            set = cfg.GetOrAdd("memory");
+            if (set.Provider.IsNullOrEmpty())
+            {
+                set.Provider = "memory";
+                cfg.Save();
             }
 
-            var ic = Cache.Default;
-            //var ic = Cache.Create("local");
+            //var ic = Cache.Default;
+            var ic = Cache.Create("local");
+            //var ic = Cache.Create("memory");
 
             // 简单操作
             Console.WriteLine("共有缓存对象 {0} 个", ic.Count);
