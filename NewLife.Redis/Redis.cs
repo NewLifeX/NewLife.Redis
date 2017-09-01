@@ -157,6 +157,28 @@ namespace NewLife.Redis
             }
         }
 
+        /// <summary>设置缓存项有效期</summary>
+        /// <param name="key">键</param>
+        /// <param name="expire">过期时间</param>
+        public override Boolean SetExpire(String key, TimeSpan expire)
+        {
+            using (var redis = GetClient())
+            {
+                return redis.ExpireEntryIn(key, expire);
+            }
+        }
+
+        /// <summary>获取缓存项有效期</summary>
+        /// <param name="key">键</param>
+        /// <returns></returns>
+        public override TimeSpan GetExpire(String key)
+        {
+            using (var redis = GetClient())
+            {
+                return redis.GetTimeToLive(key);
+            }
+        }
+
         /// <summary>获取列表</summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="key"></param>

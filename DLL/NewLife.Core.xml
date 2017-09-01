@@ -52,7 +52,7 @@
             <summary>开始循环工作</summary>
             <param name="index">线程序号</param>
         </member>
-        <member name="M:NewLife.Agent.AgentServiceBase`1.workWaper(System.Object)">
+        <member name="M:NewLife.Agent.AgentServiceBase`1.WorkWaper(System.Object)">
             <summary>线程包装</summary>
             <param name="data">线程序号</param>
         </member>
@@ -403,6 +403,16 @@
             <param name="key">键</param>
             <returns></returns>
         </member>
+        <member name="M:NewLife.Caching.Cache.SetExpire(System.String,System.TimeSpan)">
+            <summary>设置缓存项有效期</summary>
+            <param name="key">键</param>
+            <param name="expire">过期时间，秒</param>
+        </member>
+        <member name="M:NewLife.Caching.Cache.GetExpire(System.String)">
+            <summary>获取缓存项有效期</summary>
+            <param name="key">键</param>
+            <returns></returns>
+        </member>
         <member name="M:NewLife.Caching.Cache.GetAll``1(System.String[])">
             <summary>批量获取缓存项</summary>
             <typeparam name="T"></typeparam>
@@ -526,6 +536,16 @@
             <param name="key"></param>
             <returns></returns>
         </member>
+        <member name="M:NewLife.Caching.ICache.SetExpire(System.String,System.TimeSpan)">
+            <summary>设置缓存项有效期</summary>
+            <param name="key">键</param>
+            <param name="expire">过期时间</param>
+        </member>
+        <member name="M:NewLife.Caching.ICache.GetExpire(System.String)">
+            <summary>获取缓存项有效期</summary>
+            <param name="key">键</param>
+            <returns></returns>
+        </member>
         <member name="T:NewLife.Caching.MemoryCache">
             <summary>默认字典缓存</summary>
         </member>
@@ -566,6 +586,16 @@
         </member>
         <member name="M:NewLife.Caching.MemoryCache.Remove(System.String)">
             <summary>移除缓存项</summary>
+            <param name="key">键</param>
+            <returns></returns>
+        </member>
+        <member name="M:NewLife.Caching.MemoryCache.SetExpire(System.String,System.TimeSpan)">
+            <summary>设置缓存项有效期</summary>
+            <param name="key">键</param>
+            <param name="expire">过期时间</param>
+        </member>
+        <member name="M:NewLife.Caching.MemoryCache.GetExpire(System.String)">
+            <summary>获取缓存项有效期</summary>
             <param name="key">键</param>
             <returns></returns>
         </member>
@@ -2962,6 +2992,9 @@
         <member name="P:NewLife.Model.IHistory.Success">
             <summary>成功</summary>
         </member>
+        <member name="P:NewLife.Model.IHistory.CreateTime">
+            <summary>创建时间</summary>
+        </member>
         <member name="P:NewLife.Model.IHistory.CreateIP">
             <summary>创建地址</summary>
         </member>
@@ -2978,6 +3011,12 @@
         </member>
         <member name="P:NewLife.Model.IOnline.UserID">
             <summary>会员</summary>
+        </member>
+        <member name="P:NewLife.Model.IOnline.Name">
+            <summary>名称</summary>
+        </member>
+        <member name="P:NewLife.Model.IOnline.Type">
+            <summary>类型</summary>
         </member>
         <member name="P:NewLife.Model.IOnline.SessionID">
             <summary>会话</summary>
@@ -9488,6 +9527,9 @@
         <member name="M:NewLife.Threading.TimerX.Dispose">
             <summary>销毁定时器</summary>
         </member>
+        <member name="F:NewLife.Threading.TimerX.hasSetNext">
+            <summary>是否已设置下一次时间</summary>
+        </member>
         <member name="M:NewLife.Threading.TimerX.SetNext(System.Int32)">
             <summary>设置下一次运行时间</summary>
             <param name="ms"></param>
@@ -9942,6 +9984,11 @@
             <param name="name"></param>
             <returns></returns>
         </member>
+        <member name="M:NewLife.Web.Pager.GetFormAction(System.String)">
+            <summary>获取表单提交的Url</summary>
+            <param name="action">动作</param>
+            <returns></returns>
+        </member>
         <member name="T:NewLife.Web.PluginHelper">
             <summary>插件助手</summary>
         </member>
@@ -9980,6 +10027,12 @@
         </member>
         <member name="P:NewLife.Web.WebClientX.Encoding">
             <summary>编码。网络时代，绝大部分使用utf8编码</summary>
+        </member>
+        <member name="P:NewLife.Web.WebClientX.ProxyAddress">
+            <summary>代理服务器地址</summary>
+        </member>
+        <member name="P:NewLife.Web.WebClientX.Proxy">
+            <summary>网页代理</summary>
         </member>
         <member name="P:NewLife.Web.WebClientX.Request">
             <summary>请求</summary>
