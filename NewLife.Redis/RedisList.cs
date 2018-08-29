@@ -2,17 +2,17 @@
 using System.Collections;
 using System.Collections.Generic;
 
-namespace NewLife.Redis
+namespace NewLife.Caching
 {
     /// <summary>列表缓存</summary>
     /// <typeparam name="T"></typeparam>
     class RedisList<T> : IList<T>
     {
-        public Redis Redis { get; }
+        public FullRedis Redis { get; }
 
         public String Key { get; }
 
-        public RedisList(Redis redis, String key) { Redis = redis; Key = key; }
+        public RedisList(FullRedis redis, String key) { Redis = redis; Key = key; }
 
         public T this[Int32 index]
         {
