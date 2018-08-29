@@ -5,31 +5,26 @@ namespace NewLife.Caching
 {
     /// <summary>生产者消费者</summary>
     /// <typeparam name="T"></typeparam>
-    class RedisQueue<T> : IProducerConsumer<T>
+    class RedisQueue<T> : RedisBase, IProducerConsumer<T>
     {
-        private Redis _Redis;
-        private String _Key;
-
-        public RedisQueue(Redis rds, String key)
-        {
-            _Redis = rds;
-            _Key = key;
-        }
+        #region 实例化
+        public RedisQueue(Redis redis, String key) : base(redis, key) { }
+        #endregion
 
         /// <summary>生产添加</summary>
         /// <param name="values"></param>
         /// <returns></returns>
         public Int32 Add(IEnumerable<T> values)
         {
-            var ps = new List<Object>
+            var args = new List<Object>
             {
-                _Key
+                Key
             };
             foreach (var item in values)
             {
-                ps.Add(item);
+                args.Add(item);
             }
-            return _Redis.Execute(rc => rc.Execute<Int32>("RPUSH", ps.ToArray()));
+            return Execute(rc => rc.Execute<Int32>("RPUSH", args.ToArray()));
         }
 
         /// <summary>消费获取</summary>
@@ -43,7 +38,7 @@ namespace NewLife.Caching
 
             for (var i = 0; i < count; i++)
             {
-                var value = _Redis.Execute(rc => rc.Execute<T>("LPOP", _Key));
+                var value = Execute(rc => rc.Execute<T>("LPOP", Key));
                 if (Equals(value, default(T))) break;
 
                 yield return value;
