@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>NewLife.Redis</AssemblyName>
+    <AssemblyTitle>新生命Redis缓存组件</AssemblyTitle>
+    <Description>Redis基础操作、列表结构、哈希结构，经过日均80亿次调用量的项目验证</Description>
+    <Company>新生命开发团队</Company>
+    <Copyright>©2002-2018 新生命开发团队</Copyright>
+    <FileVersion>2.0.2018.0829</FileVersion>
+    <AssemblyVersion>2.0.*</AssemblyVersion>
+    <Deterministic>false</Deterministic>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <Version>2.0.2018.0829</Version>
+    <RepositoryUrl>https://github.com/NewLifeX/NewLife.Redis</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <OutputPath>..\Bin</OutputPath>
+    <DocumentationFile>..\Bin\netstandard2.0\NewLife.Redis.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <OutputPath>..\Bin</OutputPath>
+    <DocumentationFile>..\Bin\netstandard2.0\NewLife.Redis.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\NewLife.Redis\FullRedis.cs" Link="FullRedis.cs" />
+    <Compile Include="..\NewLife.Redis\RedisBase.cs" Link="RedisBase.cs" />
+    <Compile Include="..\NewLife.Redis\RedisHash.cs" Link="RedisHash.cs" />
+    <Compile Include="..\NewLife.Redis\RedisList.cs" Link="RedisList.cs" />
+    <Compile Include="..\NewLife.Redis\RedisQueue.cs" Link="RedisQueue.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NewLife.Core" Version="7.3.6815.39384" />
+  </ItemGroup>
+
+</Project>

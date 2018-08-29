@@ -6,11 +6,11 @@ using System.Runtime.InteropServices;
 // 控制。更改这些特性值可修改
 // 与程序集关联的信息。
 [assembly: AssemblyTitle("新生命Redis缓存组件")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("Redis基础操作、列表结构、哈希结构，经过日均80亿次调用量的项目验证")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyProduct("NewLife.Redis")]
 [assembly: AssemblyCompany("新生命开发团队")]
-[assembly: AssemblyCopyright("©2002-2017 新生命开发团队 http://git.newlifex.com/NewLife/X")]
+[assembly: AssemblyCopyright("©2002-2018 新生命开发团队")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -32,9 +32,11 @@ using System.Runtime.InteropServices;
 // 可以指定所有值，也可以使用以下所示的 "*" 预置版本号和修订号
 //通过使用 "*"，如下所示:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyFileVersion("1.0.2017.0820")]
+[assembly: AssemblyVersion("2.0.*")]
+[assembly: AssemblyFileVersion("2.0.2018.0829")]
 
 /*
+ * v2.0.2018.0829   全面扩充常用指令，日均80亿次调用量
+ * 
  * v1.0.2017.0820   建立Redis缓存组件
  */

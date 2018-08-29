@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace NewLife.Caching
 {
@@ -43,7 +44,14 @@ namespace NewLife.Caching
         /// <summary>是否包含指定元素</summary>
         /// <param name="item"></param>
         /// <returns></returns>
-        public Boolean Contains(T item) => throw new NotSupportedException();
+        public Boolean Contains(T item)
+        {
+            var count = Count;
+            if (count > 1000) throw new NotSupportedException($"[{Key}]的元素个数过多，不支持！");
+
+            var list = GetAll();
+            return list.Contains(item);
+        }
 
         /// <summary>复制到目标数组</summary>
         /// <param name="array"></param>
@@ -59,7 +67,14 @@ namespace NewLife.Caching
         /// <summary>查找指定元素位置</summary>
         /// <param name="item"></param>
         /// <returns></returns>
-        public Int32 IndexOf(T item) => throw new NotSupportedException();
+        public Int32 IndexOf(T item)
+        {
+            var count = Count;
+            if (count > 1000) throw new NotSupportedException($"[{Key}]的元素个数过多，不支持！");
+
+            var list = GetAll().ToList();
+            return list.IndexOf(item);
+        }
 
         /// <summary>在指定位置插入</summary>
         /// <param name="index"></param>
@@ -83,8 +98,18 @@ namespace NewLife.Caching
         /// <returns></returns>
         public IEnumerator<T> GetEnumerator()
         {
+            // 前面一段一次性取回来
+            var size = 100;
+            var arr = LRange(0, size - 1);
+            foreach (var item in arr)
+            {
+                yield return item;
+            }
+            if (arr.Length < size) yield break;
+
+            // 后续逐个遍历
             var count = Count;
-            for (var i = 0; i < count; i++)
+            for (var i = size; i < count; i++)
             {
                 yield return this[i];
             }
