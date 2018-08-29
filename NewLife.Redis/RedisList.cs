@@ -112,6 +112,10 @@ namespace NewLife.Caching
         /// <returns></returns>
         public T[] LRange(Int32 start, Int32 stop) => Execute(r => r.Execute<T[]>("LRANGE", Key, start, stop));
 
+        /// <summary>获取所有元素</summary>
+        /// <returns></returns>
+        public T[] GetAll() => LRange(0, -1);
+
         /// <summary>修剪一个已存在的列表</summary>
         /// <param name="start"></param>
         /// <param name="stop"></param>
