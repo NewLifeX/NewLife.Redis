@@ -4,16 +4,16 @@ using System.Collections.Generic;
 
 namespace NewLife.Caching
 {
-    /// <summary>字典缓存</summary>
+    /// <summary>哈希结构</summary>
     /// <typeparam name="TKey"></typeparam>
     /// <typeparam name="TValue"></typeparam>
     class RedisHash<TKey, TValue> : IDictionary<TKey, TValue>
     {
-        public FullRedis Redis { get; }
+        public Redis Redis { get; }
 
         public String Key { get; }
 
-        public RedisHash(FullRedis redis, String key) { Redis = redis; Key = key; }
+        public RedisHash(Redis redis, String key) { Redis = redis; Key = key; }
 
         public Int32 Count
         {

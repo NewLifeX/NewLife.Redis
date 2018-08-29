@@ -4,130 +4,125 @@ using System.Collections.Generic;
 
 namespace NewLife.Caching
 {
-    /// <summary>列表缓存</summary>
+    /// <summary>列表结构</summary>
     /// <typeparam name="T"></typeparam>
-    class RedisList<T> : IList<T>
+    public class RedisList<T> : RedisBase, IList<T>
     {
-        public FullRedis Redis { get; }
+        #region 属性
+        #endregion
 
-        public String Key { get; }
+        #region 构造
+        /// <summary>实例化</summary>
+        /// <param name="redis"></param>
+        /// <param name="key"></param>
+        public RedisList(Redis redis, String key) : base(redis, key) { }
+        #endregion
 
-        public RedisList(FullRedis redis, String key) { Redis = redis; Key = key; }
-
+        #region 列表方法
+        /// <summary>获取 或 设置 指定位置的值</summary>
+        /// <param name="index"></param>
+        /// <returns></returns>
         public T this[Int32 index]
         {
-            get
-            {
-                using (var client = Redis.GetClient())
-                {
-                    var list = client.As<T>().Lists[Key];
-                    return list[index];
-                }
-            }
-            set
-            {
-                using (var client = Redis.GetClient())
-                {
-                    var list = client.As<T>().Lists[Key];
-                    list[index] = value;
-                }
-            }
+            get => Execute(r => r.Execute<T>("LINDEX", Key, index));
+            set => Execute(r => r.Execute<T>("LSET", Key, index, value));
         }
 
-        public Int32 Count
-        {
-            get
-            {
-                using (var client = Redis.GetClient())
-                {
-                    return (Int32)client.GetListCount(Key);
-                }
-            }
-        }
+        /// <summary>个数</summary>
+        public Int32 Count => Execute(r => r.Execute<Int32>("LLEN", Key));
 
-        public Boolean IsReadOnly => false;
+        Boolean ICollection<T>.IsReadOnly => false;
 
-        public void Add(T item)
-        {
-            using (var client = Redis.GetClient())
-            {
-                var list = client.As<T>().Lists[Key];
-                list.Add(item);
-            }
-        }
+        /// <summary>添加元素在后面</summary>
+        /// <param name="item"></param>
+        public void Add(T item) => Execute(r => r.Execute<T>("RPUSH", Key, item));
 
-        public void Clear()
-        {
-            using (var client = Redis.GetClient())
-            {
-                var list = client.As<T>().Lists[Key];
-                list.RemoveAll();
-            }
-        }
+        /// <summary>清空列表</summary>
+        public void Clear() => LTrim(0, -1);
 
-        public Boolean Contains(T item)
-        {
-            using (var client = Redis.GetClient())
-            {
-                var list = client.As<T>().Lists[Key];
-                return list.Contains(item);
-            }
-        }
+        /// <summary>是否包含指定元素</summary>
+        /// <param name="item"></param>
+        /// <returns></returns>
+        public Boolean Contains(T item) => throw new NotSupportedException();
 
+        /// <summary>复制到目标数组</summary>
+        /// <param name="array"></param>
+        /// <param name="arrayIndex"></param>
         public void CopyTo(T[] array, Int32 arrayIndex)
         {
-            using (var client = Redis.GetClient())
-            {
-                var list = client.As<T>().Lists[Key];
-                list.CopyTo(array, arrayIndex);
-            }
+            var count = array.Length - arrayIndex;
+
+            var arr = LRange(0, count - 1);
+            arr.CopyTo(array, arrayIndex);
         }
 
-        public IEnumerator<T> GetEnumerator()
-        {
-            using (var client = Redis.GetClient())
-            {
-                var list = client.As<T>().Lists[Key];
-                return list.GetEnumerator();
-            }
-        }
+        /// <summary>查找指定元素位置</summary>
+        /// <param name="item"></param>
+        /// <returns></returns>
+        public Int32 IndexOf(T item) => throw new NotSupportedException();
 
-        public Int32 IndexOf(T item)
-        {
-            using (var client = Redis.GetClient())
-            {
-                var list = client.As<T>().Lists[Key];
-                return list.IndexOf(item);
-            }
-        }
-
+        /// <summary>在指定位置插入</summary>
+        /// <param name="index"></param>
+        /// <param name="item"></param>
         public void Insert(Int32 index, T item)
         {
-            using (var client = Redis.GetClient())
-            {
-                var list = client.As<T>().Lists[Key];
-                list.Insert(index, item);
-            }
+            var pivot = this[index];
+            LInsertBefore(pivot, item);
         }
 
-        public Boolean Remove(T item)
-        {
-            using (var client = Redis.GetClient())
-            {
-                var list = client.As<T>().Lists[Key];
-                return list.Remove(item);
-            }
-        }
+        /// <summary>删除指定元素</summary>
+        /// <param name="item"></param>
+        /// <returns></returns>
+        public Boolean Remove(T item) => LRem(1, item) > 0;
 
-        public void RemoveAt(Int32 index)
+        /// <summary>删除指定位置数据</summary>
+        /// <param name="index"></param>
+        public void RemoveAt(Int32 index) => Remove(this[index]);
+
+        /// <summary>遍历</summary>
+        /// <returns></returns>
+        public IEnumerator<T> GetEnumerator()
         {
-            using (var client = Redis.GetClient())
+            var count = Count;
+            for (var i = 0; i < count; i++)
             {
-                var list = client.As<T>().Lists[Key];
-                list.RemoveAt(index);
+                yield return this[i];
             }
         }
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        #endregion
+
+        #region 高级操作
+        /// <summary>在指定元素之前插入</summary>
+        /// <param name="pivot"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public Int32 LInsertBefore(T pivot, T value) => Execute(r => r.Execute<Int32>($"LINSERT {Key} BEFORE", pivot, value));
+
+        /// <summary>返回指定范围的列表</summary>
+        /// <param name="pivot"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public Int32 LInsertAfter(T pivot, T value) => Execute(r => r.Execute<Int32>($"LINSERT {Key} AFTER", pivot, value));
+
+        /// <summary>返回指定范围的列表</summary>
+        /// <param name="start"></param>
+        /// <param name="stop"></param>
+        /// <returns></returns>
+        public T[] LRange(Int32 start, Int32 stop) => Execute(r => r.Execute<T[]>("LRANGE", Key, start, stop));
+
+        /// <summary>修剪一个已存在的列表</summary>
+        /// <param name="start"></param>
+        /// <param name="stop"></param>
+        /// <returns></returns>
+        public Boolean LTrim(Int32 start, Int32 stop) => Execute(r => r.Execute<Boolean>("LTRIM", Key, start, stop));
+
+        /// <summary>从存于 key 的列表里移除前 count 次出现的值为 value 的元素</summary>
+        /// <param name="count"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public Int32 LRem(Int32 count, T value) => Execute(r => r.Execute<Int32>("LREM", Key, count, value));
+        #endregion
     }
 }
