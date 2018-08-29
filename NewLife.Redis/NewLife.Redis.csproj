@@ -50,6 +50,7 @@
     <Compile Include="FullRedis.cs" />
     <Compile Include="RedisHash.cs" />
     <Compile Include="RedisList.cs" />
+    <Compile Include="RedisQueue.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

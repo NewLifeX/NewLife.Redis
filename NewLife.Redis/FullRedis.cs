@@ -68,6 +68,12 @@ namespace NewLife.Caching
         /// <param name="key"></param>
         /// <returns></returns>
         public override IDictionary<String, T> GetDictionary<T>(String key) => new RedisHash<String, T>(this, key);
+
+        /// <summary>获取队列</summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public override IProducerConsumer<T> GetQueue<T>(String key) => new RedisQueue<T>(this, key);
         #endregion
     }
 }
