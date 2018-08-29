@@ -75,5 +75,19 @@ namespace NewLife.Caching
         /// <returns></returns>
         public override IProducerConsumer<T> GetQueue<T>(String key) => new RedisQueue<T>(this, key);
         #endregion
+
+        #region 高级操作
+        /// <summary>重命名指定键</summary>
+        /// <param name="key"></param>
+        /// <param name="newKey"></param>
+        /// <param name="overwrite"></param>
+        /// <returns></returns>
+        public virtual Boolean Rename(String key, String newKey, Boolean overwrite = true)
+        {
+            var cmd = overwrite ? "RENAME" : "RENAMENX";
+
+            return Execute(r => r.Execute<Boolean>(cmd, key, newKey));
+        }
+        #endregion
     }
 }
