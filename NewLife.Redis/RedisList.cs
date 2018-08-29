@@ -98,13 +98,13 @@ namespace NewLife.Caching
         /// <param name="pivot"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public Int32 LInsertBefore(T pivot, T value) => Execute(r => r.Execute<Int32>($"LINSERT {Key} BEFORE", pivot, value));
+        public Int32 LInsertBefore(T pivot, T value) => Execute(r => r.Execute<Int32>($"LINSERT", Key, "BEFORE", pivot, value));
 
         /// <summary>返回指定范围的列表</summary>
         /// <param name="pivot"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public Int32 LInsertAfter(T pivot, T value) => Execute(r => r.Execute<Int32>($"LINSERT {Key} AFTER", pivot, value));
+        public Int32 LInsertAfter(T pivot, T value) => Execute(r => r.Execute<Int32>($"LINSERT", Key, "AFTER", pivot, value));
 
         /// <summary>返回指定范围的列表</summary>
         /// <param name="start"></param>

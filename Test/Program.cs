@@ -11,35 +11,21 @@ namespace Test
 {
     class Program
     {
-        static void Main(string[] args)
+        static void Main(String[] args)
         {
             XTrace.UseConsole();
 
-            var cfg = CacheConfig.Current;
-            var set = cfg.GetOrAdd("local");
-            if (set.Provider.IsNullOrEmpty())
-            {
-                set.Value = "127.0.0.1:6379";
-                set.Provider = "redis";
-                cfg.Save();
-            }
-            set = cfg.GetOrAdd("memory");
-            if (set.Provider.IsNullOrEmpty())
-            {
-                set.Provider = "memory";
-                cfg.Save();
-            }
+            FullRedis.Register();
 
-            Test2();
+            Test1();
 
             Console.ReadKey();
         }
 
         static void Test1()
         {
-            //var ic = Cache.Default;
-            var ic = Cache.Create("local");
-            //var ic = Cache.Create("memory");
+            var ic = Redis.Create("127.0.0.1:6000", 3);
+            ic.Log = XTrace.Log;
 
             // 简单操作
             Console.WriteLine("共有缓存对象 {0} 个", ic.Count);
@@ -55,6 +41,8 @@ namespace Test
             // 列表
             var list = ic.GetList<DateTime>("list");
             list.Add(DateTime.Now);
+            list.Add(DateTime.Now.Date);
+            list.RemoveAt(1);
             Console.WriteLine(list[list.Count - 1].ToFullString());
 
             // 字典
@@ -62,12 +50,18 @@ namespace Test
             dic.Add("xxx", DateTime.Now);
             Console.WriteLine(dic["xxx"].ToFullString());
 
+            // 队列
+            var mq = ic.GetQueue<String>("queue");
+            mq.Add(new[] { "abc", "g", "e", "m" });
+            var arr = mq.Take(3);
+            Console.WriteLine(arr.Join(","));
+
             Console.WriteLine("共有缓存对象 {0} 个", ic.Count);
         }
 
         static void Test2()
         {
-            var ic = Cache.Create("local");
+            var ic = Redis.Create("127.0.0.1", 3);
 
             // 简单操作
             Console.WriteLine("共有缓存对象 {0} 个", ic.Count);
@@ -83,7 +77,7 @@ namespace Test
             }, null, 1000, 1000);
 
             var buf = Rand.NextBytes(2800);
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
                 var key = "BILL:" + (i + 1).ToString("000000000000");
                 ic.Set(key, buf, 48 * 3600);
