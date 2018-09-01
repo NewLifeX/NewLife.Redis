@@ -76,6 +76,33 @@ namespace NewLife.Caching
         public override IProducerConsumer<T> GetQueue<T>(String key) => new RedisQueue<T>(this, key);
         #endregion
 
+        #region 字符串操作
+        /// <summary>附加字符串</summary>
+        /// <param name="key"></param>
+        /// <param name="value"></param>
+        /// <returns>返回字符串长度</returns>
+        public virtual Int32 Append(String key, String value) => Execute(r => r.Execute<Int32>("APPEND", key, value));
+
+        /// <summary>获取字符串区间</summary>
+        /// <param name="key"></param>
+        /// <param name="start"></param>
+        /// <param name="end"></param>
+        /// <returns></returns>
+        public virtual String GetRange(String key, Int32 start, Int32 end) => Execute(r => r.Execute<String>("GETRANGE", key, start, end));
+
+        /// <summary>设置字符串区间</summary>
+        /// <param name="key"></param>
+        /// <param name="offset"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public virtual String SetRange(String key, Int32 offset, String value) => Execute(r => r.Execute<String>("SETRANGE", key, offset, value));
+
+        /// <summary>字符串长度</summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public virtual Int32 StrLen(String key) => Execute(r => r.Execute<Int32>("STRLEN", key));
+        #endregion
+
         #region 高级操作
         /// <summary>重命名指定键</summary>
         /// <param name="key"></param>
