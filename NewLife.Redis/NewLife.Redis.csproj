@@ -52,6 +52,7 @@
     <Compile Include="RedisHash.cs" />
     <Compile Include="RedisList.cs" />
     <Compile Include="RedisQueue.cs" />
+    <Compile Include="RedisSet.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
