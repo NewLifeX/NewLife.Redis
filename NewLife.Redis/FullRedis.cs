@@ -121,6 +121,11 @@ namespace NewLife.Caching
 
             return Execute(r => r.Execute<Boolean>(cmd, key, newKey));
         }
+
+        /// <summary>模糊搜索，支持?和*</summary>
+        /// <param name="pattern"></param>
+        /// <returns></returns>
+        public virtual String[] Search(String pattern) => Execute(r => r.Execute<String[]>("KEYS", pattern));
         #endregion
     }
 }
