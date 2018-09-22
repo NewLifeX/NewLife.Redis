@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using NewLife;
@@ -17,7 +18,7 @@ namespace Test
 
             FullRedis.Register();
 
-            Test1();
+            Test3();
 
             Console.ReadKey();
         }
@@ -86,6 +87,26 @@ namespace Test
             }
 
             t.TryDispose();
+        }
+
+        static void Test3()
+        {
+            var ic = Redis.Create("127.0.0.1:6000", 3);
+            //ic.Log = XTrace.Log;
+
+            var list = ic.GetList<String>("kkk");
+            for (var i = 0; i < 100; i++)
+            {
+                list.Add(Rand.NextString(256));
+            }
+            ic.SetExpire("kkk", TimeSpan.FromSeconds(120));
+
+            var arr = list.ToArray();
+            Console.WriteLine(arr.Length);
+            foreach (var item in arr)
+            {
+                Console.WriteLine(item);
+            }
         }
     }
 }

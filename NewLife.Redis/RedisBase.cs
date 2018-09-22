@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using NewLife.Data;
 using NewLife.Reflection;
 using NewLife.Serialization;
@@ -10,7 +6,7 @@ using NewLife.Serialization;
 namespace NewLife.Caching
 {
     /// <summary>基础结构</summary>
-   public abstract class RedisBase
+    public abstract class RedisBase
     {
         #region 属性
         /// <summary>客户端对象</summary>
@@ -31,8 +27,9 @@ namespace NewLife.Caching
         /// <summary>执行命令</summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="func"></param>
+        /// <param name="write">是否写入操作</param>
         /// <returns></returns>
-        public virtual T Execute<T>(Func<RedisClient, T> func) => Redis.Execute(func);
+        public virtual T Execute<T>(Func<RedisClient, T> func, Boolean write = false) => Redis.Execute(func, write);
         #endregion
 
         #region 辅助

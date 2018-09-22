@@ -75,7 +75,7 @@ namespace NewLife.Caching
                 args.Add(item);
             }
 
-            return Execute(r => r.Execute<Int32>("SADD", args.ToArray()));
+            return Execute(r => r.Execute<Int32>("SADD", args.ToArray()), true);
         }
 
         /// <summary>批量删除</summary>
@@ -92,7 +92,7 @@ namespace NewLife.Caching
                 args.Add(item);
             }
 
-            return Execute(r => r.Execute<Int32>("SREM", args.ToArray()));
+            return Execute(r => r.Execute<Int32>("SREM", args.ToArray()), true);
         }
 
         /// <summary>获取所有元素</summary>
@@ -103,7 +103,7 @@ namespace NewLife.Caching
         /// <param name="dest"></param>
         /// <param name="member"></param>
         /// <returns></returns>
-        public T[] Move(String dest, T member) => Execute(r => r.Execute<T[]>("SMOVE", Key, dest, member));
+        public T[] Move(String dest, T member) => Execute(r => r.Execute<T[]>("SMOVE", Key, dest, member), true);
 
         /// <summary>随机获取多个</summary>
         /// <param name="count"></param>
@@ -113,7 +113,7 @@ namespace NewLife.Caching
         /// <summary>随机获取并弹出</summary>
         /// <param name="count"></param>
         /// <returns></returns>
-        public T[] Pop(Int32 count) => Execute(r => r.Execute<T[]>("SPOP", Key, count));
+        public T[] Pop(Int32 count) => Execute(r => r.Execute<T[]>("SPOP", Key, count), true);
         #endregion
     }
 }

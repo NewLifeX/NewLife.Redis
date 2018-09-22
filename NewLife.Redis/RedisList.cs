@@ -26,7 +26,7 @@ namespace NewLife.Caching
         public T this[Int32 index]
         {
             get => Execute(r => r.Execute<T>("LINDEX", Key, index));
-            set => Execute(r => r.Execute<T>("LSET", Key, index, value));
+            set => Execute(r => r.Execute<T>("LSET", Key, index, value), true);
         }
 
         /// <summary>个数</summary>
@@ -36,7 +36,7 @@ namespace NewLife.Caching
 
         /// <summary>添加元素在后面</summary>
         /// <param name="item"></param>
-        public void Add(T item) => Execute(r => r.Execute<T>("RPUSH", Key, item));
+        public void Add(T item) => Execute(r => r.Execute<T>("RPUSH", Key, item), true);
 
         /// <summary>清空列表</summary>
         public void Clear() => LTrim(0, -1);
@@ -123,13 +123,13 @@ namespace NewLife.Caching
         /// <param name="pivot"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public Int32 LInsertBefore(T pivot, T value) => Execute(r => r.Execute<Int32>($"LINSERT", Key, "BEFORE", pivot, value));
+        public Int32 LInsertBefore(T pivot, T value) => Execute(r => r.Execute<Int32>($"LINSERT", Key, "BEFORE", pivot, value), true);
 
         /// <summary>返回指定范围的列表</summary>
         /// <param name="pivot"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public Int32 LInsertAfter(T pivot, T value) => Execute(r => r.Execute<Int32>($"LINSERT", Key, "AFTER", pivot, value));
+        public Int32 LInsertAfter(T pivot, T value) => Execute(r => r.Execute<Int32>($"LINSERT", Key, "AFTER", pivot, value), true);
 
         /// <summary>返回指定范围的列表</summary>
         /// <param name="start"></param>
@@ -145,13 +145,13 @@ namespace NewLife.Caching
         /// <param name="start"></param>
         /// <param name="stop"></param>
         /// <returns></returns>
-        public Boolean LTrim(Int32 start, Int32 stop) => Execute(r => r.Execute<Boolean>("LTRIM", Key, start, stop));
+        public Boolean LTrim(Int32 start, Int32 stop) => Execute(r => r.Execute<Boolean>("LTRIM", Key, start, stop), true);
 
         /// <summary>从存于 key 的列表里移除前 count 次出现的值为 value 的元素</summary>
         /// <param name="count"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public Int32 LRem(Int32 count, T value) => Execute(r => r.Execute<Int32>("LREM", Key, count, value));
+        public Int32 LRem(Int32 count, T value) => Execute(r => r.Execute<Int32>("LREM", Key, count, value), true);
         #endregion
     }
 }

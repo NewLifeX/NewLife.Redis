@@ -24,7 +24,7 @@ namespace NewLife.Caching
             {
                 args.Add(item);
             }
-            return Execute(rc => rc.Execute<Int32>("RPUSH", args.ToArray()));
+            return Execute(rc => rc.Execute<Int32>("RPUSH", args.ToArray()), true);
         }
 
         /// <summary>消费获取</summary>
@@ -38,7 +38,7 @@ namespace NewLife.Caching
 
             for (var i = 0; i < count; i++)
             {
-                var value = Execute(rc => rc.Execute<T>("LPOP", Key));
+                var value = Execute(rc => rc.Execute<T>("LPOP", Key), true);
                 if (Equals(value, default(T))) break;
 
                 yield return value;

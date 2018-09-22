@@ -41,13 +41,14 @@ namespace NewLife.Caching
         /// <summary>重载执行，统计性能</summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="func"></param>
+        /// <param name="write">是否写入操作</param>
         /// <returns></returns>
-        public override T Execute<T>(Func<RedisClient, T> func)
+        public override T Execute<T>(Func<RedisClient, T> func, Boolean write = false)
         {
             var sw = Counter.StartCount();
             try
             {
-                return base.Execute(func);
+                return base.Execute(func, write);
             }
             finally
             {
@@ -79,7 +80,7 @@ namespace NewLife.Caching
         /// <typeparam name="T"></typeparam>
         /// <param name="key"></param>
         /// <returns></returns>
-        public virtual ICollection<T> GetSet<T>(String key) => new RedisSet<T>(this, key);
+        public override ICollection<T> GetSet<T>(String key) => new RedisSet<T>(this, key);
         #endregion
 
         #region 字符串操作
@@ -87,7 +88,7 @@ namespace NewLife.Caching
         /// <param name="key"></param>
         /// <param name="value"></param>
         /// <returns>返回字符串长度</returns>
-        public virtual Int32 Append(String key, String value) => Execute(r => r.Execute<Int32>("APPEND", key, value));
+        public virtual Int32 Append(String key, String value) => Execute(r => r.Execute<Int32>("APPEND", key, value), true);
 
         /// <summary>获取字符串区间</summary>
         /// <param name="key"></param>
@@ -101,7 +102,7 @@ namespace NewLife.Caching
         /// <param name="offset"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public virtual String SetRange(String key, Int32 offset, String value) => Execute(r => r.Execute<String>("SETRANGE", key, offset, value));
+        public virtual String SetRange(String key, Int32 offset, String value) => Execute(r => r.Execute<String>("SETRANGE", key, offset, value), true);
 
         /// <summary>字符串长度</summary>
         /// <param name="key"></param>
@@ -119,7 +120,7 @@ namespace NewLife.Caching
         {
             var cmd = overwrite ? "RENAME" : "RENAMENX";
 
-            return Execute(r => r.Execute<Boolean>(cmd, key, newKey));
+            return Execute(r => r.Execute<Boolean>(cmd, key, newKey), true);
         }
 
         /// <summary>模糊搜索，支持?和*</summary>

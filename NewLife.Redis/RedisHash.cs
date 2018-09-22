@@ -35,7 +35,7 @@ namespace NewLife.Caching
         public TValue this[TKey key]
         {
             get => Execute(r => r.Execute<TValue>("HGET", Key, key));
-            set => Execute(r => r.Execute<Int32>("HSET", Key, key, value));
+            set => Execute(r => r.Execute<Int32>("HSET", Key, key, value), true);
         }
 
         /// <summary>是否包含指定键</summary>
@@ -46,7 +46,7 @@ namespace NewLife.Caching
         /// <summary>添加</summary>
         /// <param name="key"></param>
         /// <param name="value"></param>
-        public void Add(TKey key, TValue value) => Execute(r => r.Execute<Int32>("HSET", Key, key, value));
+        public void Add(TKey key, TValue value) => Execute(r => r.Execute<Int32>("HSET", Key, key, value), true);
 
         /// <summary>删除</summary>
         /// <param name="key"></param>
@@ -107,7 +107,7 @@ namespace NewLife.Caching
                 args.Add(item);
             }
 
-            return Execute(r => r.Execute<Int32>("HDEL", args.ToArray()));
+            return Execute(r => r.Execute<Int32>("HDEL", args.ToArray()), true);
         }
 
         /// <summary>只在 key 指定的哈希集中不存在指定的字段时，设置字段的值</summary>
@@ -142,7 +142,7 @@ namespace NewLife.Caching
                 args.Add(item.Value);
             }
 
-            return Execute(r => r.Execute<Boolean>("HMSET", args.ToArray()));
+            return Execute(r => r.Execute<Boolean>("HMSET", args.ToArray()), true);
         }
 
         /// <summary>获取所有名值对</summary>
@@ -166,19 +166,19 @@ namespace NewLife.Caching
         /// <param name="field"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public Int64 HIncrBy(TKey field, Int64 value) => Execute(r => r.Execute<Int64>("HINCRBY", Key, field, value));
+        public Int64 HIncrBy(TKey field, Int64 value) => Execute(r => r.Execute<Int64>("HINCRBY", Key, field, value), true);
 
         /// <summary>增加指定字段值</summary>
         /// <param name="field"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public Double HIncrBy(TKey field, Double value) => Execute(r => r.Execute<Double>("HINCRBY", Key, field, value));
+        public Double HIncrBy(TKey field, Double value) => Execute(r => r.Execute<Double>("HINCRBY", Key, field, value), true);
 
         /// <summary>只在 key 指定的哈希集中不存在指定的字段时，设置字段的值</summary>
         /// <param name="field"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public Int32 HSetNX(TKey field, TValue value) => Execute(r => r.Execute<Int32>("HSETNX", Key, field, value));
+        public Int32 HSetNX(TKey field, TValue value) => Execute(r => r.Execute<Int32>("HSETNX", Key, field, value), true);
 
         /// <summary>返回hash指定field的value的字符串长度</summary>
         /// <param name="field"></param>
