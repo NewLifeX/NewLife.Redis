@@ -4,14 +4,14 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <AssemblyName>NewLife.Redis</AssemblyName>
     <AssemblyTitle>新生命Redis缓存组件</AssemblyTitle>
-    <Description>Redis基础操作、列表结构、哈希结构，经过日均80亿次调用量的项目验证</Description>
+    <Description>Redis基础操作、列表结构、哈希结构、Set结构，经过日均100亿次调用量的项目验证</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2018 新生命开发团队</Copyright>
-    <FileVersion>2.0.2018.0829</FileVersion>
-    <AssemblyVersion>2.0.*</AssemblyVersion>
+    <FileVersion>2.1.2018.0922</FileVersion>
+    <AssemblyVersion>2.1.*</AssemblyVersion>
     <Deterministic>false</Deterministic>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-    <Version>2.0.2018.0829</Version>
+    <Version>2.1.2018.0922</Version>
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Redis</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
