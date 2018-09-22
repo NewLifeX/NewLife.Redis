@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using NewLife.Data;
 
 namespace NewLife.Caching
@@ -184,6 +185,28 @@ namespace NewLife.Caching
         /// <param name="field"></param>
         /// <returns></returns>
         public Int32 HStrLen(TKey field) => Execute(r => r.Execute<Int32>("HSTRLEN", Key, field));
+
+        /// <summary>模糊搜索，支持?和*</summary>
+        /// <param name="pattern"></param>
+        /// <param name="count"></param>
+        /// <param name="position"></param>
+        /// <returns></returns>
+        public virtual String[] Search(String pattern, Int32 count, ref Int32 position)
+        {
+            var p = position;
+            var rs = Execute(r => r.Execute<Object[]>("HSCAN", Key, p, "MATCH", pattern + "", "COUNT", count));
+
+            if (rs != null)
+            {
+                position = (rs[0] as Packet).ToStr().ToInt();
+
+                var ps = rs[1] as Object[];
+                var ss = ps.Select(e => (e as Packet).ToStr()).ToArray();
+                return ss;
+            }
+
+            return null;
+        }
         #endregion
     }
 }

@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using NewLife.Data;
 using NewLife.Log;
 using NewLife.Model;
 
@@ -127,6 +129,28 @@ namespace NewLife.Caching
         /// <param name="pattern"></param>
         /// <returns></returns>
         public virtual String[] Search(String pattern) => Execute(r => r.Execute<String[]>("KEYS", pattern));
+
+        /// <summary>模糊搜索，支持?和*</summary>
+        /// <param name="pattern"></param>
+        /// <param name="count"></param>
+        /// <param name="position"></param>
+        /// <returns></returns>
+        public virtual String[] Search(String pattern, Int32 count, ref Int32 position)
+        {
+            var p = position;
+            var rs = Execute(r => r.Execute<Object[]>("SCAN", p, "MATCH", pattern + "", "COUNT", count));
+
+            if (rs != null)
+            {
+                position = (rs[0] as Packet).ToStr().ToInt();
+
+                var ps = rs[1] as Object[];
+                var ss = ps.Select(e => (e as Packet).ToStr()).ToArray();
+                return ss;
+            }
+
+            return null;
+        }
         #endregion
     }
 }
