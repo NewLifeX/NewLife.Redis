@@ -32,31 +32,31 @@ namespace NewLife.Caching
         #endregion
 
         #region 属性
-        /// <summary>性能计数器</summary>
-        public PerfCounter Counter { get; set; } = new PerfCounter();
+        ///// <summary>性能计数器</summary>
+        //public PerfCounter Counter { get; set; } = new PerfCounter();
         #endregion
 
         #region 构造
         #endregion
 
         #region 方法
-        /// <summary>重载执行，统计性能</summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="func"></param>
-        /// <param name="write">是否写入操作</param>
-        /// <returns></returns>
-        public override T Execute<T>(Func<RedisClient, T> func, Boolean write = false)
-        {
-            var sw = Counter.StartCount();
-            try
-            {
-                return base.Execute(func, write);
-            }
-            finally
-            {
-                Counter.StopCount(sw);
-            }
-        }
+        ///// <summary>重载执行，统计性能</summary>
+        ///// <typeparam name="T"></typeparam>
+        ///// <param name="func"></param>
+        ///// <param name="write">是否写入操作</param>
+        ///// <returns></returns>
+        //public override T Execute<T>(Func<RedisClient, T> func, Boolean write = false)
+        //{
+        //    var sw = Counter.StartCount();
+        //    try
+        //    {
+        //        return base.Execute(func, write);
+        //    }
+        //    finally
+        //    {
+        //        Counter.StopCount(sw);
+        //    }
+        //}
         #endregion
 
         #region 集合操作
