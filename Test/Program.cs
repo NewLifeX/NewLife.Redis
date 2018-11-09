@@ -16,9 +16,10 @@ namespace Test
         {
             XTrace.UseConsole();
 
+            // 激活FullRedis，否则Redis.Create会得到默认的Redis对象
             FullRedis.Register();
 
-            Test3();
+            Test1();
 
             Console.ReadKey();
         }
@@ -56,6 +57,14 @@ namespace Test
             mq.Add(new[] { "abc", "g", "e", "m" });
             var arr = mq.Take(3);
             Console.WriteLine(arr.Join(","));
+
+            // 集合
+            var set = ic.GetSet<String>("sss");
+            set.Add("xx1");
+            set.Add("xx2");
+            set.Add("xx3");
+            Console.WriteLine(set.Count);
+            Console.WriteLine(set.Contains("xx2"));
 
             Console.WriteLine("共有缓存对象 {0} 个", ic.Count);
         }
