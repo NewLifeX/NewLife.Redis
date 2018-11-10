@@ -124,6 +124,7 @@ namespace Test
         static void Test4()
         {
             var ic = Redis.Create("127.0.0.1:6000", 5);
+            //var ic = new MemoryCache();
             ic.Bench();
         }
     }

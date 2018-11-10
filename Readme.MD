@@ -185,3 +185,8 @@ rand 参数，是否随机产生key/value。
 batch 批大小，分批执行读写操作，借助GetAll/SetAll进行优化。  
 
 Redis默认设置AutoPipeline=100，无分批时打开管道操作，对添删改优化。  
+
+### Redis的兄弟姐妹
+Redis实现ICache接口，它的孪生兄弟MemoryCache，内存缓存，千万级吞吐率。  
+各应用强烈建议使用ICache接口编码设计，小数据时使用MemoryCache实现；  
+数据增大（10万）以后，改用Redis实现，不需要修改业务代码。  
