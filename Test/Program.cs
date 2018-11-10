@@ -19,7 +19,7 @@ namespace Test
             // 激活FullRedis，否则Redis.Create会得到默认的Redis对象
             FullRedis.Register();
 
-            Test1();
+            Test4();
 
             Console.ReadKey();
         }
@@ -27,6 +27,9 @@ namespace Test
         static void Test1()
         {
             var ic = Redis.Create("127.0.0.1:6000", 3);
+            //var ic = new FullRedis();
+            //ic.Server = "127.0.0.1:6000";
+            //ic.Db = 3;
             ic.Log = XTrace.Log;
 
             // 简单操作
@@ -59,7 +62,7 @@ namespace Test
             Console.WriteLine(arr.Join(","));
 
             // 集合
-            var set = ic.GetSet<String>("sss");
+            var set = ic.GetSet<String>("181110_1234");
             set.Add("xx1");
             set.Add("xx2");
             set.Add("xx3");
@@ -116,6 +119,12 @@ namespace Test
             {
                 Console.WriteLine(item);
             }
+        }
+
+        static void Test4()
+        {
+            var ic = Redis.Create("127.0.0.1:6000", 5);
+            ic.Bench();
         }
     }
 }
