@@ -6,6 +6,7 @@ using NewLife;
 using NewLife.Caching;
 using NewLife.Log;
 using NewLife.Security;
+using NewLife.Serialization;
 using NewLife.Threading;
 
 namespace Test
@@ -19,7 +20,7 @@ namespace Test
             // 激活FullRedis，否则Redis.Create会得到默认的Redis对象
             FullRedis.Register();
 
-            Test4();
+            Test5();
 
             Console.ReadKey();
         }
@@ -126,6 +127,25 @@ namespace Test
             var ic = Redis.Create("127.0.0.1:6379", 5);
             //var ic = new MemoryCache();
             ic.Bench();
+        }
+
+        class User
+        {
+            public String Name { get; set; }
+            public DateTime CreateTime { get; set; }
+        }
+        static void Test5()
+        {
+            var user = new User { Name = "NewLife", CreateTime = DateTime.Now };
+            var rds = Redis.Create("127.0.0.1",2);
+            rds.Log = XTrace.Log;
+            rds.Set("user", user, 3600);
+            var user2 = rds.Get<User>("user");
+            XTrace.WriteLine("Json: {0}", user2.ToJson());
+            XTrace.WriteLine("Json: {0}", rds.Get<String>("user"));
+            if (rds.ContainsKey("user")) XTrace.WriteLine("存在！");
+            rds.Remove("user");
+
         }
     }
 }
