@@ -26,9 +26,9 @@ namespace Test
 
         static void Test1()
         {
-            var ic = Redis.Create("127.0.0.1:6000", 3);
+            var ic = Redis.Create("127.0.0.1:6379", 3);
             //var ic = new FullRedis();
-            //ic.Server = "127.0.0.1:6000";
+            //ic.Server = "127.0.0.1:6379";
             //ic.Db = 3;
             ic.Log = XTrace.Log;
 
@@ -103,7 +103,7 @@ namespace Test
 
         static void Test3()
         {
-            var ic = Redis.Create("127.0.0.1:6000", 3);
+            var ic = Redis.Create("127.0.0.1:6379", 3);
             //ic.Log = XTrace.Log;
 
             var list = ic.GetList<String>("kkk");
@@ -123,7 +123,7 @@ namespace Test
 
         static void Test4()
         {
-            var ic = Redis.Create("127.0.0.1:6000", 5);
+            var ic = Redis.Create("127.0.0.1:6379", 5);
             //var ic = new MemoryCache();
             ic.Bench();
         }
