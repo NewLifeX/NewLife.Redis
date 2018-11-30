@@ -26,7 +26,7 @@ namespace Test
 
         static void Test1()
         {
-            var ic = Redis.Create("127.0.0.1:6000", 3);
+            var ic = Redis.Create("127.0.0.1:6379", 3);
             ic.Log = XTrace.Log;
 
             // 简单操作
