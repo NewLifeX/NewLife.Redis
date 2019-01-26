@@ -128,8 +128,18 @@ namespace Test
             rds.Log = XTrace.Log;
             //rds.Init(null);
 
+            Thread.Sleep(1000);
+
             var fr = rds as FullRedis;
-            fr.Cluster.Rebalance();
+            var cluster = fr.Cluster;
+
+            cluster.Meet("127.0.0.1", 6002);
+            cluster.Meet("127.0.0.1", 6003);
+            cluster.Meet("127.0.0.1", 6004);
+
+            Thread.Sleep(1000);
+
+            cluster.Rebalance();
 
             rds.Set("name", "Stone");
 
@@ -144,7 +154,7 @@ namespace Test
         static void Test5()
         {
             var user = new User { Name = "NewLife", CreateTime = DateTime.Now };
-            var rds = Redis.Create("127.0.0.1",2);
+            var rds = Redis.Create("127.0.0.1", 2);
             rds.Log = XTrace.Log;
             rds.Set("user", user, 3600);
             var user2 = rds.Get<User>("user");

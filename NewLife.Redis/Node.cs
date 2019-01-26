@@ -16,7 +16,7 @@ namespace NewLife.Caching
         public Redis Owner { get; set; }
 
         /// <summary>当前节点地址</summary>
-        public String Address { get; set; }
+        public String EndPoint { get; set; }
 
         /// <summary>标识</summary>
         public String ID { get; set; }
@@ -37,7 +37,7 @@ namespace NewLife.Caching
         #region 构造
         /// <summary>已重载。返回地址</summary>
         /// <returns></returns>
-        public override String ToString() => Address;
+        public override String ToString() => EndPoint;
         #endregion
 
         #region 方法
@@ -59,7 +59,7 @@ namespace NewLife.Caching
             if (ss.Length < 8) return;
 
             ID = ss[0];
-            Address = ss[1];
+            EndPoint = ss[1];
             Flags = ss[2];
 
             var fs = ss[2].Split(",");
@@ -121,8 +121,8 @@ namespace NewLife.Caching
             {
                 var node = Node;
                 var rds = node.Owner;
-                var addr = node.Address;
-                if (addr.IsNullOrEmpty()) throw new ArgumentNullException(nameof(node.Address));
+                var addr = node.EndPoint;
+                if (addr.IsNullOrEmpty()) throw new ArgumentNullException(nameof(node.EndPoint));
 
                 var uri = new NetUri("tcp://" + addr);
                 if (uri.Port == 0) uri.Port = 6379;

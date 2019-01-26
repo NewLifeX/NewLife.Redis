@@ -67,6 +67,14 @@ namespace NewLife.Caching
             return null;
         }
 
+        /// <summary>向集群添加新节点</summary>
+        /// <param name="ip"></param>
+        /// <param name="port"></param>
+        public virtual void Meet(String ip, Int32 port)
+        {
+            Execute(r => r.Execute("CLUSTER", "MEET", ip, port));
+        }
+
         /// <summary>向节点增加槽</summary>
         /// <param name="node"></param>
         /// <param name="slots"></param>
@@ -135,6 +143,8 @@ namespace NewLife.Caching
         /// </remarks>
         public virtual Boolean Rebalance()
         {
+            GetNodes();
+
             // 全部有效节点
             var ns = Nodes.Where(e => e.LinkState == 1 && !e.Slave).ToList();
             if (ns.Count == 0) return false;
@@ -149,7 +159,7 @@ namespace NewLife.Caching
             }
 
             // 地址排序，然后分配
-            ns = ns.OrderBy(e => e.Address).ToList();
+            ns = ns.OrderBy(e => e.EndPoint).ToList();
 
             // 平均分
             var size = 16384 / ns.Count;
