@@ -20,7 +20,7 @@ namespace Test
             // 激活FullRedis，否则Redis.Create会得到默认的Redis对象
             FullRedis.Register();
 
-            Test5();
+            Test4();
 
             Console.ReadKey();
         }
@@ -124,9 +124,9 @@ namespace Test
 
         static void Test4()
         {
-            var ic = Redis.Create("127.0.0.1:6379", 5);
-            //var ic = new MemoryCache();
-            ic.Bench();
+            var rds = Redis.Create("127.0.0.1:6001", 0);
+            rds.Log = XTrace.Log;
+            rds.Init(null);
         }
 
         class User

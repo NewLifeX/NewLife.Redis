@@ -28,11 +28,13 @@
 
   <ItemGroup>
     <Compile Include="..\NewLife.Redis\FullRedis.cs" Link="FullRedis.cs" />
+    <Compile Include="..\NewLife.Redis\Node.cs" Link="Node.cs" />
     <Compile Include="..\NewLife.Redis\RedisBase.cs" Link="RedisBase.cs" />
     <Compile Include="..\NewLife.Redis\RedisHash.cs" Link="RedisHash.cs" />
     <Compile Include="..\NewLife.Redis\RedisList.cs" Link="RedisList.cs" />
     <Compile Include="..\NewLife.Redis\RedisQueue.cs" Link="RedisQueue.cs" />
     <Compile Include="..\NewLife.Redis\RedisSet.cs" Link="RedisSet.cs" />
+    <Compile Include="..\NewLife.Redis\Slot.cs" Link="Slot.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -7,14 +7,71 @@ using NewLife.Net;
 namespace NewLife.Caching
 {
     /// <summary>服务器节点。内部连接池</summary>
-    class Node
+    public class Node
     {
         #region 属性
         /// <summary>拥有者</summary>
         public Redis Owner { get; set; }
 
         /// <summary>当前节点地址</summary>
-        public NetUri Uri { get; set; }
+        public String Address { get; set; }
+
+        /// <summary>标识</summary>
+        public String ID { get; set; }
+
+        /// <summary>标志</summary>
+        public String Flags { get; set; }
+
+        /// <summary>链接状态</summary>
+        public Int32 LinkState { get; set; }
+
+        /// <summary>最小槽</summary>
+        public Int32 MinSlot { get; set; }
+
+        /// <summary>最大槽</summary>
+        public Int32 MaxSlot { get; set; }
+        #endregion
+
+        #region 构造
+        /// <summary>已重载。返回地址</summary>
+        /// <returns></returns>
+        public override String ToString() => Address;
+        #endregion
+
+        #region 方法
+        /// <summary>分析结果行</summary>
+        /// <param name="line"></param>
+        public void Parse(String line)
+        {
+            // <id> <ip:port> <flags> <master> <ping-sent> <pong-recv> <config-epoch> <link-state> <slot> <slot> ... <slot>
+            /*
+             * 25cd3fd6d68b49a35e98050c3a7798dc907b905a 127.0.0.1:6002 master - 1548512034793 1548512031738 1 connected
+             * a0f1a760f8681c2963490fce90722452701a89c8 127.0.0.1:6003 master - 0 1548512033751 0 connected
+             * 84fd41c0ab900ea456419d68e7e28e7312f76b40 127.0.0.1:6004 master - 0 1548512032744 3 connected
+             * 7cf3c4e1a1c3a6bb52778bbfcc457ca1d9460de8 127.0.0.1:6001 myself,master - 0 0 2 connected 1-4
+             */
+
+            if (line.IsNullOrEmpty()) return;
+
+            var ss = line.Split(" ");
+            if (ss.Length < 8) return;
+
+            ID = ss[0];
+            Address = ss[1];
+            Flags = ss[2];
+
+            LinkState = ss[7] == "connected" ? 1 : 0;
+
+            if (ss.Length >= 9)
+            {
+                var ts = ss[8].SplitAsInt("-");
+                if (ts.Length == 2)
+                {
+                    MinSlot = ts[0];
+                    MaxSlot = ts[1];
+                }
+            }
+        }
         #endregion
 
         #region 客户端池
@@ -26,9 +83,10 @@ namespace NewLife.Caching
             {
                 var node = Node;
                 var rds = node.Owner;
-                var uri = node.Uri;
-                if (uri == null) throw new ArgumentNullException(nameof(node.Uri));
+                var addr = node.Address;
+                if (addr.IsNullOrEmpty()) throw new ArgumentNullException(nameof(node.Address));
 
+                var uri = new NetUri("tcp://" + addr);
                 if (uri.Port == 0) uri.Port = 6379;
 
                 var rc = new RedisClient

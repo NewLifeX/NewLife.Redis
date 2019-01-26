@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using NewLife.Data;
-using NewLife.Log;
 using NewLife.Model;
 
 namespace NewLife.Caching
@@ -32,11 +31,58 @@ namespace NewLife.Caching
         #endregion
 
         #region 属性
-        ///// <summary>性能计数器</summary>
-        //public PerfCounter Counter { get; set; } = new PerfCounter();
+        /// <summary>模式</summary>
+        public String Mode { get; private set; }
         #endregion
 
         #region 构造
+        /// <summary>初始化配置</summary>
+        /// <param name="config"></param>
+        public override void Init(String config)
+        {
+            base.Init(config);
+
+            // 集群不支持Select
+            if (Db == 0)
+            {
+                // 访问一次info信息，解析工作模式，以判断是否集群
+                var info = Execute(r => r.GetInfo(), false);
+                if (info != null)
+                {
+                    if (info.TryGetValue("redis_mode", out var mode)) Mode = mode;
+
+                    // 集群模式初始化节点
+                    GetNodes();
+                }
+            }
+        }
+        #endregion
+
+        #region 集群
+        /// <summary>集群节点</summary>
+        public Node[] Nodes { get; private set; }
+
+        private void GetNodes()
+        {
+            var rs = Execute(r => r.Execute<String>("Cluster", "Nodes"));
+            if (rs.IsNullOrEmpty()) return;
+
+            var list = new List<Node>();
+            foreach (var item in rs.Split("\r", "\n"))
+            {
+                if (!item.IsNullOrEmpty())
+                {
+                    var node = new Node
+                    {
+                        Owner = this
+                    };
+
+                    node.Parse(item);
+                    list.Add(node);
+                }
+            }
+            Nodes = list.ToArray();
+        }
         #endregion
 
         #region 方法
