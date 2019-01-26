@@ -67,12 +67,74 @@ namespace NewLife.Caching
             return null;
         }
 
+        /// <summary>向节点增加槽</summary>
+        /// <param name="node"></param>
+        /// <param name="slots"></param>
+        /// <returns></returns>
+        public virtual void AddSlots(Node node, Int32[] slots)
+        {
+            var pool = node.Pool;
+            var client = pool.Get();
+            try
+            {
+                var args = new List<Object>(slots.Length + 1) { "ADDSLOTS" };
+                args.AddRange(slots.Cast<Object>());
+
+                client.Execute("CLUSTER", args.ToArray());
+            }
+            catch (Exception ex)
+            {
+                Redis.Log.Error(ex.Message);
+            }
+            finally
+            {
+                pool.Put(client);
+            }
+        }
+
+        /// <summary>从节点删除槽</summary>
+        /// <param name="node"></param>
+        /// <param name="slots"></param>
+        /// <returns></returns>
+        public virtual void DeleteSlots(Node node, Int32[] slots)
+        {
+            var pool = node.Pool;
+            var client = pool.Get();
+            try
+            {
+                var args = new List<Object>(slots.Length + 1) { "DELSLOTS" };
+                args.AddRange(slots.Cast<Object>());
+
+                client.Execute("CLUSTER", args.ToArray());
+            }
+            catch (Exception ex)
+            {
+                Redis.Log.Error(ex.Message);
+            }
+            finally
+            {
+                pool.Put(client);
+            }
+        }
+
         /// <summary>重新负载均衡</summary>
+        /// <remarks>
+        /// 节点迁移太负责，直接干掉原来的分配，重新全局分配
+        /// </remarks>
         public virtual Boolean Rebalance()
         {
             // 全部有效节点
             var ns = Nodes.Where(e => e.LinkState == 1 && !e.Slave).ToList();
             if (ns.Count == 0) return false;
+
+            //!!! 节点迁移太负责，直接干掉原来的分配，重新全局分配
+            foreach (var item in ns)
+            {
+                var sts = item.GetSlots();
+                if (sts == null || sts.Length == 0) continue;
+
+                DeleteSlots(item, sts);
+            }
 
             // 地址排序，然后分配
             ns = ns.OrderBy(e => e.Address).ToList();
@@ -94,6 +156,9 @@ namespace NewLife.Caching
                     From = start,
                     To = to - 1,
                 });
+
+                // 执行命令
+                AddSlots(item, Enumerable.Range(start, to - start).ToArray());
 
                 start = to;
             }

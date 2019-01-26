@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using NewLife.Collections;
 using NewLife.Log;
 using NewLife.Net;
@@ -90,6 +91,22 @@ namespace NewLife.Caching
                 if (slot >= item.From && slot <= item.To) return true;
             }
             return false;
+        }
+
+        /// <summary>返回所有槽</summary>
+        /// <returns></returns>
+        public Int32[] GetSlots()
+        {
+            var list = new List<Int32>();
+            foreach (var item in Slots)
+            {
+                for (var i = item.From; i <= item.To; i++)
+                {
+                    list.Add(i);
+                }
+            }
+
+            return list.Distinct().OrderBy(e => e).ToArray();
         }
         #endregion
 
