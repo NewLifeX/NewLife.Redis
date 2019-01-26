@@ -61,9 +61,11 @@ namespace NewLife.Caching
             ID = ss[0];
             Address = ss[1];
             Flags = ss[2];
-            Slave = ss[2] == "slave";
 
-            LinkState = ss[7] == "connected" ? 1 : 0;
+            var fs = ss[2].Split(",");
+            Slave = fs.Contains("slave");
+
+            LinkState = fs.Contains("fail?") ? 0 : 1;
 
             if (ss.Length >= 9)
             {

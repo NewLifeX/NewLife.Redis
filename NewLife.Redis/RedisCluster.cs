@@ -106,6 +106,18 @@ namespace NewLife.Caching
                 args.AddRange(slots.Cast<Object>());
 
                 client.Execute("CLUSTER", args.ToArray());
+
+                //foreach (var item in slots)
+                //{
+                //    try
+                //    {
+                //        client.Execute("CLUSTER", "DELSLOTS", item);
+                //    }
+                //    catch (Exception ex)
+                //    {
+                //        Redis.Log.Error(ex.Message);
+                //    }
+                //}
             }
             catch (Exception ex)
             {
