@@ -128,6 +128,9 @@ namespace Test
             rds.Log = XTrace.Log;
             //rds.Init(null);
 
+            var fr = rds as FullRedis;
+            fr.Cluster.Rebalance();
+
             rds.Set("name", "Stone");
 
             var name = rds.Get<String>("name");

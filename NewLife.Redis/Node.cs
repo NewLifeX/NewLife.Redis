@@ -26,6 +26,9 @@ namespace NewLife.Caching
         /// <summary>链接状态</summary>
         public Int32 LinkState { get; set; }
 
+        /// <summary>是否从节点</summary>
+        public Boolean Slave { get; set; }
+
         /// <summary>本节点数据槽</summary>
         public IList<Slot> Slots { get; } = new List<Slot>();
         #endregion
@@ -57,6 +60,7 @@ namespace NewLife.Caching
             ID = ss[0];
             Address = ss[1];
             Flags = ss[2];
+            Slave = ss[2] == "slave";
 
             LinkState = ss[7] == "connected" ? 1 : 0;
 

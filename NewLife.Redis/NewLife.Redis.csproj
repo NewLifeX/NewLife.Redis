@@ -50,6 +50,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="FullRedis.cs" />
     <Compile Include="RedisBase.cs" />
+    <Compile Include="RedisCluster.cs" />
     <Compile Include="RedisHash.cs" />
     <Compile Include="RedisList.cs" />
     <Compile Include="RedisQueue.cs" />

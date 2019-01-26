@@ -35,6 +35,9 @@ namespace NewLife.Caching
         #region 属性
         /// <summary>模式</summary>
         public String Mode { get; private set; }
+
+        /// <summary>集群</summary>
+        public RedisCluster Cluster { get; set; }
         #endregion
 
         #region 构造
@@ -54,55 +57,9 @@ namespace NewLife.Caching
                     if (info.TryGetValue("redis_mode", out var mode)) Mode = mode;
 
                     // 集群模式初始化节点
-                    GetNodes();
+                    if (mode == "cluster") Cluster = new RedisCluster(this);
                 }
             }
-        }
-        #endregion
-
-        #region 集群
-        /// <summary>集群节点</summary>
-        public Node[] Nodes { get; private set; }
-
-        private void GetNodes()
-        {
-            var rs = Execute(null, r => r.Execute<String>("Cluster", "Nodes"));
-            if (rs.IsNullOrEmpty()) return;
-
-            var list = new List<Node>();
-            foreach (var item in rs.Split("\r", "\n"))
-            {
-                if (!item.IsNullOrEmpty())
-                {
-                    var node = new Node
-                    {
-                        Owner = this
-                    };
-
-                    node.Parse(item);
-                    list.Add(node);
-
-                    XTrace.WriteLine("[{0}]节点：{1}", Name, node);
-                }
-            }
-            Nodes = list.ToArray();
-        }
-
-        /// <summary>根据Key选择节点</summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
-        protected Node SelectNode(String key)
-        {
-            if (key.IsNullOrEmpty()) return null;
-
-            var slot = key.GetBytes().Crc16() / 16384;
-
-            foreach (var node in Nodes)
-            {
-                if (node.Contain(slot)) return node;
-            }
-
-            return null;
         }
         #endregion
 
@@ -115,7 +72,7 @@ namespace NewLife.Caching
         /// <returns></returns>
         public override T Execute<T>(String key, Func<RedisClient, T> func, Boolean write = false)
         {
-            var node = SelectNode(key);
+            var node = Cluster?.SelectNode(key);
 
             // 如果不支持集群，直接返回
             if (node == null) return base.Execute(key, func, write);

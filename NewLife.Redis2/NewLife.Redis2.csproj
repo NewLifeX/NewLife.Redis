@@ -30,6 +30,7 @@
     <Compile Include="..\NewLife.Redis\FullRedis.cs" Link="FullRedis.cs" />
     <Compile Include="..\NewLife.Redis\Node.cs" Link="Node.cs" />
     <Compile Include="..\NewLife.Redis\RedisBase.cs" Link="RedisBase.cs" />
+    <Compile Include="..\NewLife.Redis\RedisCluster.cs" Link="RedisCluster.cs" />
     <Compile Include="..\NewLife.Redis\RedisHash.cs" Link="RedisHash.cs" />
     <Compile Include="..\NewLife.Redis\RedisList.cs" Link="RedisList.cs" />
     <Compile Include="..\NewLife.Redis\RedisQueue.cs" Link="RedisQueue.cs" />
