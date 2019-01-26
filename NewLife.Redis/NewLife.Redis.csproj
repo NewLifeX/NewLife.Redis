@@ -46,6 +46,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Node.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="FullRedis.cs" />
     <Compile Include="RedisBase.cs" />
@@ -53,6 +54,7 @@
     <Compile Include="RedisList.cs" />
     <Compile Include="RedisQueue.cs" />
     <Compile Include="RedisSet.cs" />
+    <Compile Include="Slot.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
