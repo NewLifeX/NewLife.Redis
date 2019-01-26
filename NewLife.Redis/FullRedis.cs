@@ -48,7 +48,7 @@ namespace NewLife.Caching
             if (Db == 0)
             {
                 // 访问一次info信息，解析工作模式，以判断是否集群
-                var info = Execute(r => r.GetInfo(), false);
+                var info = Execute(null, r => r.GetInfo(), false);
                 if (info != null)
                 {
                     if (info.TryGetValue("redis_mode", out var mode)) Mode = mode;
@@ -66,7 +66,7 @@ namespace NewLife.Caching
 
         private void GetNodes()
         {
-            var rs = Execute(r => r.Execute<String>("Cluster", "Nodes"));
+            var rs = Execute(null, r => r.Execute<String>("Cluster", "Nodes"));
             if (rs.IsNullOrEmpty()) return;
 
             var list = new List<Node>();
@@ -81,6 +81,8 @@ namespace NewLife.Caching
 
                     node.Parse(item);
                     list.Add(node);
+
+                    XTrace.WriteLine("[{0}]节点：{1}", Name, node);
                 }
             }
             Nodes = list.ToArray();
@@ -91,6 +93,8 @@ namespace NewLife.Caching
         /// <returns></returns>
         protected Node SelectNode(String key)
         {
+            if (key.IsNullOrEmpty()) return null;
+
             var slot = key.GetBytes().Crc16() / 16384;
 
             foreach (var node in Nodes)
@@ -109,12 +113,12 @@ namespace NewLife.Caching
         /// <param name="func"></param>
         /// <param name="write">是否写入操作</param>
         /// <returns></returns>
-        public virtual T Execute<T>(String key, Func<RedisClient, T> func, Boolean write = false)
+        public override T Execute<T>(String key, Func<RedisClient, T> func, Boolean write = false)
         {
             var node = SelectNode(key);
 
             // 如果不支持集群，直接返回
-            if (node == null) return base.Execute(func, write);
+            if (node == null) return base.Execute(key, func, write);
 
             // 统计性能
             var sw = Counter?.StartCount();
@@ -178,26 +182,26 @@ namespace NewLife.Caching
         /// <param name="key"></param>
         /// <param name="value"></param>
         /// <returns>返回字符串长度</returns>
-        public virtual Int32 Append(String key, String value) => Execute(r => r.Execute<Int32>("APPEND", key, value), true);
+        public virtual Int32 Append(String key, String value) => Execute(key, r => r.Execute<Int32>("APPEND", key, value), true);
 
         /// <summary>获取字符串区间</summary>
         /// <param name="key"></param>
         /// <param name="start"></param>
         /// <param name="end"></param>
         /// <returns></returns>
-        public virtual String GetRange(String key, Int32 start, Int32 end) => Execute(r => r.Execute<String>("GETRANGE", key, start, end));
+        public virtual String GetRange(String key, Int32 start, Int32 end) => Execute(key, r => r.Execute<String>("GETRANGE", key, start, end));
 
         /// <summary>设置字符串区间</summary>
         /// <param name="key"></param>
         /// <param name="offset"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public virtual String SetRange(String key, Int32 offset, String value) => Execute(r => r.Execute<String>("SETRANGE", key, offset, value), true);
+        public virtual String SetRange(String key, Int32 offset, String value) => Execute(key, r => r.Execute<String>("SETRANGE", key, offset, value), true);
 
         /// <summary>字符串长度</summary>
         /// <param name="key"></param>
         /// <returns></returns>
-        public virtual Int32 StrLen(String key) => Execute(r => r.Execute<Int32>("STRLEN", key));
+        public virtual Int32 StrLen(String key) => Execute(key, r => r.Execute<Int32>("STRLEN", key));
         #endregion
 
         #region 高级操作
@@ -210,13 +214,13 @@ namespace NewLife.Caching
         {
             var cmd = overwrite ? "RENAME" : "RENAMENX";
 
-            return Execute(r => r.Execute<Boolean>(cmd, key, newKey), true);
+            return Execute(key, r => r.Execute<Boolean>(cmd, key, newKey), true);
         }
 
         /// <summary>模糊搜索，支持?和*</summary>
         /// <param name="pattern"></param>
         /// <returns></returns>
-        public virtual String[] Search(String pattern) => Execute(r => r.Execute<String[]>("KEYS", pattern));
+        public virtual String[] Search(String pattern) => Execute(null, r => r.Execute<String[]>("KEYS", pattern));
 
         /// <summary>模糊搜索，支持?和*</summary>
         /// <param name="pattern"></param>
@@ -226,7 +230,7 @@ namespace NewLife.Caching
         public virtual String[] Search(String pattern, Int32 count, ref Int32 position)
         {
             var p = position;
-            var rs = Execute(r => r.Execute<Object[]>("SCAN", p, "MATCH", pattern + "", "COUNT", count));
+            var rs = Execute(null, r => r.Execute<Object[]>("SCAN", p, "MATCH", pattern + "", "COUNT", count));
 
             if (rs != null)
             {

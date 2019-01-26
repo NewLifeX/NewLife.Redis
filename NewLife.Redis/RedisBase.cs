@@ -29,13 +29,7 @@ namespace NewLife.Caching
         /// <param name="func"></param>
         /// <param name="write">是否写入操作</param>
         /// <returns></returns>
-        public virtual T Execute<T>(Func<RedisClient, T> func, Boolean write = false)
-        {
-            if (Redis is FullRedis frds)
-                return frds.Execute(Key, func, write);
-            else
-                return Redis.Execute(func, write);
-        }
+        public virtual T Execute<T>(Func<RedisClient, T> func, Boolean write = false) => Redis.Execute(Key, func, write);
         #endregion
 
         #region 辅助

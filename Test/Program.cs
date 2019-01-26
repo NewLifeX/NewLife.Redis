@@ -126,7 +126,11 @@ namespace Test
         {
             var rds = Redis.Create("127.0.0.1:6001", 0);
             rds.Log = XTrace.Log;
-            rds.Init(null);
+            //rds.Init(null);
+
+            rds.Set("name", "Stone");
+
+            var name = rds.Get<String>("name");
         }
 
         class User
