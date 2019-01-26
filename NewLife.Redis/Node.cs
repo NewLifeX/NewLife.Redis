@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using NewLife.Collections;
 using NewLife.Log;
@@ -25,11 +26,8 @@ namespace NewLife.Caching
         /// <summary>链接状态</summary>
         public Int32 LinkState { get; set; }
 
-        /// <summary>最小槽</summary>
-        public Int32 MinSlot { get; set; }
-
-        /// <summary>最大槽</summary>
-        public Int32 MaxSlot { get; set; }
+        /// <summary>本节点数据槽</summary>
+        public IList<Slot> Slots { get; } = new List<Slot>();
         #endregion
 
         #region 构造
@@ -48,7 +46,7 @@ namespace NewLife.Caching
              * 25cd3fd6d68b49a35e98050c3a7798dc907b905a 127.0.0.1:6002 master - 1548512034793 1548512031738 1 connected
              * a0f1a760f8681c2963490fce90722452701a89c8 127.0.0.1:6003 master - 0 1548512033751 0 connected
              * 84fd41c0ab900ea456419d68e7e28e7312f76b40 127.0.0.1:6004 master - 0 1548512032744 3 connected
-             * 7cf3c4e1a1c3a6bb52778bbfcc457ca1d9460de8 127.0.0.1:6001 myself,master - 0 0 2 connected 1-4
+             * 7cf3c4e1a1c3a6bb52778bbfcc457ca1d9460de8 127.0.0.1:6001 myself,master - 0 0 2 connected 1-4 103-105 107 109
              */
 
             if (line.IsNullOrEmpty()) return;
@@ -64,13 +62,30 @@ namespace NewLife.Caching
 
             if (ss.Length >= 9)
             {
-                var ts = ss[8].SplitAsInt("-");
-                if (ts.Length == 2)
+                for (var i = 8; i < ss.Length; i++)
                 {
-                    MinSlot = ts[0];
-                    MaxSlot = ts[1];
+                    var ts = ss[i].SplitAsInt("-");
+                    var end = ts.Length == 2 ? 1 : 0;
+
+                    Slots.Add(new Slot
+                    {
+                        From = ts[0],
+                        To = ts[end],
+                    });
                 }
             }
+        }
+
+        /// <summary>是否包含数据槽</summary>
+        /// <param name="slot"></param>
+        /// <returns></returns>
+        public Boolean Contain(Int32 slot)
+        {
+            foreach (var item in Slots)
+            {
+                if (slot >= item.From && slot <= item.To) return true;
+            }
+            return false;
         }
         #endregion
 

@@ -1,14 +1,18 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NewLife.Caching
 {
-    class Slot
+    /// <summary>数据槽区间</summary>
+    public struct Slot
     {
-        #region 属性
-        #endregion
+        /// <summary>起始</summary>
+        public Int32 From;
+
+        /// <summary>结束</summary>
+        public Int32 To;
+
+        /// <summary>已重载。返回区间</summary>
+        /// <returns></returns>
+        public override String ToString() => $"{From}-{To}";
     }
 }

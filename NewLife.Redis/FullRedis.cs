@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using NewLife.Data;
+using NewLife.Log;
 using NewLife.Model;
 
 namespace NewLife.Caching
@@ -83,26 +85,66 @@ namespace NewLife.Caching
             }
             Nodes = list.ToArray();
         }
+
+        /// <summary>根据Key选择节点</summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        protected Node SelectNode(String key)
+        {
+            var slot = key.GetBytes().Crc16() / 16384;
+
+            foreach (var node in Nodes)
+            {
+                if (node.Contain(slot)) return node;
+            }
+
+            return null;
+        }
         #endregion
 
         #region 方法
-        ///// <summary>重载执行，统计性能</summary>
-        ///// <typeparam name="T"></typeparam>
-        ///// <param name="func"></param>
-        ///// <param name="write">是否写入操作</param>
-        ///// <returns></returns>
-        //public override T Execute<T>(Func<RedisClient, T> func, Boolean write = false)
-        //{
-        //    var sw = Counter.StartCount();
-        //    try
-        //    {
-        //        return base.Execute(func, write);
-        //    }
-        //    finally
-        //    {
-        //        Counter.StopCount(sw);
-        //    }
-        //}
+        /// <summary>重载执行，支持集群</summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="key"></param>
+        /// <param name="func"></param>
+        /// <param name="write">是否写入操作</param>
+        /// <returns></returns>
+        public virtual T Execute<T>(String key, Func<RedisClient, T> func, Boolean write = false)
+        {
+            var node = SelectNode(key);
+
+            // 如果不支持集群，直接返回
+            if (node == null) return base.Execute(func, write);
+
+            // 统计性能
+            var sw = Counter?.StartCount();
+
+            var pool = node.Pool;
+
+            var i = 0;
+            do
+            {
+                // 每次重试都需要重新从池里借出连接
+                var client = pool.Get();
+                try
+                {
+                    client.Reset();
+                    var rs = func(client);
+
+                    Counter?.StopCount(sw);
+
+                    return rs;
+                }
+                catch (InvalidDataException)
+                {
+                    if (i++ >= Retry) throw;
+                }
+                finally
+                {
+                    pool.Put(client);
+                }
+            } while (true);
+        }
         #endregion
 
         #region 集合操作
