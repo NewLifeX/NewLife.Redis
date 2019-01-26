@@ -51,7 +51,7 @@ namespace NewLife.Caching
         {
             if (key.IsNullOrEmpty()) return null;
 
-            var slot = key.GetBytes().Crc16() / 16384;
+            var slot = key.GetBytes().Crc16() % 16384;
             var ns = Nodes.Where(e => e.LinkState == 1).ToList();
             // 找主节点
             foreach (var node in ns)
