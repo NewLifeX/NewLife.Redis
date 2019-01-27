@@ -9,12 +9,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NewLife.Redis2", "NewLife.Redis2\NewLife.Redis2.csproj", "{CB63319A-9FEA-463A-8F61-A5485A5FB51B}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Other", "Other", "{8CE754FB-5079-4ED7-93FF-B561CCE71DE6}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Doc", "Doc", "{8CE754FB-5079-4ED7-93FF-B561CCE71DE6}"
 	ProjectSection(SolutionItems) = preProject
 		Readme.MD = Readme.MD
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test2", "Test2\Test2.csproj", "{319E3CF8-E940-4768-8C6F-BACF6387FB4B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test2", "Test2\Test2.csproj", "{319E3CF8-E940-4768-8C6F-BACF6387FB4B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

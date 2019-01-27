@@ -80,11 +80,11 @@ namespace NewLife.Caching
             // 统计性能
             var sw = Counter?.StartCount();
 
-            var pool = node.Pool;
-
             var i = 0;
             do
             {
+                var pool = node.Pool;
+
                 // 每次重试都需要重新从池里借出连接
                 var client = pool.Get();
                 try
@@ -99,6 +99,24 @@ namespace NewLife.Caching
                 catch (InvalidDataException)
                 {
                     if (i++ >= Retry) throw;
+                }
+                catch (Exception ex)
+                {
+                    // 处理MOVED和ASK指令
+                    var msg = ex.Message;
+                    if (msg.StartsWithIgnoreCase("MOVED", "ASK"))
+                    {
+                        // 取出地址，找到新的节点
+                        var endpoint = msg.Substring(" ");
+                        if (!endpoint.IsNullOrEmpty())
+                        {
+                            // 使用新的节点
+                            node = Cluster.Map(endpoint, key);
+                            if (node != null) continue;
+                        }
+                    }
+
+                    throw;
                 }
                 finally
                 {

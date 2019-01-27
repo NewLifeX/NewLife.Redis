@@ -67,6 +67,24 @@ namespace NewLife.Caching
             return null;
         }
 
+        /// <summary>把Key映射到指定地址的节点</summary>
+        /// <param name="endpoint"></param>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public virtual Node Map(String endpoint, String key)
+        {
+            var node = Nodes.FirstOrDefault(e => e.EndPoint == endpoint);
+            if (node == null) return null;
+
+            if (!key.IsNullOrEmpty())
+            {
+                var slot = key.GetBytes().Crc16() % 16384;
+                AddSlots(node, slot);
+            }
+
+            return node;
+        }
+
         /// <summary>向集群添加新节点</summary>
         /// <param name="ip"></param>
         /// <param name="port"></param>
@@ -79,7 +97,7 @@ namespace NewLife.Caching
         /// <param name="node"></param>
         /// <param name="slots"></param>
         /// <returns></returns>
-        public virtual void AddSlots(Node node, Int32[] slots)
+        public virtual void AddSlots(Node node, params Int32[] slots)
         {
             var pool = node.Pool;
             var client = pool.Get();
@@ -104,7 +122,7 @@ namespace NewLife.Caching
         /// <param name="node"></param>
         /// <param name="slots"></param>
         /// <returns></returns>
-        public virtual void DeleteSlots(Node node, Int32[] slots)
+        public virtual void DeleteSlots(Node node, params Int32[] slots)
         {
             var pool = node.Pool;
             var client = pool.Get();
