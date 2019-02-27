@@ -212,7 +212,7 @@ namespace NewLife.Caching
             var ns = Nodes.Where(e => e.LinkState == 1 && !e.Slave).ToList();
             if (ns.Count == 0) return false;
 
-            //!!! 节点迁移太负责，直接干掉原来的分配，重新全局分配
+            //!!! 节点迁移太复杂，直接干掉原来的分配，重新全局分配
             foreach (var item in ns)
             {
                 var sts = item.GetSlots();

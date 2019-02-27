@@ -13,6 +13,6 @@ namespace NewLife.Caching
 
         /// <summary>已重载。返回区间</summary>
         /// <returns></returns>
-        public override String ToString() => $"{From}-{To}";
+        public override String ToString() => From == To ? From + "" : $"{From}-{To}";
     }
 }

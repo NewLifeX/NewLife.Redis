@@ -72,6 +72,10 @@ namespace NewLife.Caching
             Flags = ss[2];
             Master = ss[3];
 
+            // Redis的集群信息中出现 172.16.10.32:6379@16379
+            var p = EndPoint.IndexOf("@");
+            if (p > 0) EndPoint = EndPoint.Substring(0, p);
+
             var fs = ss[2].Split(",");
             Slave = fs.Contains("slave");
 
