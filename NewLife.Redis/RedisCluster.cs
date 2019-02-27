@@ -22,11 +22,20 @@ namespace NewLife.Caching
         #region 方法
         private void GetNodes()
         {
+            if (Redis == null) return;
+
             var rs = Execute(r => r.Execute<String>("Cluster", "Nodes"));
             if (rs.IsNullOrEmpty()) return;
 
+            ParseNodes(rs);
+        }
+
+        /// <summary>分析节点</summary>
+        /// <param name="nodes"></param>
+        public void ParseNodes(String nodes)
+        {
             var list = new List<Node>();
-            foreach (var item in rs.Split("\r", "\n"))
+            foreach (var item in nodes.Split("\r", "\n"))
             {
                 if (!item.IsNullOrEmpty())
                 {
@@ -43,12 +52,41 @@ namespace NewLife.Caching
                     //XTrace.WriteLine("[{0}]节点：{1}", Redis.Name, node);
                 }
             }
-            list = list.OrderBy(e => e.EndPoint).ToList();
+            //list = list.OrderBy(e => e.EndPoint).ToList();
+            list = SortNodes(list);
+
             foreach (var node in list)
             {
-                XTrace.WriteLine("[{0}]节点：{1} {2} {3}", Redis.Name, node, node.Flags, node.Slots.Join(" "));
+                XTrace.WriteLine("[{0}]节点：{1} {2} {3}", Redis?.Name, node, node.Flags, node.Slots.Join(" "));
             }
             Nodes = list.ToArray();
+        }
+
+        private List<Node> SortNodes(List<Node> list)
+        {
+            // 主节点按照数据槽排序
+            var masters = list.Where(e => e.Master == "-").OrderBy(e => e.Slots.Min(x => x.From)).ToList();
+            var slaves = list.Where(e => e.Master != "-").ToList();
+            list = masters;
+
+            // 从节点插入主节点
+            for (var i = 0; i < list.Count; i++)
+            {
+                var node = list[i];
+                var ns = slaves.Where(e => e.Master == node.ID).OrderBy(e => e.EndPoint).ToList();
+                if (ns.Count > 0)
+                {
+                    foreach (var item in ns)
+                    {
+                        list.Insert(i + 1, item);
+                        slaves.Remove(item);
+                    }
+                }
+            }
+            // 剩下的节点，插入后面
+            if (slaves.Count > 0) list.AddRange(slaves);
+
+            return list;
         }
 
         /// <summary>根据Key选择节点</summary>

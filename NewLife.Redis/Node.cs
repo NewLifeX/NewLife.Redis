@@ -24,6 +24,9 @@ namespace NewLife.Caching
         /// <summary>标志</summary>
         public String Flags { get; set; }
 
+        /// <summary>主机。当前节点对应的主机</summary>
+        public String Master { get; set; }
+
         /// <summary>链接状态</summary>
         public Int32 LinkState { get; set; }
 
@@ -31,7 +34,13 @@ namespace NewLife.Caching
         public Boolean Slave { get; set; }
 
         /// <summary>本节点数据槽</summary>
-        public IList<Slot> Slots { get; } = new List<Slot>();
+        public IList<Slot> Slots { get; private set; } = new List<Slot>();
+
+        /// <summary>正在转入</summary>
+        public IDictionary<Int32, String> Importings { get; private set; }
+
+        /// <summary>正在转出</summary>
+        public IDictionary<Int32, String> Migratings { get; private set; }
         #endregion
 
         #region 构造
@@ -61,6 +70,7 @@ namespace NewLife.Caching
             ID = ss[0];
             EndPoint = ss[1];
             Flags = ss[2];
+            Master = ss[3];
 
             var fs = ss[2].Split(",");
             Slave = fs.Contains("slave");
@@ -71,15 +81,50 @@ namespace NewLife.Caching
             {
                 for (var i = 8; i < ss.Length; i++)
                 {
-                    var ts = ss[i].SplitAsInt("-");
-                    var end = ts.Length == 2 ? 1 : 0;
-
-                    Slots.Add(new Slot
+                    var str = ss[i];
+                    if (str[0] == '[' && str[str.Length - 1] == ']')
                     {
-                        From = ts[0],
-                        To = ts[end],
-                    });
+                        ParseImportingAndMigrating(str);
+                    }
+                    else
+                    {
+                        var ts = str.SplitAsInt("-");
+                        var end = ts.Length == 2 ? 1 : 0;
+
+                        if (ts.Length > 0) Slots.Add(new Slot
+                        {
+                            From = ts[0],
+                            To = ts[end],
+                        });
+                    }
                 }
+            }
+        }
+
+        private void ParseImportingAndMigrating(String str)
+        {
+            str = str.Trim('[', ']');
+
+            var p = str.IndexOf("-<-");
+            if (p > 0)
+            {
+                var dic = Importings ?? new Dictionary<Int32, String>();
+                var slot = str.Substring(0, p).ToInt();
+                var nodeid = str.Substring(p + 3);
+                dic[slot] = nodeid;
+
+                Importings = dic;
+            }
+            else if (str.Contains("->-"))
+            {
+                p = str.IndexOf("->-");
+
+                var dic = Migratings ?? new Dictionary<Int32, String>();
+                var slot = str.Substring(0, p).ToInt();
+                var nodeid = str.Substring(p + 3);
+                dic[slot] = nodeid;
+
+                Migratings = dic;
             }
         }
 
