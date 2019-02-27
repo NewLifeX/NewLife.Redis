@@ -33,6 +33,9 @@ namespace NewLife.Caching
         /// <summary>是否从节点</summary>
         public Boolean Slave { get; set; }
 
+        /// <summary>当前节点的从节点集合</summary>
+        public IList<Node> Slaves { get; set; }
+
         /// <summary>本节点数据槽</summary>
         public IList<Slot> Slots { get; private set; } = new List<Slot>();
 
