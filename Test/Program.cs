@@ -1,13 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
-using NewLife;
 using NewLife.Caching;
 using NewLife.Log;
 using NewLife.Security;
 using NewLife.Serialization;
-using NewLife.Threading;
 
 namespace Test
 {
@@ -20,7 +17,14 @@ namespace Test
             // 激活FullRedis，否则Redis.Create会得到默认的Redis对象
             FullRedis.Register();
 
-            Test6();
+            try
+            {
+                Test2();
+            }
+            catch (Exception ex)
+            {
+                XTrace.WriteException(ex);
+            }
 
             Console.ReadKey();
         }
@@ -73,33 +77,23 @@ namespace Test
             Console.WriteLine("共有缓存对象 {0} 个", ic.Count);
         }
 
+        /// <summary>性能压测</summary>
         static void Test2()
         {
             var ic = Redis.Create("127.0.0.1", 3);
 
-            // 简单操作
-            Console.WriteLine("共有缓存对象 {0} 个", ic.Count);
+            // 性能压测
+            //ic.AutoPipeline = -1;
+            ic.Bench();
 
-            var count = 2000000;
-            Console.WriteLine("准备插入缓存{0:n0}项", count);
-            var sw = Stopwatch.StartNew();
+            Thread.Sleep(1000);
 
-            var prg = 0;
-            var t = new TimerX(s =>
+            Console.WriteLine();
+            var dic = ic.Execute(null, r => { r.Reset(); return r.GetInfo(); }, false);
+            foreach (var item in dic)
             {
-                XTrace.WriteLine("已处理 {0:n0} 进度 {1:p2} 速度 {2:n0}tps", prg, (Double)prg / count, prg * 1000 / sw.ElapsedMilliseconds);
-            }, null, 1000, 1000);
-
-            var buf = Rand.NextBytes(2800);
-            for (var i = 0; i < count; i++)
-            {
-                var key = "BILL:" + (i + 1).ToString("000000000000");
-                ic.Set(key, buf, 48 * 3600);
-
-                prg++;
+                Console.WriteLine("{0}:\t{1}", item.Key, item.Value);
             }
-
-            t.TryDispose();
         }
 
         static void Test3()
