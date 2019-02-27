@@ -35,11 +35,18 @@ namespace NewLife.Caching
                         Owner = Redis
                     };
 
+                    XTrace.WriteLine("{0}", item);
+
                     node.Parse(item);
                     list.Add(node);
 
-                    XTrace.WriteLine("[{0}]节点：{1}", Redis.Name, node);
+                    //XTrace.WriteLine("[{0}]节点：{1}", Redis.Name, node);
                 }
+            }
+            list = list.OrderBy(e => e.EndPoint).ToList();
+            foreach (var node in list)
+            {
+                XTrace.WriteLine("[{0}]节点：{1} {2} {3}", Redis.Name, node, node.Flags, node.Slots.Join(" "));
             }
             Nodes = list.ToArray();
         }
