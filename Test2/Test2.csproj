@@ -6,7 +6,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\NewLife.Redis2\NewLife.Redis2.csproj" />
+    <PackageReference Include="NewLife.Core" Version="8.1.2019.310" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NewLife.Redis\NewLife.Redis.csproj" />
   </ItemGroup>
 
 </Project>
