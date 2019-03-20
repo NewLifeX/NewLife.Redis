@@ -7,8 +7,8 @@
     <Description>Redis基础操作、列表结构、哈希结构、Set结构，经过日均100亿次调用量的项目验证</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2019 新生命开发团队</Copyright>
-    <Version>3.0.2019.0310</Version>
-    <FileVersion>3.0.2019.0310</FileVersion>
+    <Version>3.0.2019.0320</Version>
+    <FileVersion>3.0.2019.0320</FileVersion>
     <AssemblyVersion>3.0.*</AssemblyVersion>
     <Deterministic>false</Deterministic>
     <OutputPath>..\Bin</OutputPath>
@@ -48,7 +48,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="8.1.2019.310" />
+    <PackageReference Include="NewLife.Core" Version="8.1.2019.320" />
   </ItemGroup>
 
   <ItemGroup>
