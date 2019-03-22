@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Threading;
+using System.Threading.Tasks;
 using NewLife.Caching;
 using NewLife.Log;
 using NewLife.Security;
@@ -19,7 +21,7 @@ namespace Test
 
             try
             {
-                Test2();
+                TestHyperLogLog();
             }
             catch (Exception ex)
             {
@@ -174,6 +176,26 @@ eb2da2a40037265b9f21022d2c6e2ba00e91b67c 172.16.10.32:7000@17000 master - 0 1551
 
             var cluster = new RedisCluster(null);
             cluster.ParseNodes(str);
+        }
+
+        static void TestHyperLogLog()
+        {
+            var rds = Redis.Create("127.0.0.1", 1);
+
+            rds.Remove("ips");
+            var log = new HyperLogLog(rds, "ips");
+
+            XTrace.WriteLine("log.Count={0:n0}", log.Count);
+
+            var count = 1_000_000;
+            XTrace.WriteLine("准备添加[{0:n0}]个IP地址", count);
+            Parallel.For(0, count, k =>
+            {
+                var n = Rand.Next();
+                var ip = new IPAddress(n);
+                log.Add(ip + "");
+            });
+            XTrace.WriteLine("log.Count={0:n0}", log.Count);
         }
     }
 }
