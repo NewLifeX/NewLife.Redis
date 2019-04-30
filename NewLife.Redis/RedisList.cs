@@ -26,7 +26,7 @@ namespace NewLife.Caching
         public T this[Int32 index]
         {
             get => Execute(r => r.Execute<T>("LINDEX", Key, index));
-            set => Execute(r => r.Execute<T>("LSET", Key, index, value), true);
+            set => Execute(r => r.Execute<String>("LSET", Key, index, value), true);
         }
 
         /// <summary>个数</summary>
@@ -36,7 +36,7 @@ namespace NewLife.Caching
 
         /// <summary>添加元素在后面</summary>
         /// <param name="item"></param>
-        public void Add(T item) => Execute(r => r.Execute<T>("RPUSH", Key, item), true);
+        public void Add(T item) => Execute(r => r.Execute<Int32>("RPUSH", Key, item), true);
 
         /// <summary>清空列表</summary>
         public void Clear() => LTrim(0, -1);
@@ -72,8 +72,8 @@ namespace NewLife.Caching
             var count = Count;
             if (count > 1000) throw new NotSupportedException($"[{Key}]的元素个数过多，不支持！");
 
-            var list = GetAll().ToList();
-            return list.IndexOf(item);
+            var arr = GetAll();
+            return Array.IndexOf(arr, item);
         }
 
         /// <summary>在指定位置插入</summary>
