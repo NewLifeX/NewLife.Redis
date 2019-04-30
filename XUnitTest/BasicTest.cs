@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using NewLife.Caching;
 using Xunit;
 
@@ -16,18 +17,31 @@ namespace XUnitTest
             Cache = rds as FullRedis;
         }
 
-        [Fact(DisplayName = "¸öÊý²âÊÔ", Timeout = 1000)]
-        public void CountTest()
-        {
-            var count = Cache.Count;
-            Assert.NotEqual(0, count);
-        }
-
         [Fact(DisplayName = "ÐÅÏ¢²âÊÔ", Timeout = 1000)]
         public void InfoTest()
         {
             var inf = Cache.Execute<String>(null, client => client.Execute<String>("info"));
             Assert.NotNull(inf);
+        }
+
+        [Fact(DisplayName = "×Ö·û´®²âÊÔ")]
+        public void GetSet()
+        {
+            var ic = Cache;
+            var key = "Name";
+
+            // Ìí¼ÓÉ¾³ý
+            ic.Set(key, Environment.UserName);
+            ic.Append(key, "_XXX");
+            var name = ic.Get<String>(key);
+            Assert.Equal(Environment.UserName + "_XXX", name);
+
+            var name2 = ic.GetRange(key, 0, Environment.UserName.Length - 1);
+            Assert.Equal(Environment.UserName, name2);
+
+            ic.SetRange(key, name.Length - 2, "YY");
+            var name3 = ic.Get<String>(key);
+            Assert.Equal(Environment.UserName + "_XYY", name3);
         }
     }
 }

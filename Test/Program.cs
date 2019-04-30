@@ -46,6 +46,9 @@ namespace Test
             ic.Set("name", "大石头");
             Console.WriteLine(ic.Get<String>("name"));
 
+            var ks = ic.Execute(null, c => c.Execute<String[]>("KEYS", "*"));
+            var keys = ic.Keys;
+
             ic.Set("time", DateTime.Now, 1);
             Console.WriteLine(ic.Get<DateTime>("time").ToFullString());
             Thread.Sleep(1100);
