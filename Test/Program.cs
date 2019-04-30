@@ -21,7 +21,8 @@ namespace Test
 
             try
             {
-                TestHyperLogLog();
+                //TestHyperLogLog();
+                Test1();
             }
             catch (Exception ex)
             {

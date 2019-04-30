@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.26730.8
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28803.202
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NewLife.Redis", "NewLife.Redis\NewLife.Redis.csproj", "{8A5716E7-468B-4338-A61C-BB6D7A371ED4}"
 EndProject
@@ -13,6 +13,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Doc", "Doc", "{8CE754FB-507
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test2", "Test2\Test2.csproj", "{319E3CF8-E940-4768-8C6F-BACF6387FB4B}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XUnitTest", "XUnitTest\XUnitTest.csproj", "{08A39462-0531-45AB-ACBB-03F62AF4400F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -32,6 +34,10 @@ Global
 		{319E3CF8-E940-4768-8C6F-BACF6387FB4B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{319E3CF8-E940-4768-8C6F-BACF6387FB4B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{319E3CF8-E940-4768-8C6F-BACF6387FB4B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{08A39462-0531-45AB-ACBB-03F62AF4400F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08A39462-0531-45AB-ACBB-03F62AF4400F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{08A39462-0531-45AB-ACBB-03F62AF4400F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{08A39462-0531-45AB-ACBB-03F62AF4400F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
