@@ -46,5 +46,26 @@ namespace XUnitTest
             var len = ic.StrLen(key);
             Assert.Equal((Environment.UserName + "_XYY").Length, len);
         }
+
+        [Fact(DisplayName = "ËÑË÷²âÊÔ")]
+        public void SearchTest()
+        {
+            var ic = Cache;
+            var key = "Name";
+            var key2 = "Name2";
+
+            // Ìí¼ÓÉ¾³ý
+            ic.Set(key, Environment.UserName);
+            ic.Rename(key, key2);
+            Assert.True(ic.ContainsKey(key2));
+            Assert.False(ic.ContainsKey(key));
+
+            var ss = ic.Search("*");
+            Assert.True(ss.Length > 0);
+
+            var n = 0;
+            var ss2 = ic.Search("*", 10, ref n);
+            Assert.True(ss2.Length > 0);
+        }
     }
 }
