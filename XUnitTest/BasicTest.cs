@@ -42,6 +42,9 @@ namespace XUnitTest
             ic.SetRange(key, name.Length - 2, "YY");
             var name3 = ic.Get<String>(key);
             Assert.Equal(Environment.UserName + "_XYY", name3);
+
+            var len = ic.StrLen(key);
+            Assert.Equal((Environment.UserName + "_XYY").Length, len);
         }
     }
 }
