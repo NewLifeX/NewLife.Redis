@@ -5,7 +5,7 @@ namespace NewLife.Caching
 {
     /// <summary>生产者消费者</summary>
     /// <typeparam name="T"></typeparam>
-    class RedisQueue<T> : RedisBase, IProducerConsumer<T>
+    public class RedisQueue<T> : RedisBase, IProducerConsumer<T>
     {
         #region 实例化
         public RedisQueue(Redis redis, String key) : base(redis, key) { }
