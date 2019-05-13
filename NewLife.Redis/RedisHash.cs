@@ -63,7 +63,7 @@ namespace NewLife.Caching
             value = default(TValue);
 
             var pk = Execute(r => r.Execute<Packet>("HGET", Key, key));
-            if (pk.Total == 0) return false;
+            if (pk == null || pk.Total == 0) return false;
 
             value = FromBytes<TValue>(pk);
 
