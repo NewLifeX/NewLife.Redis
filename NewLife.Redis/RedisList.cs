@@ -41,18 +41,7 @@ namespace NewLife.Caching
         /// <summary>批量添加</summary>
         /// <param name="values"></param>
         /// <returns></returns>
-        public Int32 AddRange(IEnumerable<T> values)
-        {
-            var args = new List<Object>
-            {
-                Key
-            };
-            foreach (var item in values)
-            {
-                args.Add(item);
-            }
-            return Execute(rc => rc.Execute<Int32>("RPUSH", args.ToArray()), true);
-        }
+        public Int32 AddRange(IEnumerable<T> values) => RPUSH(values);
 
         /// <summary>清空列表</summary>
         public void Clear() => LTrim(0, -1);
@@ -135,6 +124,38 @@ namespace NewLife.Caching
         #endregion
 
         #region 高级操作
+        /// <summary>批量添加</summary>
+        /// <param name="values"></param>
+        /// <returns></returns>
+        public Int32 RPUSH(IEnumerable<T> values)
+        {
+            var args = new List<Object>
+            {
+                Key
+            };
+            foreach (var item in values)
+            {
+                args.Add(item);
+            }
+            return Execute(rc => rc.Execute<Int32>("RPUSH", args.ToArray()), true);
+        }
+
+        /// <summary>批量添加</summary>
+        /// <param name="values"></param>
+        /// <returns></returns>
+        public Int32 LPUSH(IEnumerable<T> values)
+        {
+            var args = new List<Object>
+            {
+                Key
+            };
+            foreach (var item in values)
+            {
+                args.Add(item);
+            }
+            return Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
+        }
+
         /// <summary>在指定元素之前插入</summary>
         /// <param name="pivot"></param>
         /// <param name="value"></param>
