@@ -38,6 +38,22 @@ namespace NewLife.Caching
         /// <param name="item"></param>
         public void Add(T item) => Execute(r => r.Execute<Int32>("RPUSH", Key, item), true);
 
+        /// <summary>批量添加</summary>
+        /// <param name="values"></param>
+        /// <returns></returns>
+        public Int32 AddRange(IEnumerable<T> values)
+        {
+            var args = new List<Object>
+            {
+                Key
+            };
+            foreach (var item in values)
+            {
+                args.Add(item);
+            }
+            return Execute(rc => rc.Execute<Int32>("RPUSH", args.ToArray()), true);
+        }
+
         /// <summary>清空列表</summary>
         public void Clear() => LTrim(0, -1);
 
