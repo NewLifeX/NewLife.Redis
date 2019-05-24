@@ -39,7 +39,7 @@ namespace NewLife.Caching
         public void Add(T item) => Execute(r => r.Execute<T>("RPUSH", Key, item), true);
 
         /// <summary>清空列表</summary>
-        public void Clear() => LTrim(0, -1);
+        public void Clear() => LTrim(-1, 0);
 
         /// <summary>是否包含指定元素</summary>
         /// <param name="item"></param>
