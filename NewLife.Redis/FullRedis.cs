@@ -51,7 +51,7 @@ namespace NewLife.Caching
             if (Db == 0)
             {
                 // 访问一次info信息，解析工作模式，以判断是否集群
-                var info = Execute(null, r => r.GetInfo(), false);
+                var info = GetInfo();
                 if (info != null)
                 {
                     if (info.TryGetValue("redis_mode", out var mode)) Mode = mode;

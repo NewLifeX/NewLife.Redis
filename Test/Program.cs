@@ -95,7 +95,7 @@ namespace Test
             Thread.Sleep(1000);
 
             Console.WriteLine();
-            var dic = ic.Execute(null, r => { r.Reset(); return r.GetInfo(); }, false);
+            var dic = ic.GetInfo();
             foreach (var item in dic)
             {
                 Console.WriteLine("{0}:\t{1}", item.Key, item.Value);
