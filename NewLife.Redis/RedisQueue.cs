@@ -8,6 +8,9 @@ namespace NewLife.Caching
     public class RedisQueue<T> : RedisBase, IProducerConsumer<T>
     {
         #region 实例化
+        /// <summary>实例化队列</summary>
+        /// <param name="redis"></param>
+        /// <param name="key"></param>
         public RedisQueue(Redis redis, String key) : base(redis, key) { }
         #endregion
 
