@@ -12,7 +12,7 @@ namespace XUnitTest
         public BasicTest()
         {
             FullRedis.Register();
-            var rds = FullRedis.Create("127.0.0.1:6379", 2);
+            var rds = FullRedis.Create("127.0.0.1:6379", "newlife", 2);
 
             Cache = rds as FullRedis;
         }
