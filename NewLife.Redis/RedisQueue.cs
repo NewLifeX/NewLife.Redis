@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace NewLife.Caching
 {
@@ -37,14 +38,32 @@ namespace NewLife.Caching
         {
             if (count <= 0) yield break;
 
-            //return _Redis.Execute(rc => rc.Execute<T[]>("LRANGE", _Key, 0, count - 1));
-
-            for (var i = 0; i < count; i++)
+            var rds = Redis;
+            // 借助管道支持批量获取
+            if (rds.FullPipeline)
             {
-                var value = Execute(rc => rc.Execute<T>("LPOP", Key), true);
-                if (Equals(value, default(T))) break;
+                rds.StartPipeline();
 
-                yield return value;
+                for (var i = 0; i < count; i++)
+                {
+                    Execute(rc => rc.Execute<T>("LPOP", Key), true);
+                }
+
+                var rs = rds.StopPipeline(true);
+                foreach (var item in rs)
+                {
+                    yield return (T)item;
+                }
+            }
+            else
+            {
+                for (var i = 0; i < count; i++)
+                {
+                    var value = Execute(rc => rc.Execute<T>("LPOP", Key), true);
+                    if (Equals(value, default(T))) break;
+
+                    yield return value;
+                }
             }
         }
     }
