@@ -219,5 +219,134 @@ namespace NewLife.Caching
             return null;
         }
         #endregion
+
+        #region 常用原生命令
+        /// <summary>向列表末尾插入</summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="key"></param>
+        /// <param name="values"></param>
+        /// <returns></returns>
+        public virtual Int32 RPUSH<T>(String key, params T[] values)
+        {
+            var args = new List<Object>
+            {
+                key
+            };
+            foreach (var item in values)
+            {
+                args.Add(item);
+            }
+            return Execute(key, rc => rc.Execute<Int32>("RPUSH", args.ToArray()), true);
+        }
+
+        /// <summary>向列表头部插入</summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="key"></param>
+        /// <param name="values"></param>
+        /// <returns></returns>
+        public virtual Int32 LPUSH<T>(String key, params T[] values)
+        {
+            var args = new List<Object>
+            {
+                key
+            };
+            foreach (var item in values)
+            {
+                args.Add(item);
+            }
+            return Execute(key, rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
+        }
+
+        /// <summary>从列表末尾弹出一个元素</summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public virtual T RPOP<T>(String key) => Execute(key, rc => rc.Execute<T>("RPOP", key), true);
+
+        /// <summary>从列表末尾弹出一个元素并插入到另一个列表头部</summary>
+        /// <remarks>适用于做安全队列</remarks>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="source"></param>
+        /// <param name="destination"></param>
+        /// <returns></returns>
+        public virtual T RPOPLPUSH<T>(String source, String destination) => Execute(source, rc => rc.Execute<T>("RPOPLPUSH", source, destination), true);
+
+        /// <summary>从列表头部弹出一个元素</summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public virtual T LPOP<T>(String key) => Execute(key, rc => rc.Execute<T>("LPOP", key), true);
+
+        /// <summary>向集合添加多个元素</summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="key"></param>
+        /// <param name="members"></param>
+        /// <returns></returns>
+        public virtual Int32 SADD<T>(String key, params T[] members)
+        {
+            var args = new List<Object>
+            {
+                key
+            };
+            foreach (var item in members)
+            {
+                args.Add(item);
+            }
+            return Execute(key, rc => rc.Execute<Int32>("SADD", args.ToArray()), true);
+        }
+
+        /// <summary>向集合删除多个元素</summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="key"></param>
+        /// <param name="members"></param>
+        /// <returns></returns>
+        public virtual Int32 SREM<T>(String key, params T[] members)
+        {
+            var args = new List<Object>
+            {
+                key
+            };
+            foreach (var item in members)
+            {
+                args.Add(item);
+            }
+            return Execute(key, rc => rc.Execute<Int32>("SREM", args.ToArray()), true);
+        }
+
+        /// <summary>获取所有元素</summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public virtual T[] SMEMBERS<T>(String key) => Execute(key, r => r.Execute<T[]>("SMEMBERS", key));
+
+        /// <summary>返回集合元素个数</summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public virtual Int32 SCARD(String key) => Execute(key, rc => rc.Execute<Int32>("SCARD", key));
+
+        /// <summary>成员 member 是否是存储的集合 key的成员</summary>
+        /// <param name="key"></param>
+        /// <param name="member"></param>
+        /// <returns></returns>
+        public virtual Boolean SISMEMBER<T>(String key, T member) => Execute(key, rc => rc.Execute<Boolean>("SISMEMBER", key, member));
+
+        /// <summary>将member从source集合移动到destination集合中</summary>
+        /// <param name="key"></param>
+        /// <param name="dest"></param>
+        /// <param name="member"></param>
+        /// <returns></returns>
+        public virtual T[] SMOVE<T>(String key, String dest, T member) => Execute(key, r => r.Execute<T[]>("SMOVE", key, dest, member), true);
+
+        /// <summary>随机获取多个</summary>
+        /// <param name="key"></param>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public virtual T[] SRANDMEMBER<T>(String key, Int32 count) => Execute(key, r => r.Execute<T[]>("SRANDMEMBER", key, count));
+
+        /// <summary>随机获取并弹出</summary>
+        /// <param name="key"></param>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public virtual T[] SPOP<T>(String key, Int32 count) => Execute(key, r => r.Execute<T[]>("SPOP", key, count), true);
+        #endregion
     }
 }
