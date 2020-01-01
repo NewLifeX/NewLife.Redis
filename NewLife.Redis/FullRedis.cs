@@ -8,7 +8,7 @@ using NewLife.Model;
 
 namespace NewLife.Caching
 {
-    /// <summary>Redis缓存</summary>
+    /// <summary>增强版Redis</summary>
     public class FullRedis : Redis
     {
         #region 静态
@@ -41,6 +41,15 @@ namespace NewLife.Caching
         #endregion
 
         #region 构造
+        /// <summary>实例化增强版Redis</summary>
+        public FullRedis() : base() { }
+
+        /// <summary>实例化增强版Redis</summary>
+        /// <param name="server"></param>
+        /// <param name="password"></param>
+        /// <param name="db"></param>
+        public FullRedis(String server, String password, Int32 db) : base(server, password, db) { }
+
         /// <summary>初始化配置</summary>
         /// <param name="config"></param>
         public override void Init(String config)

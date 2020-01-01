@@ -12,7 +12,7 @@ namespace XUnitTest
         public BasicTest()
         {
             FullRedis.Register();
-            var rds = FullRedis.Create("127.0.0.1:6379", "newlife", 2);
+            var rds = new FullRedis("127.0.0.1:6379", null, 2);
 
             Cache = rds as FullRedis;
         }
@@ -20,7 +20,7 @@ namespace XUnitTest
         [Fact(DisplayName = "–≈œ¢≤‚ ‘", Timeout = 1000)]
         public void InfoTest()
         {
-            var inf = Cache.Execute<String>(null, client => client.Execute<String>("info"));
+            var inf = Cache.Execute(null, client => client.Execute<String>("info"));
             Assert.NotNull(inf);
         }
 

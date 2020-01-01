@@ -6,10 +6,10 @@
     <AssemblyTitle>新生命Redis缓存组件</AssemblyTitle>
     <Description>Redis基础操作、列表结构、哈希结构、Set结构，经过日均100亿次调用量的项目验证</Description>
     <Company>新生命开发团队</Company>
-    <Copyright>©2002-2019 新生命开发团队</Copyright>
-    <Version>3.3.2019.1117</Version>
-    <FileVersion>3.3.2019.1117</FileVersion>
-    <AssemblyVersion>3.3.*</AssemblyVersion>
+    <Copyright>©2002-2020 新生命开发团队</Copyright>
+    <Version>3.4.2020.0101</Version>
+    <FileVersion>3.4.2020.0101</FileVersion>
+    <AssemblyVersion>3.4.*</AssemblyVersion>
     <Deterministic>false</Deterministic>
     <OutputPath>..\Bin</OutputPath>
     <DocumentationFile>$(OutputPath)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
@@ -44,7 +44,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="8.4.2019.1212" />
+    <PackageReference Include="NewLife.Core" Version="8.5.2020.101" />
   </ItemGroup>
 
   <ItemGroup>
