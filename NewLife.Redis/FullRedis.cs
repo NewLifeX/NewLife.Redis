@@ -154,6 +154,12 @@ namespace NewLife.Caching
         /// <returns></returns>
         public override IProducerConsumer<T> GetQueue<T>(String key) => new RedisQueue<T>(this, key);
 
+        /// <summary>获取栈</summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public virtual IProducerConsumer<T> GetStack<T>(String key) => new RedisStack<T>(this, key);
+
         /// <summary>获取Set</summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="key"></param>
