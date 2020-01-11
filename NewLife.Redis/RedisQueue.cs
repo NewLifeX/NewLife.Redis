@@ -14,6 +14,12 @@ namespace NewLife.Caching
         public RedisQueue(Redis redis, String key) : base(redis, key) { }
         #endregion
 
+        /// <summary>个数</summary>
+        public Int32 Count => Execute(r => r.Execute<Int32>("LLEN", Key));
+
+        /// <summary>是否为空</summary>
+        public Boolean IsEmpty => Count == 0;
+
         /// <summary>生产添加</summary>
         /// <param name="values"></param>
         /// <returns></returns>
