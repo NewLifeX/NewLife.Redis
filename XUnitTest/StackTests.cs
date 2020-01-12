@@ -36,7 +36,7 @@ namespace XUnitTest
 
             // 添加
             var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
-            s.Add(vs);
+            stack.Add(vs);
 
             // 对比个数
             var count2 = stack.Count;
@@ -44,7 +44,7 @@ namespace XUnitTest
             Assert.Equal(count + vs.Length, count2);
 
             // 取出来
-            var vs2 = s.Take(2).ToArray();
+            var vs2 = stack.Take(2).ToArray();
             Assert.Equal(2, vs2.Length);
             Assert.Equal(vs[3], vs2[0]);
             Assert.Equal(vs[2], vs2[1]);

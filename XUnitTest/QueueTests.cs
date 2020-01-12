@@ -36,7 +36,7 @@ namespace XUnitTest
 
             // 添加
             var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
-            q.Add(vs);
+            queue.Add(vs);
 
             // 对比个数
             var count2 = queue.Count;
@@ -44,7 +44,7 @@ namespace XUnitTest
             Assert.Equal(count + vs.Length, count2);
 
             // 取出来
-            var vs2 = q.Take(2).ToArray();
+            var vs2 = queue.Take(2).ToArray();
             Assert.Equal(2, vs2.Length);
             Assert.Equal(vs[0], vs2[0]);
             Assert.Equal(vs[1], vs2[1]);
