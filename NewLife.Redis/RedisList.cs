@@ -124,9 +124,9 @@ namespace NewLife.Caching
         #endregion
 
         #region 高级操作
-        /// <summary>批量添加</summary>
+        /// <summary>右边批量添加，返回队列元素总数</summary>
         /// <param name="values"></param>
-        /// <returns></returns>
+        /// <returns>队列元素总数</returns>
         public Int32 RPUSH(IEnumerable<T> values)
         {
             var args = new List<Object>
@@ -140,9 +140,9 @@ namespace NewLife.Caching
             return Execute(rc => rc.Execute<Int32>("RPUSH", args.ToArray()), true);
         }
 
-        /// <summary>批量添加</summary>
+        /// <summary>左边批量添加，返回队列元素总数</summary>
         /// <param name="values"></param>
-        /// <returns></returns>
+        /// <returns>队列元素总数</returns>
         public Int32 LPUSH(IEnumerable<T> values)
         {
             var args = new List<Object>
@@ -155,6 +155,22 @@ namespace NewLife.Caching
             }
             return Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
         }
+
+        /// <summary>移除并返回最右边一个元素</summary>
+        /// <returns></returns>
+        public T RPOP() => Execute(rc => rc.Execute<T>("RPOP", Key), true);
+
+        /// <summary>移除并返回最左边一个元素</summary>
+        /// <returns></returns>
+        public T LPOP() => Execute(rc => rc.Execute<T>("LPOP", Key), true);
+
+        /// <summary>移除并返回最右边一个元素，并插入目标列表左边，原子操作</summary>
+        /// <remarks>
+        /// 用于高可靠性消费
+        /// </remarks>
+        /// <param name="destKey">目标列表</param>
+        /// <returns></returns>
+        public T RPOPLPUSH(String destKey) => Execute(rc => rc.Execute<T>("RPOPLPUSH", Key, destKey), true);
 
         /// <summary>在指定元素之前插入</summary>
         /// <param name="pivot"></param>
