@@ -158,7 +158,7 @@ namespace NewLife.Caching
         /// <typeparam name="T"></typeparam>
         /// <param name="key"></param>
         /// <returns></returns>
-        public virtual IProducerConsumer<T> GetStack<T>(String key) => new RedisStack<T>(this, key);
+        public override IProducerConsumer<T> GetStack<T>(String key) => new RedisStack<T>(this, key);
 
         /// <summary>获取Set</summary>
         /// <typeparam name="T"></typeparam>
