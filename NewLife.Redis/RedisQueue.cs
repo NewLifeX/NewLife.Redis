@@ -39,10 +39,7 @@ namespace NewLife.Caching
         /// <returns></returns>
         public Int32 Add(IEnumerable<T> values)
         {
-            var args = new List<Object>
-            {
-                Key
-            };
+            var args = new List<Object> { Key };
             foreach (var item in values)
             {
                 args.Add(item);
@@ -82,7 +79,7 @@ namespace NewLife.Caching
                 var rs = rds.StopPipeline(true);
                 foreach (var item in rs)
                 {
-                    yield return (T)item;
+                    if (item != null) yield return (T)item;
                 }
             }
             else
@@ -119,7 +116,7 @@ namespace NewLife.Caching
                 var rs = rds.StopPipeline(true);
                 foreach (var item in rs)
                 {
-                    yield return (T)item;
+                    if (item != null) yield return (T)item;
                 }
             }
             else
@@ -155,7 +152,7 @@ namespace NewLife.Caching
                 var rs = rds.StopPipeline(true);
                 foreach (var item in rs)
                 {
-                    yield return (T)item;
+                    if (item != null) yield return (T)item;
                 }
             }
             else
