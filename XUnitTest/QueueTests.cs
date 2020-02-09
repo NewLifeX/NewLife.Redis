@@ -50,12 +50,9 @@ namespace XUnitTest
 
             // 管道批量获取
             var vs3 = q.Take(5).ToArray();
-            Assert.Equal(5, vs3.Length);
+            Assert.Equal(2, vs3.Length);
             Assert.Equal("新生命团队", vs3[0]);
             Assert.Equal("ABEF", vs3[1]);
-            Assert.Null(vs3[2]);
-            Assert.Null(vs3[3]);
-            Assert.Null(vs3[4]);
 
             // 对比个数
             var count3 = q.Count;
@@ -94,22 +91,22 @@ namespace XUnitTest
             Assert.Equal(3, vs2.Length);
             Assert.Equal("1234", vs2[0]);
             Assert.Equal("abcd", vs2[1]);
+            Assert.Equal("新生命团队", vs2[2]);
 
             // 确认队列
             var q2 = _redis.GetQueue<String>(queue.AckKey) as RedisQueue<String>;
             Assert.Equal(vs2.Length, q2.Count);
 
             // 确认两个
-            var rs = queue.Acknowledge(vs2.Take(2).ToArray());
+            var rs = queue.Acknowledge(vs2.Take(2));
             Assert.Equal(2, rs);
             Assert.Equal(1, q2.Count);
 
             // 捞出来最后一个
             var vs3 = queue.TakeAck(3).ToArray();
             Assert.Equal(0, q2.Count);
+            Assert.Single(vs3);
             Assert.Equal("新生命团队", vs3[0]);
-            Assert.Null(vs3[1]);
-            Assert.Null(vs3[2]);
         }
 
         [Fact]
@@ -136,26 +133,17 @@ namespace XUnitTest
 
             // 取出来
             var vs2 = q.Take(3).ToArray();
-            Assert.Equal(3, vs2.Length);
+            Assert.Equal(2, vs2.Length);
             Assert.Equal("1234", vs2[0]);
             Assert.Equal("abcd", vs2[1]);
-            Assert.Null(vs2[2]);
 
             // 再取，这个时候已经没有元素
             var vs4 = q.Take(3).ToArray();
-            Assert.Equal(3, vs4.Length);
-            Assert.Null(vs4[0]);
-            Assert.Null(vs4[1]);
-            Assert.Null(vs4[2]);
+            Assert.Empty(vs4);
 
             // 管道批量获取
             var vs3 = q.Take(5).ToArray();
-            Assert.Equal(5, vs3.Length);
-            Assert.Null(vs3[0]);
-            Assert.Null(vs3[1]);
-            Assert.Null(vs3[2]);
-            Assert.Null(vs3[3]);
-            Assert.Null(vs3[4]);
+            Assert.Empty(vs3);
 
             // 对比个数
             var count3 = q.Count;
