@@ -7,13 +7,13 @@ using NewLife.Reflection;
 namespace NewLife.Caching
 {
     /// <summary>排序集合</summary>
-    public class SortedSet<T> : RedisBase
+    public class RedisSortedSet : RedisBase
     {
         #region 实例化
         /// <summary>实例化超级基数</summary>
         /// <param name="redis"></param>
         /// <param name="key"></param>
-        public SortedSet(Redis redis, String key) : base(redis, key) { }
+        public RedisSortedSet(Redis redis, String key) : base(redis, key) { }
         #endregion
 
         #region 方法
@@ -23,9 +23,9 @@ namespace NewLife.Caching
         /// <summary>添加</summary>
         /// <param name="item"></param>
         /// <param name="score"></param>
-        public Int32 Add(T item, Double score)
+        public Int32 Add(String item, Double score)
         {
-            var dic = new Dictionary<T, Double>
+            var dic = new Dictionary<String, Double>
             {
                 [item] = score
             };
@@ -36,12 +36,12 @@ namespace NewLife.Caching
         /// <summary>删除</summary>
         /// <param name="item"></param>
         /// <returns></returns>
-        public Int32 Remove(T item) => Execute(r => r.Execute<Int32>("ZREM", Key, item), true);
+        public Int32 Remove(String item) => Execute(r => r.Execute<Int32>("ZREM", Key, item), true);
 
         /// <summary>返回有序集key中，成员member的score值</summary>
         /// <param name="item"></param>
         /// <returns></returns>
-        public Double GetScore(T item) => Execute(r => r.Execute<Int32>("ZSCORE", Key, item), false);
+        public Double GetScore(String item) => Execute(r => r.Execute<Double>("ZSCORE", Key, item), false);
         #endregion
 
         #region 高级操作
@@ -62,7 +62,7 @@ namespace NewLife.Caching
         /// <param name="options">支持参数</param>
         /// <param name="members"></param>
         /// <returns></returns>
-        public Int32 Add(String options, IDictionary<T, Double> members)
+        public Int32 Add(String options, IDictionary<String, Double> members)
         {
             var args = new List<Object>
             {
@@ -81,7 +81,7 @@ namespace NewLife.Caching
         }
 
         /// <summary>
-        /// 返回有序集key中，score值在min和max之间(默认包括score值等于min或max)的成员
+        /// 返回有序集key中，score值在min和max之间(默认包括score值等于min或max)的成员个数
         /// </summary>
         /// <param name="min"></param>
         /// <param name="max"></param>
@@ -92,21 +92,21 @@ namespace NewLife.Caching
         /// <param name="member"></param>
         /// <param name="score"></param>
         /// <returns></returns>
-        public Int32 Increment(T member, Double score) => Execute(rc => rc.Execute<Int32>("ZINCRBY", Key, score, member));
+        public Double Increment(String member, Double score) => Execute(rc => rc.Execute<Int32>("ZINCRBY", Key, score, member));
 
         /// <summary>删除并返回有序集合key中的最多count个具有最高得分的成员</summary>
         /// <param name="count"></param>
         /// <returns></returns>
-        public IDictionary<T, Double> PopMax(Int32 count = 1)
+        public IDictionary<String, Double> PopMax(Int32 count = 1)
         {
-            var list = Execute(rc => rc.Execute<String[]>("ZPOPMAX", Key), false);
+            var list = Execute(rc => rc.Execute<String[]>("ZPOPMAX", Key, count), true);
             if (list == null || list.Length == 0) return null;
 
-            var dic = new Dictionary<T, Double>();
+            var dic = new Dictionary<String, Double>();
             for (var i = 0; i < list.Length; i += 2)
             {
                 var score = list[i].ToDouble();
-                var member = list[i + 1].ChangeType<T>();
+                var member = list[i + 1].ChangeType<String>();
                 dic[member] = score;
             }
 
@@ -116,16 +116,16 @@ namespace NewLife.Caching
         /// <summary>删除并返回有序集合key中的最多count个具有最低得分的成员</summary>
         /// <param name="count"></param>
         /// <returns></returns>
-        public IDictionary<T, Double> PopMin(Int32 count = 1)
+        public IDictionary<String, Double> PopMin(Int32 count = 1)
         {
-            var list = Execute(rc => rc.Execute<String[]>("ZPOPMIN", Key), false);
+            var list = Execute(rc => rc.Execute<String[]>("ZPOPMIN", Key, count), true);
             if (list == null || list.Length == 0) return null;
 
-            var dic = new Dictionary<T, Double>();
+            var dic = new Dictionary<String, Double>();
             for (var i = 0; i < list.Length; i += 2)
             {
                 var score = list[i].ToDouble();
-                var member = list[i + 1].ChangeType<T>();
+                var member = list[i + 1].ChangeType<String>();
                 dic[member] = score;
             }
 
@@ -136,12 +136,12 @@ namespace NewLife.Caching
         /// <param name="start"></param>
         /// <param name="stop"></param>
         /// <returns></returns>
-        public T[] Range(Int32 start, Int32 stop) => Execute(r => r.Execute<T[]>("ZRANGE", Key, start, stop));
+        public String[] Range(Int32 start, Int32 stop) => Execute(r => r.Execute<String[]>("ZRANGE", Key, start, stop));
 
         /// <summary>返回有序集key中成员member的排名。其中有序集成员按score值递增(从小到大)顺序排列</summary>
         /// <param name="member"></param>
         /// <returns></returns>
-        public Int32 Rank(T member) => Execute(r => r.Execute<Int32>("ZRANK", Key, member));
+        public Int32 Rank(String member) => Execute(r => r.Execute<Int32>("ZRANK", Key, member));
 
         /// <summary>模糊搜索，支持?和*</summary>
         /// <param name="pattern"></param>
