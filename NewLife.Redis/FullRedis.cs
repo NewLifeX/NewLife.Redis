@@ -5,6 +5,7 @@ using System.Linq;
 using NewLife.Data;
 using NewLife.Log;
 using NewLife.Model;
+using NewLife.Reflection;
 
 namespace NewLife.Caching
 {
@@ -291,6 +292,76 @@ namespace NewLife.Caching
         /// <param name="key"></param>
         /// <returns></returns>
         public virtual T LPOP<T>(String key) => Execute(key, rc => rc.Execute<T>("LPOP", key), true);
+
+        /// <summary>从列表末尾弹出一个元素，阻塞</summary>
+        /// <remarks>
+        /// RPOP 的阻塞版本，因为这个命令会在给定list无法弹出任何元素的时候阻塞连接。
+        /// 该命令会按照给出的 key 顺序查看 list，并在找到的第一个非空 list 的尾部弹出一个元素。
+        /// </remarks>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="keys"></param>
+        /// <param name="secTimeout"></param>
+        /// <returns></returns>
+        public virtual Tuple<String, T> BRPOP<T>(String[] keys, Int32 secTimeout = 0)
+        {
+            var args = new List<Object>();
+            foreach (var item in keys)
+            {
+                args.Add(item);
+            }
+            args.Add(secTimeout);
+
+            var rs = Execute(null, rc => rc.Execute<String[]>("BRPOP", args), true);
+            if (rs == null || rs.Length != 2) return null;
+
+            return new Tuple<String, T>(rs[0], rs[1].ChangeType<T>());
+        }
+
+        /// <summary>从列表末尾弹出一个元素，阻塞</summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="key"></param>
+        /// <param name="secTimeout"></param>
+        /// <returns></returns>
+        public virtual T BRPOP<T>(String key, Int32 secTimeout = 0)
+        {
+            var rs = BRPOP<T>(new[] { key }, secTimeout);
+            return rs == null ? default : rs.Item2;
+        }
+
+        /// <summary>从列表头部弹出一个元素，阻塞</summary>
+        /// <remarks>
+        /// 命令 LPOP 的阻塞版本，这是因为当给定列表内没有任何元素可供弹出的时候，连接将被 BLPOP 命令阻塞。
+        /// 当给定多个 key 参数时，按参数 key 的先后顺序依次检查各个列表，弹出第一个非空列表的头元素。
+        /// </remarks>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="keys"></param>
+        /// <param name="secTimeout"></param>
+        /// <returns></returns>
+        public virtual Tuple<String, T> BLPOP<T>(String[] keys, Int32 secTimeout = 0)
+        {
+            var args = new List<Object>();
+            foreach (var item in keys)
+            {
+                args.Add(item);
+            }
+            args.Add(secTimeout);
+
+            var rs = Execute(null, rc => rc.Execute<String[]>("BLPOP", args), true);
+            if (rs == null || rs.Length != 2) return null;
+
+            return new Tuple<String, T>(rs[0], rs[1].ChangeType<T>());
+        }
+
+        /// <summary>从列表头部弹出一个元素，阻塞</summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="key"></param>
+        /// <param name="secTimeout"></param>
+        /// <returns></returns>
+        public virtual T BLPOP<T>(String key, Int32 secTimeout = 0)
+        {
+            var rs = BLPOP<T>(new[] { key }, secTimeout);
+            return rs == null ? default : rs.Item2;
+        }
 
         /// <summary>向集合添加多个元素</summary>
         /// <typeparam name="T"></typeparam>
