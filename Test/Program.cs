@@ -22,7 +22,8 @@ namespace Test
             try
             {
                 //TestHyperLogLog();
-                Test1();
+                //Test1();
+                TestList();
             }
             catch (Exception ex)
             {
@@ -79,6 +80,7 @@ namespace Test
             set.Add("xx3");
             Console.WriteLine(set.Count);
             Console.WriteLine(set.Contains("xx2"));
+
 
             Console.WriteLine("共有缓存对象 {0} 个", ic.Count);
         }
@@ -201,5 +203,85 @@ eb2da2a40037265b9f21022d2c6e2ba00e91b67c 172.16.10.32:7000@17000 master - 0 1551
             });
             XTrace.WriteLine("log.Count={0:n0}", log.Count);
         }
+
+        /// <summary>
+        /// 测试列表相关命令
+        /// LPUSH、RPUSH、BLPOP、RLPOP
+        /// </summary>
+        static void TestList()
+        {        
+            //TODO 使用模型        
+            FullRedis fullRedis = new FullRedis("127.0.0.1:6379", "", 1);
+            fullRedis.Log = XTrace.Log;
+            #region 以对象方式读写
+            //LPUSH
+            fullRedis.LPUSH("vm", new VmModel[] { new VmModel() {
+            Id=Guid.NewGuid(),
+            Name="测试1"
+            },new VmModel (){
+            Id=Guid.NewGuid(),
+            Name="测试2"
+            } ,new VmModel (){
+            Id=Guid.NewGuid(),
+            Name="测试3"
+            }});
+
+            //RPUSH
+            fullRedis.RPUSH("vm", new VmModel[] { new VmModel() {
+            Id=Guid.NewGuid(),
+            Name="测试4"
+            },new VmModel (){
+            Id=Guid.NewGuid(),
+            Name="测试5"
+            } ,new VmModel (){
+            Id=Guid.NewGuid(),
+            Name="测试6"
+            }});
+
+            //BLPOP
+            fullRedis.Timeout = 20000;  //需要注意BLPOP、RLPOP在列表无元素时候会阻塞进程，超时时间不能超过FullRedis默认的Timeout时间
+            var vm = fullRedis.BLPOP<VmModel>("vm", 10);
+            if (vm != null)
+            {
+                Console.WriteLine($"BLPOP得到的vm名称:{vm.Name}");
+            }
+            //BRPOP
+            vm = fullRedis.BRPOP<VmModel>("vm", 10);
+            if (vm != null)
+            {
+                Console.WriteLine($"BRPOP得到的vm名称:{vm.Name}");
+            }
+            #endregion
+
+            #region 以常规数据类型读写
+            //LPUSH
+            fullRedis.LPUSH("test", new int[] { 1, 2, 3 });
+            //RPUSH
+            fullRedis.RPUSH("test", new int[] { 4, 5, 6 });
+            //BLPOP
+            var testInt = fullRedis.BLPOP<int>("test", 10);
+            if (testInt > 0)
+            {
+                Console.WriteLine($"BLPOP得到的testInt:{testInt.ToString()}");
+            }
+            //BRPOP
+            testInt = fullRedis.BRPOP<int>("test", 10);
+            if (testInt > 0)
+            {
+                Console.WriteLine($"BRPOP得到的testInt:{testInt.ToString()}");
+            }
+            #endregion
+            //BRPOPLPUSH 待完善..          
+        }
+
     }
+
+    public class VmModel
+    {
+        public Guid Id { get; set; }
+
+        public string Name { get; set; }
+    }
+
+
 }

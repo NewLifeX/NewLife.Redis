@@ -2,10 +2,12 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using NewLife.Data;
 using NewLife.Log;
 using NewLife.Model;
 using NewLife.Reflection;
+using NewLife.Serialization;
 
 namespace NewLife.Caching
 {
@@ -304,17 +306,17 @@ namespace NewLife.Caching
         /// <returns></returns>
         public virtual Tuple<String, T> BRPOP<T>(String[] keys, Int32 secTimeout = 0)
         {
-            var args = new List<Object>();
+            var sb = new StringBuilder();
             foreach (var item in keys)
             {
-                args.Add(item);
+                if (sb.Length <= 0)
+                    sb.Append($"{item}");
+                else
+                    sb.Append($" {item}");
             }
-            args.Add(secTimeout);
-
-            var rs = Execute(null, rc => rc.Execute<String[]>("BRPOP", args), true);
+            var rs = Execute(null, rc => rc.Execute<String[]>("BRPOP", sb.ToString(), secTimeout), true);
             if (rs == null || rs.Length != 2) return null;
-
-            return new Tuple<String, T>(rs[0], rs[1].ChangeType<T>());
+            return new Tuple<String, T>(rs[0], rs[1].ToJsonEntity<T>());
         }
 
         /// <summary>从列表末尾弹出一个元素，阻塞</summary>
@@ -339,17 +341,17 @@ namespace NewLife.Caching
         /// <returns></returns>
         public virtual Tuple<String, T> BLPOP<T>(String[] keys, Int32 secTimeout = 0)
         {
-            var args = new List<Object>();
+            var sb = new StringBuilder();
             foreach (var item in keys)
             {
-                args.Add(item);
+                if (sb.Length <= 0)
+                    sb.Append($"{item}");
+                else
+                    sb.Append($" {item}");
             }
-            args.Add(secTimeout);
-
-            var rs = Execute(null, rc => rc.Execute<String[]>("BLPOP", args), true);
+            var rs = Execute(null, rc => rc.Execute<String[]>("BLPOP", sb.ToString(), secTimeout), true);
             if (rs == null || rs.Length != 2) return null;
-
-            return new Tuple<String, T>(rs[0], rs[1].ChangeType<T>());
+            return new Tuple<String, T>(rs[0], rs[1].ToJsonEntity<T>()); //.ChangeType<T>());
         }
 
         /// <summary>从列表头部弹出一个元素，阻塞</summary>
