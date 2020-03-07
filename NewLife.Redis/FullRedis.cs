@@ -284,10 +284,21 @@ namespace NewLife.Caching
         /// <summary>从列表末尾弹出一个元素并插入到另一个列表头部</summary>
         /// <remarks>适用于做安全队列</remarks>
         /// <typeparam name="T"></typeparam>
-        /// <param name="source"></param>
-        /// <param name="destination"></param>
+        /// <param name="source">源列表名称</param>
+        /// <param name="destination">元素后写入的新列表名称</param>
         /// <returns></returns>
         public virtual T RPOPLPUSH<T>(String source, String destination) => Execute(source, rc => rc.Execute<T>("RPOPLPUSH", source, destination), true);
+
+        /// <summary>
+        /// 从列表中弹出一个值，将弹出的元素插入到另外一个列表中并返回它； 如果列表没有元素会阻塞列表直到等待超时或发现可弹出元素为止。
+        /// 适用于做安全队列(通过secTimeout决定阻塞时长)
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="source">源列表名称</param>
+        /// <param name="destination">元素后写入的新列表名称</param>
+        /// <param name="secTimeout">设置的阻塞时长，单位为秒。设置前请确认该值不能超过FullRedis.Timeout 否则会出现异常</param>
+        /// <returns></returns>
+        public virtual T BRPOPLPUSH<T>(String source, String destination, Int32 secTimeout) => Execute(null, rc => rc.Execute<T>("BRPOPLPUSH", source, destination, secTimeout), true); 
 
         /// <summary>从列表头部弹出一个元素</summary>
         /// <typeparam name="T"></typeparam>
