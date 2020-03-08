@@ -16,7 +16,7 @@ namespace Test
         {
             XTrace.UseConsole();
 
-            // 激活FullRedis，否则Redis.Create会得到默认的Redis对象
+            // 激活FullRedis，否则new FullRedis会得到默认的Redis对象
             FullRedis.Register();
 
             try
@@ -35,7 +35,7 @@ namespace Test
 
         static void Test1()
         {
-            var ic = Redis.Create("127.0.0.1:6379", 3);
+            var ic = new FullRedis("127.0.0.1:6379", null, 3);
             //var ic = new FullRedis();
             //ic.Server = "127.0.0.1:6379";
             //ic.Db = 3;
@@ -88,7 +88,7 @@ namespace Test
         /// <summary>性能压测</summary>
         static void Test2()
         {
-            var ic = Redis.Create("127.0.0.1", 3);
+            var ic = new FullRedis("127.0.0.1", null, 3);
 
             // 性能压测
             //ic.AutoPipeline = -1;
@@ -106,7 +106,7 @@ namespace Test
 
         static void Test3()
         {
-            var ic = Redis.Create("127.0.0.1:6379", 3);
+            var ic = new FullRedis("127.0.0.1:6379", null, 3);
             //ic.Log = XTrace.Log;
 
             var list = ic.GetList<String>("kkk");
@@ -126,7 +126,7 @@ namespace Test
 
         static void Test4()
         {
-            var rds = Redis.Create("127.0.0.1:6001", 0);
+            var rds = new FullRedis("127.0.0.1:6001", null, 0);
             rds.Log = XTrace.Log;
             //rds.Init(null);
 
@@ -156,7 +156,7 @@ namespace Test
         static void Test5()
         {
             var user = new User { Name = "NewLife", CreateTime = DateTime.Now };
-            var rds = Redis.Create("127.0.0.1", 2);
+            var rds = new FullRedis("127.0.0.1", null, 2);
             rds.Log = XTrace.Log;
             rds.Set("user", user, 3600);
             var user2 = rds.Get<User>("user");
@@ -186,7 +186,7 @@ eb2da2a40037265b9f21022d2c6e2ba00e91b67c 172.16.10.32:7000@17000 master - 0 1551
 
         static void TestHyperLogLog()
         {
-            var rds = Redis.Create("127.0.0.1", 1);
+            var rds = new FullRedis("127.0.0.1", null, 1);
 
             rds.Remove("ips");
             var log = new HyperLogLog(rds, "ips");
@@ -209,7 +209,7 @@ eb2da2a40037265b9f21022d2c6e2ba00e91b67c 172.16.10.32:7000@17000 master - 0 1551
         /// LPUSH、RPUSH、BLPOP、RLPOP
         /// </summary>
         static void TestList()
-        {        
+        {
             //TODO 使用模型        
             FullRedis fullRedis = new FullRedis("127.0.0.1:6379", "", 1);
             fullRedis.Log = XTrace.Log;

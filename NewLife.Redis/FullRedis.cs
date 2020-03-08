@@ -15,10 +15,10 @@ namespace NewLife.Caching
     public class FullRedis : Redis
     {
         #region 静态
-        static FullRedis()
-        {
-            ObjectContainer.Current.AutoRegister<Redis, FullRedis>();
-        }
+        //static FullRedis()
+        //{
+        //    ObjectContainer.Current.AutoRegister<Redis, FullRedis>();
+        //}
 
         /// <summary>注册</summary>
         public static void Register() { }

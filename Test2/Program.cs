@@ -11,7 +11,7 @@ namespace Test2
         {
             XTrace.UseConsole();
 
-            // 激活FullRedis，否则Redis.Create会得到默认的Redis对象
+            // 激活FullRedis，否则new FullRedis会得到默认的Redis对象
             FullRedis.Register();
 
             Test1();
@@ -21,7 +21,7 @@ namespace Test2
 
         private static void Test1()
         {
-            var ic = Redis.Create("127.0.0.1:6379", 3);
+            var ic = new FullRedis("127.0.0.1:6379", null, 3);
             ic.Log = XTrace.Log;
 
             // 简单操作
