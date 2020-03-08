@@ -251,6 +251,14 @@ eb2da2a40037265b9f21022d2c6e2ba00e91b67c 172.16.10.32:7000@17000 master - 0 1551
             {
                 Console.WriteLine($"BRPOP得到的vm名称:{vm.Name}");
             }
+            //RPOPLPUSH
+            vm = fullRedis.RPOPLPUSH<VmModel>("vm", "vmback");
+            Console.WriteLine($"RPOPLPUSH的结果值:{vm.Name}");
+
+            //BRPOPLPUSH
+            vm = fullRedis.BRPOPLPUSH<VmModel>("vm", "vmback1", 2);
+            Console.WriteLine($"BRPOPLPUSH的结果值:{vm.Name}");
+
             #endregion
 
             #region 以常规数据类型读写
@@ -270,8 +278,15 @@ eb2da2a40037265b9f21022d2c6e2ba00e91b67c 172.16.10.32:7000@17000 master - 0 1551
             {
                 Console.WriteLine($"BRPOP得到的testInt:{testInt.ToString()}");
             }
+            //RPOPLPUSH
+            var rpopTest = fullRedis.RPOPLPUSH<int>("test", "testback");
+            Console.WriteLine($"RPOPLPUSH的结果值:{rpopTest.ToString()}");
+
+            //BRPOPLPUSH
+            var brpopTest = fullRedis.BRPOPLPUSH<int>("test", "testback1", 2);
+            Console.WriteLine($"BRPOPLPUSH的结果值:{brpopTest.ToString()}");
             #endregion
-            //BRPOPLPUSH 待完善..          
+
         }
 
     }
