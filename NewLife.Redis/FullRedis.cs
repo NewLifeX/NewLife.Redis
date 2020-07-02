@@ -5,8 +5,6 @@ using System.Linq;
 using System.Text;
 using NewLife.Data;
 using NewLife.Log;
-using NewLife.Model;
-using NewLife.Reflection;
 using NewLife.Serialization;
 
 namespace NewLife.Caching
@@ -168,6 +166,11 @@ namespace NewLife.Caching
         /// <param name="key"></param>
         /// <returns></returns>
         public override ICollection<T> GetSet<T>(String key) => new RedisSet<T>(this, key);
+
+        /// <summary>获取消息流</summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public RedisStream GetStream(String key) => new RedisStream(this, key);
         #endregion
 
         #region 字符串操作
