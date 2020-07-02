@@ -1,8 +1,7 @@
-﻿using NewLife.Caching;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using NewLife.Caching;
 using Xunit;
 
 namespace XUnitTest
@@ -26,7 +25,8 @@ namespace XUnitTest
             var q = _redis.GetQueue<String>(key);
             _redis.SetExpire(key, TimeSpan.FromMinutes(60));
 
-            Assert.NotNull(q as RedisQueue<String>);
+            var queue = q as RedisQueue<String>;
+            Assert.NotNull(queue);
 
             // 取出个数
             var count = q.Count;
@@ -49,6 +49,8 @@ namespace XUnitTest
             Assert.Equal("abcd", vs2[1]);
 
             // 管道批量获取
+            var q2 = q as RedisQueue<String>;
+            q2.MinPipeline = 4;
             var vs3 = q.Take(5).ToArray();
             Assert.Equal(2, vs3.Length);
             Assert.Equal("新生命团队", vs3[0]);
@@ -75,7 +77,8 @@ namespace XUnitTest
 
             _redis.Remove(queue.AckKey);
             queue.Strict = true;
-            Assert.Equal(key + "_ack", queue.AckKey);
+            //Assert.Equal(key + "_ack", queue.AckKey);
+            Assert.StartsWith(key + ":Ack:", queue.AckKey);
 
             // 取出个数
             var count = q.Count;
@@ -149,6 +152,25 @@ namespace XUnitTest
             var count3 = q.Count;
             Assert.True(q.IsEmpty);
             Assert.Equal(count, count3);
+        }
+
+        /// <summary>AckKey独一无二，一百万个key测试</summary>
+        [Fact]
+        public void UniqueAckKey()
+        {
+            var key = "qkey_unique";
+
+            var hash = new HashSet<String>();
+
+            for (var i = 0; i < 1_000_000; i++)
+            {
+                var q = _redis.GetQueue<String>(key) as RedisQueue<String>;
+
+                //Assert.DoesNotContain(q.AckKey, hash);
+                Assert.False(hash.Contains(q.AckKey));
+
+                hash.Add(q.AckKey);
+            }
         }
     }
 }
