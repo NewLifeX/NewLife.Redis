@@ -285,10 +285,63 @@ namespace XUnitTest
                 var list = q.Take(n).ToList();
                 if (list.Count == 0) break;
 
+                var n2 = queue.Acknowledge(list);
+                Assert.Equal(list.Count, n2);
+
                 count += list.Count;
             }
 
             Assert.Equal(1_000 * 100, count);
+        }
+
+        [Fact]
+        public void RetryDeadAck()
+        {
+            var key = "qkey_RetryDeadAck";
+
+            _redis.Remove(key);
+            var q = _redis.GetQueue<String>(key);
+            var queue = q as RedisQueue<String>;
+            queue.Strict = true;
+            queue.RetryInterval = 2;
+
+            // 清空
+            queue.TakeAllAck().ToArray();
+
+            // 生产几个消息，消费但不确认
+            var list = new List<String>();
+            for (var i = 0; i < 5; i++)
+            {
+                list.Add(Rand.NextString(32));
+            }
+            q.Add(list);
+
+            var list2 = q.Take(10).ToList();
+            Assert.Equal(list.Count, list2.Count);
+
+            // 确认队列里面有几个
+            var q2 = _redis.GetList<String>(queue.AckKey);
+            Assert.Equal(list.Count, q2.Count);
+
+            // 马上消费，消费不到
+            var vs3 = q.Take(100).ToArray();
+            Assert.Empty(vs3);
+
+            // 等一定时间再消费
+            Thread.Sleep(queue.RetryInterval * 1000 + 10);
+
+            // 再次消费，应该有了
+            var vs4 = q.Take(100).ToArray();
+            Assert.Equal(list.Count, vs4.Length);
+
+            // 确认队列里面的私信重新进入主队列，消费时再次进入确认队列
+            Assert.Equal(vs4.Length, q2.Count);
+
+            // 全部确认
+            queue.Acknowledge(vs4);
+
+            // 确认队列应该空了
+            Assert.Equal(0, q2.Count);
         }
     }
 }

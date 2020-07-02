@@ -201,9 +201,18 @@ namespace NewLife.Caching
                 if (count > 0)
                 {
                     // 消费所有数据
-                    foreach (var item in RPOP(key, -1))
+                    while (true)
                     {
-                        yield return item;
+                        var list = RPOP(key, 100).ToList();
+                        if (list.Count > 0)
+                        {
+                            foreach (var item in list)
+                            {
+                                yield return item;
+                            }
+                        }
+
+                        if (list.Count < 100) break;
                     }
                 }
 
