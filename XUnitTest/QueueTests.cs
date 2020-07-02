@@ -100,6 +100,8 @@ namespace XUnitTest
             Assert.Equal("abcd", vs2[1]);
             Assert.Equal("新生命团队", vs2[2]);
 
+            Assert.Equal(1, q.Count);
+
             // 确认队列
             var q2 = _redis.GetQueue<String>(queue.AckKey) as RedisQueue<String>;
             Assert.Equal(vs2.Length, q2.Count);
@@ -109,11 +111,17 @@ namespace XUnitTest
             Assert.Equal(2, rs);
             Assert.Equal(1, q2.Count);
 
-            // 捞出来最后一个
+            // 捞出来Ack最后一个
             var vs3 = queue.TakeAck(3).ToArray();
             Assert.Equal(0, q2.Count);
             Assert.Single(vs3);
             Assert.Equal("新生命团队", vs3[0]);
+
+            // 读取队列最后一个
+            var vs4 = q.Take(44).ToArray();
+            Assert.Single(vs4);
+
+            q2.Take(1).ToArray();
         }
 
         [Fact]
