@@ -5,7 +5,8 @@ namespace NewLife.Caching
 {
     /// <summary>Redis队列，左进右出</summary>
     /// <remarks>
-    /// 支持严格队列消费，需要确认机制
+    /// 默认弹出消费，不需要确认，使用非常简单，但如果消费者处理失败，消息将会丢失；
+    /// 严格模式下消费，弹出消息的同时插入ACK队列，消费者处理成功后将从ACK队列删除该消息，若处理失败，则将延迟消费ACK消息；
     /// </remarks>
     /// <typeparam name="T"></typeparam>
     public class RedisQueue<T> : RedisBase, IProducerConsumer<T>
@@ -34,8 +35,8 @@ namespace NewLife.Caching
         /// <summary>是否为空</summary>
         public Boolean IsEmpty => Count == 0;
 
-        /// <summary>生产添加</summary>
-        /// <param name="values"></param>
+        /// <summary>批量生产添加</summary>
+        /// <param name="values">消息集合</param>
         /// <returns></returns>
         public Int32 Add(IEnumerable<T> values)
         {
@@ -47,8 +48,8 @@ namespace NewLife.Caching
             return Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
         }
 
-        /// <summary>消费获取</summary>
-        /// <param name="count"></param>
+        /// <summary>批量消费获取</summary>
+        /// <param name="count">要消费的消息个数</param>
         /// <returns></returns>
         public IEnumerable<T> Take(Int32 count = 1)
         {
@@ -63,17 +64,26 @@ namespace NewLife.Caching
                 }
                 yield break;
             }
+            else
+            {
+                foreach (var item in RPOP(Key, count))
+                {
+                    yield return item;
+                }
+            }
+        }
 
-            var rds = Redis;
+        private IEnumerable<T> RPOP(String key, Int32 count)
+        {
             // 借助管道支持批量获取
-            //if (rds.FullPipeline)
             if (count >= MinPipeline)
             {
+                var rds = Redis;
                 rds.StartPipeline();
 
                 for (var i = 0; i < count; i++)
                 {
-                    Execute(rc => rc.Execute<T>("RPOP", Key), true);
+                    Execute(rc => rc.Execute<T>("RPOP", key), true);
                 }
 
                 var rs = rds.StopPipeline(true);
@@ -86,7 +96,7 @@ namespace NewLife.Caching
             {
                 for (var i = 0; i < count; i++)
                 {
-                    var value = Execute(rc => rc.Execute<T>("RPOP", Key), true);
+                    var value = Execute(rc => rc.Execute<T>("RPOP", key), true);
                     if (Equals(value, default(T))) break;
 
                     yield return value;
@@ -101,11 +111,10 @@ namespace NewLife.Caching
         {
             if (count <= 0) yield break;
 
-            var rds = Redis;
             // 借助管道支持批量获取
-            //if (rds.FullPipeline)
             if (count >= MinPipeline)
             {
+                var rds = Redis;
                 rds.StartPipeline();
 
                 for (var i = 0; i < count; i++)
@@ -132,38 +141,16 @@ namespace NewLife.Caching
         }
 
         /// <summary>从确认列表消费获取，用于消费中断后，重新恢复现场时获取</summary>
+        /// <remarks>理论上Ack队列只存储极少数数据</remarks>
         /// <param name="count"></param>
         /// <returns></returns>
         public IEnumerable<T> TakeAck(Int32 count = 1)
         {
             if (count <= 0) yield break;
 
-            var rds = Redis;
-            // 借助管道支持批量获取
-            if (count >= MinPipeline)
+            foreach (var item in RPOP(AckKey, count))
             {
-                rds.StartPipeline();
-
-                for (var i = 0; i < count; i++)
-                {
-                    Execute(rc => rc.Execute<T>("RPOP", AckKey), true);
-                }
-
-                var rs = rds.StopPipeline(true);
-                foreach (var item in rs)
-                {
-                    if (item != null) yield return (T)item;
-                }
-            }
-            else
-            {
-                for (var i = 0; i < count; i++)
-                {
-                    var value = Execute(rc => rc.Execute<T>("RPOP", AckKey), true);
-                    if (Equals(value, default(T))) break;
-
-                    yield return value;
-                }
+                yield return item;
             }
         }
 
