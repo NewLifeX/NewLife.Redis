@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using NewLife.Caching;
 using NewLife.Security;
+using NewLife.Threading;
 using Xunit;
 
 namespace XUnitTest
@@ -76,7 +79,7 @@ namespace XUnitTest
             var queue = q as RedisQueue<String>;
             Assert.NotNull(queue);
 
-            _redis.Remove(queue.AckKey);
+            //_redis.Remove(queue.AckKey);
             queue.Strict = true;
             //Assert.Equal(key + "_ack", queue.AckKey);
             Assert.StartsWith(key + ":Ack:", queue.AckKey);
@@ -180,6 +183,81 @@ namespace XUnitTest
             var key = "qkey_benchmark";
 
             var q = _redis.GetQueue<String>(key);
+            for (var i = 0; i < 1_000; i++)
+            {
+                var list = new List<String>();
+                for (var j = 0; j < 100; j++)
+                {
+                    list.Add(Rand.NextString(32));
+                }
+                q.Add(list);
+            }
+
+            Assert.Equal(1_000 * 100, q.Count);
+
+            var count = 0;
+            while (true)
+            {
+                var n = Rand.Next(1, 100);
+                var list = q.Take(n).ToList();
+                if (list.Count == 0) break;
+
+                count += list.Count;
+            }
+
+            Assert.Equal(1_000 * 100, count);
+        }
+
+        [Fact]
+        public void Queue_Benchmark_Mutilate()
+        {
+            var key = "qkey_benchmark_mutilate";
+            _redis.Remove(key);
+
+            var q = _redis.GetQueue<String>(key);
+            for (var i = 0; i < 1_000; i++)
+            {
+                var list = new List<String>();
+                for (var j = 0; j < 100; j++)
+                {
+                    list.Add(Rand.NextString(32));
+                }
+                q.Add(list);
+            }
+
+            Assert.Equal(1_000 * 100, q.Count);
+
+            var count = 0;
+            var ths = new List<Task>();
+            for (var i = 0; i < 16; i++)
+            {
+                ths.Add(Task.Run(() =>
+                {
+                    while (true)
+                    {
+                        var n = Rand.Next(1, 100);
+                        var list = q.Take(n).ToList();
+                        if (list.Count == 0) break;
+
+                        Interlocked.Add(ref count, list.Count);
+                    }
+                }));
+            }
+
+            Task.WaitAll(ths.ToArray());
+
+            Assert.Equal(1_000 * 100, count);
+        }
+
+        [Fact]
+        public void Queue_Benchmark_Strict()
+        {
+            var key = "qkey_benchmark_strict";
+
+            var q = _redis.GetQueue<String>(key);
+            var queue = q as RedisQueue<String>;
+            queue.Strict = true;
+
             for (var i = 0; i < 1_000; i++)
             {
                 var list = new List<String>();
