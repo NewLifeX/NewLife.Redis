@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using NewLife.Caching;
+using NewLife.Security;
 using Xunit;
 
 namespace XUnitTest
@@ -171,6 +172,37 @@ namespace XUnitTest
 
                 hash.Add(q.AckKey);
             }
+        }
+
+        [Fact]
+        public void Queue_Benchmark()
+        {
+            var key = "qkey_benchmark";
+
+            var q = _redis.GetQueue<String>(key);
+            for (var i = 0; i < 1_000; i++)
+            {
+                var list = new List<String>();
+                for (var j = 0; j < 100; j++)
+                {
+                    list.Add(Rand.NextString(32));
+                }
+                q.Add(list);
+            }
+
+            Assert.Equal(1_000 * 100, q.Count);
+
+            var count = 0;
+            while (true)
+            {
+                var n = Rand.Next(1, 100);
+                var list = q.Take(n).ToList();
+                if (list.Count == 0) break;
+
+                count += list.Count;
+            }
+
+            Assert.Equal(1_000 * 100, count);
         }
     }
 }
