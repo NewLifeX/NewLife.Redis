@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Caching;
 using NewLife.Security;
-using NewLife.Threading;
 using Xunit;
 
 namespace XUnitTest

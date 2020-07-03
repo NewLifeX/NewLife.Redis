@@ -22,3 +22,4 @@ bld/
 *.nuspec
 *.nupkg
 /BinTest
+/BinUnitTest

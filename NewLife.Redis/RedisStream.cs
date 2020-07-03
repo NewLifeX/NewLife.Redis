@@ -2,15 +2,12 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using NewLife.Caching;
 using NewLife.Collections;
 
 namespace NewLife.Caching
 {
     /// <summary>Redis5.0的Stream数据结果，完整态消息队列，支持多消费组</summary>
-    public class RedisStream : RedisBase, IProducerConsumer<String>
+    public class RedisStream : RedisBase, IProducerConsumer<Object>
     {
         #region 属性
         /// <summary>个数</summary>
@@ -18,9 +15,6 @@ namespace NewLife.Caching
 
         /// <summary>是否为空</summary>
         public Boolean IsEmpty => Count == 0;
-
-        /// <summary>最小管道阈值，达到该值时使用管道，默认3</summary>
-        public Int32 MinPipeline { get; set; } = 3;
         #endregion
 
         #region 构造
@@ -34,20 +28,51 @@ namespace NewLife.Caching
         /// <param name="value"></param>
         /// <param name="maxlen"></param>
         /// <returns></returns>
-        public String Add(String value, Int32 maxlen = -1)
+        public String Add(Object value, Int32 maxlen = -1)
         {
-            var cmd = maxlen > 0 ?
-                $"{Key} maxlen {maxlen} * {value}" :
-                $"{Key} * {value}";
+            if (value == null) throw new ArgumentNullException(nameof(value));
 
-            return Execute(rc => rc.Execute<String>("XADD", $"{Key} * {value}"), true);
+            var args = new List<Object> { Key };
+            if (maxlen > 0)
+            {
+                args.Add("maxlen");
+                args.Add(maxlen);
+            }
+            args.Add("*");
+
+            // 数组和复杂对象字典，分开处理
+            if (Type.GetTypeCode(value.GetType()) != TypeCode.Object)
+            {
+                //throw new ArgumentOutOfRangeException(nameof(value), "消息体必须是复杂对象！");
+                args.Add("__data");
+                args.Add(value);
+            }
+            else if (value.GetType().IsArray)
+            {
+                foreach (var item in (value as Array))
+                {
+                    args.Add(item);
+                }
+            }
+            else
+            {
+                foreach (var item in value.ToDictionary())
+                {
+                    args.Add(item.Key);
+                    args.Add(item.Value);
+                }
+            }
+
+            return Execute(rc => rc.Execute<String>("XADD", args.ToArray()), true);
         }
 
         /// <summary>批量生产添加</summary>
         /// <param name="values"></param>
         /// <returns></returns>
-        public Int32 Add(IEnumerable<String> values)
+        Int32 IProducerConsumer<Object>.Add(IEnumerable<Object> values)
         {
+            if (values == null) throw new ArgumentNullException(nameof(values));
+
             var count = 0;
             foreach (var item in values)
             {
@@ -111,7 +136,7 @@ namespace NewLife.Caching
         /// <summary>批量消费获取</summary>
         /// <param name="count"></param>
         /// <returns></returns>
-        public IEnumerable<String> Take(Int32 count = 1) => Read(null, count);
+        public IEnumerable<Object> Take(Int32 count = 1) => Read(null, count);
 
         /// <summary>创建消费组</summary>
         /// <param name="group"></param>
