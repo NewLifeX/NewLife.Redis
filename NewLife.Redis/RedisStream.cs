@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using NewLife.Collections;
 using NewLife.Data;
 using NewLife.Reflection;
@@ -24,6 +25,8 @@ namespace NewLife.Caching
 
         /// <summary>开始编号。默认0-0</summary>
         public String StartId { get; set; } = "0-0";
+
+        private IDictionary<String, PropertyInfo> _properties;
         #endregion
 
         #region 构造
@@ -210,7 +213,20 @@ XREAD count 3 streams stream_key 0-0
                     if (vs.Length == 2 && vs[0] == PrimitiveKey)
                         list.Add(vs[1].ChangeType<T>());
                     else
-                        list.Add(vs.ChangeType<T>());
+                    {
+                        if (_properties == null) _properties = typeof(T).GetProperties(true).ToDictionary(e => e.Name, e => e);
+
+                        // 字节数组转实体对象
+                        var entry = Activator.CreateInstance<T>();
+                        for (var i = 0; i < vs.Length - 1; i += 2)
+                        {
+                            if (_properties.TryGetValue(vs[i], out var pi))
+                            {
+                                pi.SetValue(entry, vs[i + 1].ChangeType(pi.PropertyType), null);
+                            }
+                        }
+                        list.Add(entry);
+                    }
                 }
 
                 // 最大编号

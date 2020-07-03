@@ -106,48 +106,47 @@ namespace XUnitTest
             Assert.Throws<ArgumentNullException>(() => s.Add(default));
 
             // 添加复杂对象
-            s.Add(new UserInfo { Name = "smartStone", Age = 36 });
+            var id = s.Add(new UserInfo { Name = "smartStone", Age = 36 });
 
-            var queue = s as IProducerConsumer<Object>;
-            var vs = new Object[] {
-                new { aaa = "1234" },
-                new { bbb = "abcd" },
-                new { ccc = "新生命团队" },
-                new { ddd = "ABEF" }
+            var queue = s as IProducerConsumer<UserInfo>;
+            var vs = new[] {
+                new UserInfo{ Name = "1234" },
+                new UserInfo{ Name = "abcd" },
+                new UserInfo{ Name = "新生命团队" },
+                new UserInfo{ Name = "ABEF" }
             };
             queue.Add(vs);
 
             // 对比个数
             var count2 = s.Count;
             Assert.False(s.IsEmpty);
-            Assert.Equal(count + 1 + 1 + 1 + vs.Length, count2);
+            Assert.Equal(count + 1 + vs.Length, count2);
 
             // 独立消费
             var vs1 = s.Read(null, 3);
             Assert.Null(vs1);
 
             vs1 = s.Read("0-0", 3);
-            Assert.Single(vs1);
-            //var group = vs1[0] as Object[];
-            //var k = group[0] as Packet;
-            //var v = group[1] as Object[];
-            //Assert.Equal(3, vs1.Length);
+            Assert.Equal(3, vs1.Count);
+            Assert.Equal(id, vs1.FirstOrDefault().Key);
 
             // 取出来
-            var vs2 = s.Take(2).ToArray();
-            Assert.Equal(2, vs2.Length);
-            Assert.Equal(vs[3], vs2[0]);
-            Assert.Equal(vs[2], vs2[1]);
+            var vs2 = s.Take(2);
+            Assert.Equal(2, vs2.Count);
+            Assert.Equal("smartStone", vs2[0].Name);
+            Assert.Equal(36, vs2[0].Age);
+            Assert.Equal(vs[0].Name, vs2[1].Name);
 
-            var vs3 = s.Take(2).ToArray();
-            Assert.Equal(2, vs3.Length);
-            Assert.Equal(vs[1], vs3[0]);
-            Assert.Equal(vs[0], vs3[1]);
+            id = s.StartId;
 
-            // 对比个数
-            var count3 = s.Count;
-            Assert.True(s.IsEmpty);
-            Assert.Equal(count, count3);
+            var vs3 = s.Take(7);
+            Assert.Equal(3, vs3.Count);
+            Assert.Equal(vs[1].Name, vs3[0].Name);
+            Assert.Equal(vs[2].Name, vs3[1].Name);
+            Assert.Equal(vs[3].Name, vs3[2].Name);
+
+            // 开始编号改变
+            Assert.NotEqual(id, s.StartId);
         }
     }
 }
