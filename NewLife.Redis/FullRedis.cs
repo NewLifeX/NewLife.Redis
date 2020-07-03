@@ -170,7 +170,7 @@ namespace NewLife.Caching
         /// <summary>获取消息流</summary>
         /// <param name="key"></param>
         /// <returns></returns>
-        public RedisStream GetStream(String key) => new RedisStream(this, key);
+        public RedisStream<T> GetStream<T>(String key) => new RedisStream<T>(this, key);
         #endregion
 
         #region 字符串操作
