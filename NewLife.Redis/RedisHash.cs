@@ -143,7 +143,7 @@ namespace NewLife.Caching
                 args.Add(item.Value);
             }
 
-            return Execute(r => r.Execute<Boolean>("HMSET", args.ToArray()), true);
+            return Execute(r => r.Execute<String>("HMSET", args.ToArray()) == "OK", true);
         }
 
         /// <summary>获取所有名值对</summary>
