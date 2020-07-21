@@ -257,5 +257,44 @@ namespace XUnitTest
             // 取出来
             Assert.Equal(123.456 + 33.44, zset.GetScore("stone"));
         }
+
+        [Fact]
+        public void FindCount_Test()
+        {
+            var rkey = "zset_zcount";
+
+            // 删除已有
+            _redis.Remove(rkey);
+
+            var zset = new RedisSortedSet(_redis, rkey);
+
+            // 插入数据
+            zset.Add("stone1", 12.34);
+            zset.Add("stone2", 13.56);
+            zset.Add("stone3", 14.34);
+            zset.Add("stone4", 15.34);
+            Assert.Equal(4, zset.Count);
+
+            var count = zset.FindCount(13.56, 14.34);
+            Assert.Equal(2, count);
+        }
+
+        [Fact]
+        public void Incr_Test()
+        {
+            var rkey = "zset_zincr";
+
+            // 删除已有
+            _redis.Remove(rkey);
+
+            var zset = new RedisSortedSet(_redis, rkey);
+
+            // 插入数据
+            zset.Add("stone", 12.34);
+            var old = zset.Increment("stone", 13.56);
+            Assert.Equal(1, zset.Count);
+            Assert.Equal(12.34 + 13.56, old);
+            Assert.Equal(12.34 + 13.56, zset.GetScore("stone"));
+        }
     }
 }

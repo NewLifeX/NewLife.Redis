@@ -92,7 +92,7 @@ namespace NewLife.Caching
         /// <param name="member"></param>
         /// <param name="score"></param>
         /// <returns></returns>
-        public Double Increment(String member, Double score) => Execute(rc => rc.Execute<Int32>("ZINCRBY", Key, score, member));
+        public Double Increment(String member, Double score) => Execute(rc => rc.Execute<Double>("ZINCRBY", Key, score, member));
 
         /// <summary>删除并返回有序集合key中的最多count个具有最高得分的成员</summary>
         /// <param name="count"></param>
