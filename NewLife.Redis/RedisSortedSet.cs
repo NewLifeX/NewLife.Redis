@@ -6,7 +6,7 @@ using NewLife.Reflection;
 
 namespace NewLife.Caching
 {
-    /// <summary>排序集合</summary>
+    /// <summary>有序集合ZSET</summary>
     public class RedisSortedSet : RedisBase
     {
         #region 实例化
@@ -23,20 +23,20 @@ namespace NewLife.Caching
         /// <summary>添加</summary>
         /// <param name="item"></param>
         /// <param name="score"></param>
-        public Int32 Add(String item, Double score)
+        public Boolean Add(String item, Double score)
         {
             var dic = new Dictionary<String, Double>
             {
                 [item] = score
             };
 
-            return Add(null, dic);
+            return Add(null, dic) == 1;
         }
 
         /// <summary>删除</summary>
         /// <param name="item"></param>
         /// <returns></returns>
-        public Int32 Remove(String item) => Execute(r => r.Execute<Int32>("ZREM", Key, item), true);
+        public Boolean Remove(String item) => Execute(r => r.Execute<Int32>("ZREM", Key, item), true) == 1;
 
         /// <summary>返回有序集key中，成员member的score值</summary>
         /// <param name="item"></param>
