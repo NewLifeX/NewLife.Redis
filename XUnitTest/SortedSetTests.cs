@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using NewLife;
 using NewLife.Caching;
 using NewLife.Log;
 using NewLife.Security;
@@ -14,7 +16,15 @@ namespace XUnitTest
 
         public RedisSortedSetTests()
         {
-            _redis = new FullRedis("127.0.0.1:6379", null, 2);
+            //_redis = new FullRedis("127.0.0.1:6379", null, 2);
+
+            var config = "";
+            var file = @"config\redis.config";
+            if (File.Exists(file)) config = File.ReadAllText(file.GetFullPath())?.Trim();
+            if (config.IsNullOrEmpty()) config = "server=127.0.0.1;port=6379;db=3";
+
+            _redis = new FullRedis();
+            _redis.Init(config);
 #if DEBUG
             _redis.Log = XTrace.Log;
 #endif
