@@ -158,9 +158,30 @@ namespace NewLife.Caching
         public Int32 Acknowledge(IEnumerable<T> values)
         {
             var rs = 0;
-            foreach (var item in values)
+
+            // 管道支持
+            if (values.Count() >= MinPipeline)
             {
-                rs += Execute(r => r.Execute<Int32>("LREM", AckKey, 1, item), true);
+                var rds = Redis;
+                rds.StartPipeline();
+
+                foreach (var item in values)
+                {
+                    Execute(r => r.Execute<Int32>("LREM", AckKey, 1, item), true);
+                }
+
+                var rs2 = rds.StopPipeline(true);
+                foreach (var item in rs2)
+                {
+                    rs += (Int32)item;
+                }
+            }
+            else
+            {
+                foreach (var item in values)
+                {
+                    rs += Execute(r => r.Execute<Int32>("LREM", AckKey, 1, item), true);
+                }
             }
 
             return rs;
