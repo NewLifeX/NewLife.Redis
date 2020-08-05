@@ -33,6 +33,10 @@ namespace XUnitTest
             var queue = _redis.GetReliableQueue<String>(key);
             _redis.SetExpire(key, TimeSpan.FromMinutes(60));
 
+            // 回滚死信，然后清空
+            var dead = queue.RollbackAck();
+            if (dead > 0) _redis.Remove(key);
+
             // 取出个数
             var count = queue.Count;
             Assert.True(queue.IsEmpty);
@@ -66,11 +70,9 @@ namespace XUnitTest
             Assert.Single(vs3);
             Assert.Equal("新生命团队", vs3[0]);
 
-            // 读取队列最后一个
-            var vs4 = queue.Take(44).ToArray();
+            // 读取队列最后一个，但不确认，留给下一次回滚用
+            var vs4 = queue.Take(4).ToArray();
             Assert.Single(vs4);
-
-            q2.Clear();
         }
 
         [Fact]
@@ -82,6 +84,10 @@ namespace XUnitTest
             _redis.Remove(key);
             var queue = _redis.GetReliableQueue<String>(key);
             _redis.SetExpire(key, TimeSpan.FromMinutes(60));
+
+            // 回滚死信，然后清空
+            var dead = queue.RollbackAck();
+            if (dead > 0) _redis.Remove(key);
 
             // 取出个数
             var count = queue.Count;
@@ -105,6 +111,7 @@ namespace XUnitTest
             Assert.Equal(vs[1], queue.TakeOne());
             Assert.Equal(vs[2], queue.TakeOne());
             Assert.Equal(vs[3], queue.TakeOne());
+            queue.Acknowledge(vs);
 
             // 延迟2秒生产消息
             ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); queue.Add("xxyy"); });
@@ -125,6 +132,10 @@ namespace XUnitTest
             var queue = _redis.GetReliableQueue<String>(key);
             _redis.SetExpire(key, TimeSpan.FromMinutes(60));
 
+            // 回滚死信，然后清空
+            var dead = queue.RollbackAck();
+            if (dead > 0) _redis.Remove(key);
+
             // 取出个数
             var count = queue.Count;
             Assert.True(queue.IsEmpty);
@@ -139,6 +150,7 @@ namespace XUnitTest
             Assert.Equal(2, vs2.Length);
             Assert.Equal("1234", vs2[0]);
             Assert.Equal("abcd", vs2[1]);
+            queue.Acknowledge(vs2);
 
             // 再取，这个时候已经没有元素
             var vs4 = queue.Take(3).ToArray();
@@ -216,7 +228,12 @@ namespace XUnitTest
             var key = "ReliableQueue_benchmark_mutilate";
             _redis.Remove(key);
 
-            var q = _redis.GetReliableQueue<String>(key);
+            var queue = _redis.GetReliableQueue<String>(key);
+
+            // 回滚死信，然后清空
+            var dead = queue.RollbackAck();
+            if (dead > 0) _redis.Remove(key);
+
             for (var i = 0; i < 1_000; i++)
             {
                 var list = new List<String>();
@@ -224,10 +241,10 @@ namespace XUnitTest
                 {
                     list.Add(Rand.NextString(32));
                 }
-                q.Add(list);
+                queue.Add(list);
             }
 
-            Assert.Equal(1_000 * 100, q.Count);
+            Assert.Equal(1_000 * 100, queue.Count);
 
             var count = 0;
             var ths = new List<Task>();
@@ -238,8 +255,11 @@ namespace XUnitTest
                     while (true)
                     {
                         var n = Rand.Next(1, 100);
-                        var list = q.Take(n).ToList();
+                        var list = queue.Take(n).ToList();
                         if (list.Count == 0) break;
+
+                        var n2 = queue.Acknowledge(list);
+                        Assert.Equal(list.Count, n2);
 
                         Interlocked.Add(ref count, list.Count);
                     }

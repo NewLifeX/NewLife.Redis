@@ -100,37 +100,6 @@ namespace NewLife.Caching
             yield break;
         }
 
-        private IEnumerable<T> RPOP(String key, Int32 count)
-        {
-            // 借助管道支持批量获取
-            if (count >= MinPipeline)
-            {
-                var rds = Redis;
-                rds.StartPipeline();
-
-                for (var i = 0; i < count; i++)
-                {
-                    Execute(rc => rc.Execute<T>("RPOP", key), true);
-                }
-
-                var rs = rds.StopPipeline(true);
-                foreach (var item in rs)
-                {
-                    if (item != null) yield return (T)item;
-                }
-            }
-            else
-            {
-                for (var i = 0; i < count; i++)
-                {
-                    var value = Execute(rc => rc.Execute<T>("RPOP", key), true);
-                    if (Equals(value, default(T))) break;
-
-                    yield return value;
-                }
-            }
-        }
-
         /// <summary>严格消费获取，同时送入确认列表</summary>
         /// <param name="count"></param>
         /// <returns></returns>
@@ -175,9 +144,12 @@ namespace NewLife.Caching
         {
             if (count <= 0) yield break;
 
-            foreach (var item in RPOP(AckKey, count))
+            for (var i = 0; i < count; i++)
             {
-                yield return item;
+                var value = Execute(rc => rc.Execute<T>("RPOP", AckKey), true);
+                if (Equals(value, default(T))) break;
+
+                yield return value;
             }
         }
 
@@ -206,18 +178,13 @@ namespace NewLife.Caching
             {
                 XTrace.WriteLine("发现死信队列：{0}", key);
 
-                // 数量
-                var count = Execute(r => r.Execute<Int32>("LLEN", key));
-                if (count > 0)
+                // 消费所有数据
+                while (true)
                 {
-                    // 消费所有数据
-                    while (true)
-                    {
-                        var value = Execute(rc => rc.Execute<T>("RPOP", key), true);
-                        if (Equals(value, default(T))) break;
+                    var value = Execute(rc => rc.Execute<T>("RPOP", key), true);
+                    if (Equals(value, default(T))) break;
 
-                        yield return value;
-                    }
+                    yield return value;
                 }
 
                 //// 删除确认队列
@@ -264,16 +231,10 @@ namespace NewLife.Caching
                 lock (_keysOfNoAck)
                 {
                     // 拿到死信，重新放入队列
-                    while (true)
+                    foreach (var item in TakeAck(1000))
                     {
-                        var list = TakeAck(100).ToList();
-                        if (list.Count > 0)
-                        {
-                            XTrace.WriteLine("定时回滚死信：\r\n{0}", list.Join(Environment.NewLine));
-                            Add(list);
-                        }
-
-                        if (list.Count < 100) break;
+                        XTrace.WriteLine("定时回滚死信：{0}", item);
+                        Add(item);
                     }
                 }
             }
