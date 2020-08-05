@@ -19,9 +19,6 @@ namespace NewLife.Caching
     public class RedisReliableQueue<T> : RedisBase, IProducerConsumer<T>
     {
         #region 属性
-        /// <summary>消费时阻塞，直到有数据为止。仅支持TakeOne，不支持Take</summary>
-        public Boolean Blocking { get; set; }
-
         /// <summary>用于确认的列表</summary>
         public String AckKey { get; set; }
 
@@ -72,20 +69,22 @@ namespace NewLife.Caching
             return Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
         }
 
-        /// <summary>消费获取</summary>
-        /// <param name="timeout">超时，秒</param>
+        /// <summary>消费获取，支持阻塞</summary>
+        /// <remarks>假定前面获取的消息已经确认，因该方法内部可能回滚确认队列，避免误杀</remarks>
+        /// <param name="timeout">超时，0秒永远阻塞；负数表示直接返回，不阻塞。</param>
         /// <returns></returns>
         public T TakeOne(Int32 timeout = 0)
         {
             RetryDeadAck();
 
-            if (Blocking)
+            if (timeout >= 0)
                 return Execute(rc => rc.Execute<T>("BRPOPLPUSH", Key, AckKey, timeout), true);
-            else
-                return Execute(rc => rc.Execute<T>("RPOPLPUSH", Key, AckKey), true);
+
+            return Execute(rc => rc.Execute<T>("RPOPLPUSH", Key, AckKey), true);
         }
 
         /// <summary>批量消费获取</summary>
+        /// <remarks>假定前面获取的消息已经确认，因该方法内部可能回滚确认队列，避免误杀</remarks>
         /// <param name="count">要消费的消息个数</param>
         /// <returns></returns>
         public IEnumerable<T> Take(Int32 count = 1)
@@ -205,30 +204,41 @@ namespace NewLife.Caching
             // 先找到所有Key
             foreach (var key in rds.Search($"{_Key}:Ack:*"))
             {
+                XTrace.WriteLine("发现死信队列：{0}", key);
+
                 // 数量
                 var count = Execute(r => r.Execute<Int32>("LLEN", key));
-
                 if (count > 0)
                 {
                     // 消费所有数据
                     while (true)
                     {
-                        var list = RPOP(key, 100).ToList();
-                        if (list.Count > 0)
-                        {
-                            foreach (var item in list)
-                            {
-                                yield return item;
-                            }
-                        }
+                        var value = Execute(rc => rc.Execute<T>("RPOP", key), true);
+                        if (Equals(value, default(T))) break;
 
-                        if (list.Count < 100) break;
+                        yield return value;
                     }
                 }
 
-                // 删除确认队列
-                rds.Remove(key);
+                //// 删除确认队列
+                //rds.Remove(key);
             }
+        }
+
+        /// <summary>全局回滚死信，一般由单一线程执行，避免干扰处理中数据</summary>
+        /// <returns></returns>
+        public Int32 RollbackAck()
+        {
+            var count = 0;
+            foreach (var item in TakeAllAck())
+            {
+                XTrace.WriteLine("全局回滚死信：{0}", item);
+                Add(item);
+
+                count++;
+            }
+
+            return count;
         }
 
         /// <summary>已经清理过死信的队列</summary>
@@ -244,19 +254,13 @@ namespace NewLife.Caching
                 _nextRetry = now.AddSeconds(RetryInterval);
 
                 // 应用启动时，来一次全局清理死信
-                if (_keysOfNoAck.TryAdd(_Key))
-                {
-                    var list = TakeAllAck().ToList();
-                    if (list.Count > 0)
-                    {
-                        XTrace.WriteLine("全局回滚死信：\r\n{0}", list.Join(Environment.NewLine));
-                        Add(list);
-                    }
-                }
+                if (_keysOfNoAck.TryAdd(_Key)) RollbackAck();
             }
             else if (_nextRetry < now)
             {
-                // 避免多线程进入
+                _nextRetry = now.AddSeconds(RetryInterval);
+
+                // 避免多线程进入。只能处理当前确认队列，避免误杀处理中消息
                 lock (_keysOfNoAck)
                 {
                     // 拿到死信，重新放入队列
@@ -272,8 +276,6 @@ namespace NewLife.Caching
                         if (list.Count < 100) break;
                     }
                 }
-
-                _nextRetry = now.AddSeconds(RetryInterval);
             }
         }
         #endregion

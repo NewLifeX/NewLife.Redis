@@ -26,7 +26,7 @@ namespace XUnitTest
         [Fact]
         public void Queue_Strict()
         {
-            var key = "ReliableQueue_strict";
+            var key = "ReliableQueue";
 
             // 删除已有
             _redis.Remove(key);
@@ -83,8 +83,6 @@ namespace XUnitTest
             var queue = _redis.GetReliableQueue<String>(key);
             _redis.SetExpire(key, TimeSpan.FromMinutes(60));
 
-            queue.Blocking = true;
-
             // 取出个数
             var count = queue.Count;
             Assert.True(queue.IsEmpty);
@@ -111,7 +109,7 @@ namespace XUnitTest
             // 延迟2秒生产消息
             ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); queue.Add("xxyy"); });
             var sw = Stopwatch.StartNew();
-            var rs = queue.TakeOne();
+            var rs = queue.TakeOne(2100);
             sw.Stop();
             Assert.Equal("xxyy", rs);
             Assert.True(sw.ElapsedMilliseconds >= 2000);
@@ -169,7 +167,8 @@ namespace XUnitTest
                 var q = _redis.GetReliableQueue<String>(key);
 
                 //Assert.DoesNotContain(q.AckKey, hash);
-                Assert.False(hash.Contains(q.AckKey));
+                var rs = hash.Contains(q.AckKey);
+                Assert.False(rs);
 
                 hash.Add(q.AckKey);
             }
@@ -179,8 +178,10 @@ namespace XUnitTest
         public void Queue_Benchmark()
         {
             var key = "ReliableQueue_benchmark";
+            _redis.Remove(key);
 
             var q = _redis.GetReliableQueue<String>(key);
+            _redis.SetExpire(key, TimeSpan.FromMinutes(60));
             for (var i = 0; i < 1_000; i++)
             {
                 var list = new List<String>();
@@ -199,6 +200,9 @@ namespace XUnitTest
                 var n = Rand.Next(1, 100);
                 var list = q.Take(n).ToList();
                 if (list.Count == 0) break;
+
+                var n2 = q.Acknowledge(list);
+                Assert.Equal(list.Count, n2);
 
                 count += list.Count;
             }
@@ -243,41 +247,6 @@ namespace XUnitTest
             }
 
             Task.WaitAll(ths.ToArray());
-
-            Assert.Equal(1_000 * 100, count);
-        }
-
-        [Fact]
-        public void Queue_Benchmark_Strict()
-        {
-            var key = "ReliableQueue_benchmark_strict";
-
-            var queue = _redis.GetReliableQueue<String>(key);
-
-            for (var i = 0; i < 1_000; i++)
-            {
-                var list = new List<String>();
-                for (var j = 0; j < 100; j++)
-                {
-                    list.Add(Rand.NextString(32));
-                }
-                queue.Add(list);
-            }
-
-            Assert.Equal(1_000 * 100, queue.Count);
-
-            var count = 0;
-            while (true)
-            {
-                var n = Rand.Next(1, 100);
-                var list = queue.Take(n).ToList();
-                if (list.Count == 0) break;
-
-                var n2 = queue.Acknowledge(list);
-                Assert.Equal(list.Count, n2);
-
-                count += list.Count;
-            }
 
             Assert.Equal(1_000 * 100, count);
         }
