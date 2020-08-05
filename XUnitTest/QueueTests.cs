@@ -82,7 +82,6 @@ namespace XUnitTest
 
             var queue = q as RedisQueue<String>;
             Assert.NotNull(queue);
-            queue.Blocking = true;
 
             // 取出个数
             var count = q.Count;
@@ -110,7 +109,7 @@ namespace XUnitTest
             // 延迟2秒生产消息
             ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); queue.Add("xxyy"); });
             var sw = Stopwatch.StartNew();
-            var rs = queue.TakeOne();
+            var rs = queue.TakeOne(2100);
             sw.Stop();
             Assert.Equal("xxyy", rs);
             Assert.True(sw.ElapsedMilliseconds >= 2000);

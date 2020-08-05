@@ -12,9 +12,6 @@ namespace NewLife.Caching
     public class RedisQueue<T> : RedisBase, IProducerConsumer<T>
     {
         #region 属性
-        /// <summary>消费时阻塞，直到有数据为止。仅支持TakeOne，不支持Take</summary>
-        public Boolean Blocking { get; set; }
-
         /// <summary>最小管道阈值，达到该值时使用管道，默认3</summary>
         public Int32 MinPipeline { get; set; } = 3;
 
@@ -53,12 +50,12 @@ namespace NewLife.Caching
             return Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
         }
 
-        /// <summary>消费获取</summary>
-        /// <param name="timeout">超时，秒</param>
+        /// <summary>消费获取，支持阻塞</summary>
+        /// <param name="timeout">超时，0秒永远阻塞；负数表示直接返回，不阻塞。</param>
         /// <returns></returns>
-        public T TakeOne(Int32 timeout = 0)
+        public T TakeOne(Int32 timeout = -1)
         {
-            if (!Blocking) return Execute(rc => rc.Execute<T>("RPOP", Key), true);
+            if (timeout < 0) return Execute(rc => rc.Execute<T>("RPOP", Key), true);
 
             var rs = Execute(rc => rc.Execute<Packet[]>("BRPOP", Key, timeout), true);
             return rs == null || rs.Length < 2 ? default : (T)Redis.Encoder.Decode(rs[1], typeof(T));
