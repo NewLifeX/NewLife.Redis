@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using NewLife.Collections;
+using NewLife.Data;
 using NewLife.Security;
 
 namespace NewLife.Caching
@@ -21,6 +22,9 @@ namespace NewLife.Caching
         #region 属性
         /// <summary>严格的队列消费，需要确认机制，默认false</summary>
         public Boolean Strict { get; set; }
+
+        /// <summary>消费时阻塞，直到有数据为止。仅支持TakeOne，不支持Take</summary>
+        public Boolean Blocking { get; set; }
 
         /// <summary>用于确认的列表</summary>
         public String AckKey { get; set; }
@@ -51,6 +55,14 @@ namespace NewLife.Caching
         }
         #endregion
 
+        /// <summary>生产添加</summary>
+        /// <param name="value">消息</param>
+        /// <returns></returns>
+        public Int32 Add(T value)
+        {
+            return Execute(rc => rc.Execute<Int32>("LPUSH", Key, value), true);
+        }
+
         /// <summary>批量生产添加</summary>
         /// <param name="values">消息集合</param>
         /// <returns></returns>
@@ -62,6 +74,30 @@ namespace NewLife.Caching
                 args.Add(item);
             }
             return Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
+        }
+
+        /// <summary>消费获取</summary>
+        /// <param name="timeout">超时，秒</param>
+        /// <returns></returns>
+        public T TakeOne(Int32 timeout = 0)
+        {
+            // 严格模式
+            if (Strict)
+            {
+                RetryDeadAck();
+
+                if (Blocking)
+                    return Execute(rc => rc.Execute<T>("BRPOPLPUSH", Key, AckKey, timeout), true);
+                else
+                    return Execute(rc => rc.Execute<T>("RPOPLPUSH", Key, AckKey), true);
+            }
+            else
+            {
+                if (!Blocking) return Execute(rc => rc.Execute<T>("RPOP", Key), true);
+
+                var rs = Execute(rc => rc.Execute<Packet[]>("BRPOP", Key, timeout), true);
+                return rs == null || rs.Length < 2 ? default : (T)Redis.Encoder.Decode(rs[1], typeof(T));
+            }
         }
 
         /// <summary>批量消费获取</summary>
@@ -242,13 +278,17 @@ namespace NewLife.Caching
             }
             else if (_nextRetry < now)
             {
-                // 拿到死信，重新放入队列
-                while (true)
+                // 避免多线程进入
+                lock (_keysOfNoAck)
                 {
-                    var list = TakeAck(100).ToList();
-                    if (list.Count > 0) Add(list);
+                    // 拿到死信，重新放入队列
+                    while (true)
+                    {
+                        var list = TakeAck(100).ToList();
+                        if (list.Count > 0) Add(list);
 
-                    if (list.Count < 100) break;
+                        if (list.Count < 100) break;
+                    }
                 }
 
                 _nextRetry = now.AddSeconds(RetryInterval);
