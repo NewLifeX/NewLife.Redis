@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using NewLife;
 using NewLife.Caching;
 using NewLife.Log;
 using NewLife.Security;
@@ -252,13 +253,14 @@ namespace XUnitTest
             {
                 ths.Add(Task.Run(() =>
                 {
+                    var queue2 = _redis.GetReliableQueue<String>(key);
                     while (true)
                     {
                         var n = Rand.Next(1, 100);
-                        var list = queue.Take(n).ToList();
+                        var list = queue2.Take(n).Where(e => !e.IsNullOrEmpty()).ToList();
                         if (list.Count == 0) break;
 
-                        var n2 = queue.Acknowledge(list);
+                        var n2 = queue2.Acknowledge(list);
                         Assert.Equal(list.Count, n2);
 
                         Interlocked.Add(ref count, list.Count);

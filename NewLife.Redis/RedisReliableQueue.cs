@@ -93,20 +93,6 @@ namespace NewLife.Caching
 
             RetryDeadAck();
 
-            foreach (var item in TakeStrict(count))
-            {
-                yield return item;
-            }
-            yield break;
-        }
-
-        /// <summary>严格消费获取，同时送入确认列表</summary>
-        /// <param name="count"></param>
-        /// <returns></returns>
-        public IEnumerable<T> TakeStrict(Int32 count = 1)
-        {
-            if (count <= 0) yield break;
-
             // 借助管道支持批量获取
             if (count >= MinPipeline)
             {
@@ -121,7 +107,7 @@ namespace NewLife.Caching
                 var rs = rds.StopPipeline(true);
                 foreach (var item in rs)
                 {
-                    if (item != null) yield return (T)item;
+                    if (!Equals(item, default(T))) yield return (T)item;
                 }
             }
             else
