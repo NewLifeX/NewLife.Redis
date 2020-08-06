@@ -239,7 +239,7 @@ namespace XUnitTest
                 var list = new List<String>();
                 for (var j = 0; j < 100; j++)
                 {
-                    list.Add(Rand.NextString(32));
+                    list.Add($"msgContent-{i}-{j}");
                 }
                 queue.Add(list);
             }

@@ -44,7 +44,7 @@ namespace NewLife.Caching
         public RedisReliableQueue(Redis redis, String key) : base(redis, key)
         {
             _Key = key;
-            AckKey = $"{key}:Ack:{Rand.NextString(16)}";
+            AckKey = $"{key}:Ack:{DateTime.Now:yyMMddHH}:{Rand.NextString(8)}";
         }
         #endregion
 
