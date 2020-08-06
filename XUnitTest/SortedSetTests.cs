@@ -267,5 +267,77 @@ namespace XUnitTest
             // 取出来
             Assert.Equal(123.456 + 33.44, zset.GetScore("stone"));
         }
+
+        [Fact]
+        public void FindCount_Test()
+        {
+            var rkey = "zset_zcount";
+
+            // 删除已有
+            _redis.Remove(rkey);
+
+            var zset = new RedisSortedSet(_redis, rkey);
+
+            // 插入数据
+            zset.Add("stone1", 12.34);
+            zset.Add("stone2", 13.56);
+            zset.Add("stone3", 14.34);
+            zset.Add("stone4", 15.34);
+            Assert.Equal(4, zset.Count);
+
+            var count = zset.FindCount(13.56, 14.34);
+            Assert.Equal(2, count);
+        }
+
+        [Fact]
+        public void Incr_Test()
+        {
+            var rkey = "zset_zincr";
+
+            // 删除已有
+            _redis.Remove(rkey);
+
+            var zset = new RedisSortedSet(_redis, rkey);
+
+            // 插入数据
+            zset.Add("stone", 12.34);
+            var old = zset.Increment("stone", 13.56);
+            Assert.Equal(1, zset.Count);
+            Assert.Equal(12.34 + 13.56, old);
+            Assert.Equal(12.34 + 13.56, zset.GetScore("stone"));
+        }
+
+        [Fact]
+        public void PopMaxMin_Test()
+        {
+            var rkey = "zset_pop";
+
+            // 删除已有
+            _redis.Remove(rkey);
+
+            var zset = new RedisSortedSet(_redis, rkey);
+
+            // 插入数据
+            zset.Add("stone1", 12.34);
+            zset.Add("stone2", 13.56);
+            zset.Add("stone3", 14.34);
+            zset.Add("stone4", 15.34);
+            Assert.Equal(4, zset.Count);
+
+            var max = zset.PopMax(1);
+            Assert.Equal(3, zset.Count);
+            Assert.Equal("stone4", max.Keys.First());
+            Assert.Equal(15.34, max.Values.First());
+
+            var min = zset.PopMin(2);
+            Assert.Equal(1, zset.Count);
+
+            var ks = min.Keys.ToArray();
+            var vs = min.Values.ToArray();
+            Assert.Equal("stone1", ks[0]);
+            Assert.Equal(12.34, vs[0]);
+            Assert.Equal("stone2", ks[1]);
+            Assert.Equal(13.56, vs[1]);
+        }
     }
 }
