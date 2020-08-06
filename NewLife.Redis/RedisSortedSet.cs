@@ -105,8 +105,8 @@ namespace NewLife.Caching
             var dic = new Dictionary<String, Double>();
             for (var i = 0; i < list.Length; i += 2)
             {
-                var score = list[i].ToDouble();
-                var member = list[i + 1].ChangeType<String>();
+                var member = list[i].ChangeType<String>();
+                var score = list[i + 1].ToDouble();
                 dic[member] = score;
             }
 
@@ -124,8 +124,8 @@ namespace NewLife.Caching
             var dic = new Dictionary<String, Double>();
             for (var i = 0; i < list.Length; i += 2)
             {
-                var score = list[i].ToDouble();
-                var member = list[i + 1].ChangeType<String>();
+                var member = list[i].ChangeType<String>();
+                var score = list[i + 1].ToDouble();
                 dic[member] = score;
             }
 
