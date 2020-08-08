@@ -71,7 +71,7 @@ namespace XUnitTest
             Assert.Equal(vs2.Length, ackList.Count);
 
             // 确认两个，留下一个未确认消息在Ack队列
-            var rs = queue.Acknowledge(vs2.Take(2));
+            var rs = queue.Acknowledge(vs2[0]) + queue.Acknowledge(vs2[1]);
             Assert.Equal(2, rs);
             Assert.Equal(1, ackList.Count);
 
@@ -153,7 +153,6 @@ namespace XUnitTest
             // 删除已有
             _redis.Remove(key);
             var queue = _redis.GetReliableQueue<String>(key);
-            _redis.SetExpire(key, TimeSpan.FromMinutes(60));
 
             // 回滚死信，然后清空
             var dead = queue.RollbackAllAck();
@@ -200,7 +199,6 @@ namespace XUnitTest
             // 删除已有
             _redis.Remove(key);
             var queue = _redis.GetReliableQueue<String>(key);
-            _redis.SetExpire(key, TimeSpan.FromMinutes(60));
 
             // 回滚死信，然后清空
             var dead = queue.RollbackAllAck();
@@ -263,7 +261,7 @@ namespace XUnitTest
             _redis.Remove(key);
 
             var q = _redis.GetReliableQueue<String>(key);
-            _redis.SetExpire(key, TimeSpan.FromMinutes(60));
+
             for (var i = 0; i < 1_000; i++)
             {
                 var list = new List<String>();
