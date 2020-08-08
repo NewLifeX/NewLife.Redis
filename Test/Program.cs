@@ -23,14 +23,14 @@ namespace Test
             try
             {
                 //TestHyperLogLog();
-                //Test1();
-                TestList();
+                Test3();
             }
             catch (Exception ex)
             {
                 XTrace.WriteException(ex);
             }
 
+            Console.WriteLine("OK!");
             Console.ReadKey();
         }
 
@@ -107,21 +107,21 @@ namespace Test
 
         static void Test3()
         {
-            var ic = new FullRedis("127.0.0.1:6379", null, 3);
+            var _redis = new FullRedis("127.0.0.1:6379", null, 3);
             //ic.Log = XTrace.Log;
 
-            var list = ic.GetList<String>("kkk");
-            for (var i = 0; i < 100; i++)
-            {
-                list.Add(Rand.NextString(256));
-            }
-            ic.SetExpire("kkk", TimeSpan.FromSeconds(120));
+            var key = "ReliableQueue_unique";
 
-            var arr = list.ToArray();
-            Console.WriteLine(arr.Length);
-            foreach (var item in arr)
+            var hash = new HashSet<String>();
+
+            for (var i = 0; i < 1_000_000; i++)
             {
-                Console.WriteLine(item);
+                var q = _redis.GetReliableQueue<String>(key);
+
+                //Assert.DoesNotContain(q.AckKey, hash);
+                var rs = hash.Contains(q.AckKey);
+
+                hash.Add(q.AckKey);
             }
         }
 

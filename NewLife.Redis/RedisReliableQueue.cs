@@ -304,15 +304,22 @@ namespace NewLife.Caching
         #endregion
 
         #region 状态
+        private static Status _def = new Status
+        {
+            MachineName = Environment.MachineName,
+            UserName = Environment.UserName,
+            ProcessId = Process.GetCurrentProcess().Id,
+            Ip = NetHelper.MyIP() + "",
+        };
         private Status CreateStatus()
         {
             return new Status
             {
                 UKey = Rand.NextString(8),
-                MachineName = Environment.MachineName,
-                UserName = Environment.UserName,
-                ProcessId = Process.GetCurrentProcess().Id,
-                Ip = NetHelper.MyIP() + "",
+                MachineName = _def.MachineName,
+                UserName = _def.UserName,
+                ProcessId = _def.ProcessId,
+                Ip = _def.Ip,
                 LastActive = DateTime.Now,
             };
         }
