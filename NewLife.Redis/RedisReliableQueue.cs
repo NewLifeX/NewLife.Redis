@@ -222,11 +222,6 @@ namespace NewLife.Caching
         /// <returns></returns>
         private List<T> RollbackAck(String key, String ackKey)
         {
-            //var p = ackKey.IndexOf(":Ack:");
-            //if (p <= 0) throw new ArgumentOutOfRangeException(nameof(ackKey), "无效AckKey");
-
-            //var key = ackKey.Substring(0, p);
-
             // 消费所有数据
             var list = new List<T>();
             while (true)
@@ -277,18 +272,10 @@ namespace NewLife.Caching
         }
 
         private DateTime _nextRetry;
-        private DateTime _nextAllRetry;
         /// <summary>处理未确认的死信，重新放入队列</summary>
         private void RetryDeadAck()
         {
             var now = DateTime.Now;
-            // 10倍间隔扫描全局死信
-            if (_nextAllRetry < now)
-            {
-                _nextAllRetry = now.AddSeconds(RetryInterval * 10);
-
-                RollbackAllAck();
-            }
             // 一定间隔处理当前ukey死信
             if (_nextRetry < now)
             {
@@ -303,6 +290,9 @@ namespace NewLife.Caching
 
                 // 更新状态
                 UpdateStatus();
+
+                // 处理其它消费者遗留下来的死信
+                RollbackAllAck();
             }
         }
         #endregion

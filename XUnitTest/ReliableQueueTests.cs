@@ -32,7 +32,18 @@ namespace XUnitTest
             // 删除已有
             _redis.Remove(key);
             var queue = _redis.GetReliableQueue<String>(key);
-            queue.ClearAllAck();
+            queue.RetryInterval = 5;
+
+            // 发现回滚
+            var rcount = queue.RollbackAllAck();
+            if (rcount > 0)
+            {
+                XTrace.WriteLine("回滚：{0}", rcount);
+
+                Assert.Equal(rcount, queue.Count);
+                var rcount2 = _redis.Remove(key);
+                Assert.Equal(1, rcount2);
+            }
 
             // 取出个数
             var count = queue.Count;
@@ -83,7 +94,18 @@ namespace XUnitTest
             // 删除已有
             _redis.Remove(key);
             var queue = _redis.GetReliableQueue<String>(key);
-            queue.ClearAllAck();
+            queue.RetryInterval = 5;
+
+            // 发现回滚
+            var rcount = queue.RollbackAllAck();
+            if (rcount > 0)
+            {
+                XTrace.WriteLine("回滚：{0}", rcount);
+
+                Assert.Equal(rcount, queue.Count);
+                var rcount2 = _redis.Remove(key);
+                Assert.Equal(1, rcount2);
+            }
 
             // 取出个数
             var count = queue.Count;
