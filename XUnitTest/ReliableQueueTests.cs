@@ -25,18 +25,66 @@ namespace XUnitTest
         }
 
         [Fact]
-        public void Queue_Strict()
+        public void Queue_Normal()
         {
             var key = "ReliableQueue";
+            var queue = _redis.GetReliableQueue<String>(key);
+            _redis.Remove(key);
+            queue.ClearAllAck();
+
+            // 取出个数
+            var count = queue.Count;
+            Assert.True(queue.IsEmpty);
+            Assert.Equal(0, count);
+
+            // 添加
+            var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
+            foreach (var item in vs)
+            {
+                queue.Add(item);
+            }
+
+            // 取出来
+            var vs2 = new[] { queue.TakeOne(), queue.TakeOne(), queue.TakeOne(), };
+            Assert.Equal(3, vs2.Length);
+            Assert.Equal("1234", vs2[0]);
+            Assert.Equal("abcd", vs2[1]);
+            Assert.Equal("新生命团队", vs2[2]);
+
+            Assert.Equal(1, queue.Count);
+
+            // 检查Ack队列
+            var ackList = _redis.GetList<String>(queue.AckKey);
+            Assert.Equal(vs2.Length, ackList.Count);
+
+            // 确认两个，留下一个未确认消息在Ack队列
+            var rs = queue.Acknowledge(vs2.Take(2));
+            Assert.Equal(2, rs);
+            Assert.Equal(1, ackList.Count);
+
+            // 捞出来Ack最后一个
+            var vs3 = queue.TakeAck(3).ToArray();
+            Assert.Equal(0, ackList.Count);
+            Assert.Single(vs3);
+            Assert.Equal("新生命团队", vs3[0]);
+
+            // 读取队列最后一个，但不确认，留给下一次回滚用
+            var v4 = queue.TakeOne();
+            Assert.NotNull(v4);
+        }
+
+        [Fact]
+        public void Queue_Batch()
+        {
+            var key = "ReliableQueue_batch";
 
             // 删除已有
             _redis.Remove(key);
             var queue = _redis.GetReliableQueue<String>(key);
             _redis.SetExpire(key, TimeSpan.FromMinutes(60));
 
-            // 回滚死信，然后清空
-            var dead = queue.RollbackAllAck();
-            if (dead > 0) _redis.Remove(key);
+            // 清空
+            queue.ClearAllAck();
 
             // 取出个数
             var count = queue.Count;
@@ -56,7 +104,7 @@ namespace XUnitTest
 
             Assert.Equal(1, queue.Count);
 
-            // 确认队列
+            // 检查确认队列
             var q2 = _redis.GetList<String>(queue.AckKey);
             Assert.Equal(vs2.Length, q2.Count);
 

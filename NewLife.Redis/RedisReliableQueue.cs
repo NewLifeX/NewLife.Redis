@@ -212,6 +212,10 @@ namespace NewLife.Caching
             }
         }
 
+        /// <summary>清空所有Ack队列。危险操作！！！</summary>
+        /// <returns></returns>
+        public Int32 ClearAllAck() => TakeAllAck().Count();
+
         /// <summary>回滚指定AckKey内的消息到Key</summary>
         /// <param name="key"></param>
         /// <param name="ackKey"></param>
@@ -296,10 +300,10 @@ namespace NewLife.Caching
                 {
                     XTrace.WriteLine("定时回滚死信：{0}", item);
                 }
-            }
 
-            // 更新状态
-            UpdateStatus();
+                // 更新状态
+                UpdateStatus();
+            }
         }
         #endregion
 
@@ -320,6 +324,7 @@ namespace NewLife.Caching
                 UserName = _def.UserName,
                 ProcessId = _def.ProcessId,
                 Ip = _def.Ip,
+                CreateTime = DateTime.Now,
                 LastActive = DateTime.Now,
             };
         }
@@ -348,14 +353,17 @@ namespace NewLife.Caching
             /// <summary>IP地址</summary>
             public String Ip { get; set; }
 
+            /// <summary>开始时间</summary>
+            public DateTime CreateTime { get; set; }
+
             /// <summary>最后活跃时间</summary>
             public DateTime LastActive { get; set; }
 
-            /// <summary>消费消息数</summary>
-            public Int64 Consumes { get; set; }
+            ///// <summary>消费消息数</summary>
+            //public Int64 Consumes { get; set; }
 
-            /// <summary>确认消息数</summary>
-            public Int64 Acks { get; set; }
+            ///// <summary>确认消息数</summary>
+            //public Int64 Acks { get; set; }
         }
         #endregion
     }
