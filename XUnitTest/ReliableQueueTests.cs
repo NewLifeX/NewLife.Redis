@@ -28,8 +28,10 @@ namespace XUnitTest
         public void Queue_Normal()
         {
             var key = "ReliableQueue";
-            var queue = _redis.GetReliableQueue<String>(key);
+
+            // 删除已有
             _redis.Remove(key);
+            var queue = _redis.GetReliableQueue<String>(key);
             queue.ClearAllAck();
 
             // 取出个数
@@ -81,9 +83,6 @@ namespace XUnitTest
             // 删除已有
             _redis.Remove(key);
             var queue = _redis.GetReliableQueue<String>(key);
-            _redis.SetExpire(key, TimeSpan.FromMinutes(60));
-
-            // 清空
             queue.ClearAllAck();
 
             // 取出个数

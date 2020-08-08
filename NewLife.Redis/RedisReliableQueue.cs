@@ -251,7 +251,7 @@ namespace NewLife.Caching
             foreach (var key in rds.Search($"{_Key}:Status:*"))
             {
                 var st = rds.Get<Status>(key);
-                if (st != null && st.LastActive.AddHours(1) < DateTime.Now)
+                if (st != null && st.LastActive.AddSeconds(RetryInterval * 10) < DateTime.Now)
                 {
                     var ackKey = $"{_Key}:Ack:{st.UKey}";
                     if (rds.ContainsKey(ackKey))
