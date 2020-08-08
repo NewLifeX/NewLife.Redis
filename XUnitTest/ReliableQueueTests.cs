@@ -35,7 +35,7 @@ namespace XUnitTest
             _redis.SetExpire(key, TimeSpan.FromMinutes(60));
 
             // 回滚死信，然后清空
-            var dead = queue.RollbackAck();
+            var dead = queue.RollbackAllAck();
             if (dead > 0) _redis.Remove(key);
 
             // 取出个数
@@ -87,7 +87,7 @@ namespace XUnitTest
             _redis.SetExpire(key, TimeSpan.FromMinutes(60));
 
             // 回滚死信，然后清空
-            var dead = queue.RollbackAck();
+            var dead = queue.RollbackAllAck();
             if (dead > 0) _redis.Remove(key);
 
             // 取出个数
@@ -134,7 +134,7 @@ namespace XUnitTest
             _redis.SetExpire(key, TimeSpan.FromMinutes(60));
 
             // 回滚死信，然后清空
-            var dead = queue.RollbackAck();
+            var dead = queue.RollbackAllAck();
             if (dead > 0) _redis.Remove(key);
 
             // 取出个数
@@ -232,7 +232,7 @@ namespace XUnitTest
             var queue = _redis.GetReliableQueue<String>(key);
 
             // 回滚死信，然后清空
-            var dead = queue.RollbackAck();
+            var dead = queue.RollbackAllAck();
             if (dead > 0) _redis.Remove(key);
 
             for (var i = 0; i < 1_000; i++)
