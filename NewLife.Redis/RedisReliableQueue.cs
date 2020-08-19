@@ -197,9 +197,11 @@ namespace NewLife.Caching
         public IEnumerable<T> TakeAllAck()
         {
             var rds = Redis as FullRedis;
+            var ks = rds.Search($"{_Key}:Ack:*");
+            if (ks == null || ks.Length == 0) yield break;
 
             // 先找到所有Key
-            foreach (var key in rds.Search($"{_Key}:Ack:*"))
+            foreach (var key in ks)
             {
                 // 消费所有数据
                 while (true)

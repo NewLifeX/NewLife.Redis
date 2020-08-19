@@ -84,6 +84,10 @@ namespace XUnitTest
             // 读取队列最后一个，但不确认，留给下一次回滚用
             var v4 = queue.TakeOne();
             Assert.NotNull(v4);
+
+            // 现在队列没有数据，再取一个
+            var v5 = queue.TakeOne(1);
+            Assert.Null(v5);
         }
 
         [Fact]
