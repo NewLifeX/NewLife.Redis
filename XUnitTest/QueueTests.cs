@@ -170,7 +170,7 @@ namespace XUnitTest
                 {
                     list.Add(Rand.NextString(32));
                 }
-                q.Add(list);
+                q.Add(list.ToArray());
             }
 
             Assert.Equal(1_000 * 100, q.Count);
@@ -202,7 +202,7 @@ namespace XUnitTest
                 {
                     list.Add(Rand.NextString(32));
                 }
-                q.Add(list);
+                q.Add(list.ToArray());
             }
 
             Assert.Equal(1_000 * 100, q.Count);

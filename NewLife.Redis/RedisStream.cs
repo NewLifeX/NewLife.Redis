@@ -3,9 +3,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using NewLife.Collections;
 using NewLife.Data;
 using NewLife.Reflection;
+#if !NET4
+using TaskEx = System.Threading.Tasks.Task;
+#endif
 
 namespace NewLife.Caching
 {
@@ -36,6 +40,7 @@ namespace NewLife.Caching
         public RedisStream(Redis redis, String key) : base(redis, key) { }
         #endregion
 
+        #region 核心生产消费
         /// <summary>生产添加</summary>
         /// <param name="value"></param>
         /// <param name="maxlen"></param>
@@ -81,7 +86,7 @@ namespace NewLife.Caching
         /// <summary>批量生产添加</summary>
         /// <param name="values"></param>
         /// <returns></returns>
-        Int32 IProducerConsumer<T>.Add(IEnumerable<T> values)
+        Int32 IProducerConsumer<T>.Add(params T[] values)
         {
             if (values == null) throw new ArgumentNullException(nameof(values));
 
@@ -94,6 +99,76 @@ namespace NewLife.Caching
             return count;
         }
 
+        /// <summary>批量消费获取，前移指针StartId</summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public IList<T> Take(Int32 count = 1)
+        {
+            var rs = Read(StartId, count);
+            if (rs == null || rs.Count == 0) return new List<T>();
+
+            var lastId = "";
+            var list = new List<T>();
+            foreach (var item in rs)
+            {
+                var vs = item.Value;
+                if (vs != null)
+                {
+                    if (vs.Length == 2 && vs[0] == PrimitiveKey)
+                        list.Add(vs[1].ChangeType<T>());
+                    else
+                    {
+                        if (_properties == null) _properties = typeof(T).GetProperties(true).ToDictionary(e => e.Name, e => e);
+
+                        // 字节数组转实体对象
+                        var entry = Activator.CreateInstance<T>();
+                        for (var i = 0; i < vs.Length - 1; i += 2)
+                        {
+                            if (_properties.TryGetValue(vs[i], out var pi))
+                            {
+                                pi.SetValue(entry, vs[i + 1].ChangeType(pi.PropertyType), null);
+                            }
+                        }
+                        list.Add(entry);
+                    }
+                }
+
+                // 最大编号
+                if (String.Compare(item.Key, lastId) > 0) lastId = item.Key;
+            }
+
+            // 更新编号
+            if (!lastId.IsNullOrEmpty())
+            {
+                var ss = lastId.Split('-');
+                if (ss.Length == 2) StartId = $"{ss[0]}-{ss[1].ToInt() + 1}";
+            }
+
+            return list;
+        }
+
+        /// <summary>批量消费获取</summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        IEnumerable<T> IProducerConsumer<T>.Take(Int32 count) => Take(count);
+
+        /// <summary>消费获取一个</summary>
+        /// <param name="timeout"></param>
+        /// <returns></returns>
+        public T TakeOne(Int32 timeout = 0) => Take(1).FirstOrDefault();
+
+        /// <summary>异步消费获取一个</summary>
+        /// <param name="timeout"></param>
+        /// <returns></returns>
+        public Task<T> TakeOneAsync(Int32 timeout = 0) => TaskEx.FromResult(Take(1).FirstOrDefault());
+
+        /// <summary>消费确认</summary>
+        /// <param name="keys"></param>
+        /// <returns></returns>
+        public Int32 Acknowledge(params String[] keys) => throw new NotImplementedException();
+        #endregion
+
+        #region 内部命令
         /// <summary>删除指定消息</summary>
         /// <param name="id"></param>
         /// <returns></returns>
@@ -195,59 +270,6 @@ XREAD count 3 streams stream_key 0-0
             return null;
         }
 
-        /// <summary>批量消费获取，前移指针StartId</summary>
-        /// <param name="count"></param>
-        /// <returns></returns>
-        public IList<T> Take(Int32 count = 1)
-        {
-            var rs = Read(StartId, count);
-            if (rs == null || rs.Count == 0) return null;
-
-            var lastId = "";
-            var list = new List<T>();
-            foreach (var item in rs)
-            {
-                var vs = item.Value;
-                if (vs != null)
-                {
-                    if (vs.Length == 2 && vs[0] == PrimitiveKey)
-                        list.Add(vs[1].ChangeType<T>());
-                    else
-                    {
-                        if (_properties == null) _properties = typeof(T).GetProperties(true).ToDictionary(e => e.Name, e => e);
-
-                        // 字节数组转实体对象
-                        var entry = Activator.CreateInstance<T>();
-                        for (var i = 0; i < vs.Length - 1; i += 2)
-                        {
-                            if (_properties.TryGetValue(vs[i], out var pi))
-                            {
-                                pi.SetValue(entry, vs[i + 1].ChangeType(pi.PropertyType), null);
-                            }
-                        }
-                        list.Add(entry);
-                    }
-                }
-
-                // 最大编号
-                if (String.Compare(item.Key, lastId) > 0) lastId = item.Key;
-            }
-
-            // 更新编号
-            if (!lastId.IsNullOrEmpty())
-            {
-                var ss = lastId.Split('-');
-                if (ss.Length == 2) StartId = $"{ss[0]}-{ss[1].ToInt() + 1}";
-            }
-
-            return list;
-        }
-
-        /// <summary>批量消费获取</summary>
-        /// <param name="count"></param>
-        /// <returns></returns>
-        IEnumerable<T> IProducerConsumer<T>.Take(Int32 count) => Take(count);
-
         /// <summary>创建消费组</summary>
         /// <param name="group"></param>
         /// <returns></returns>
@@ -278,5 +300,6 @@ XREAD count 3 streams stream_key 0-0
 
             return Execute(rc => rc.Execute<String[]>("XREADGROUP", cmd), true);
         }
+        #endregion
     }
 }

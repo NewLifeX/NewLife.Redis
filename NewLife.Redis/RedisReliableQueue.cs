@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using NewLife.Log;
 using NewLife.Security;
 using NewLife.Serialization;
@@ -64,15 +65,15 @@ namespace NewLife.Caching
         #endregion
 
         #region 核心方法
-        /// <summary>生产添加</summary>
-        /// <param name="value">消息</param>
-        /// <returns></returns>
-        public Int32 Add(T value) => Execute(rc => rc.Execute<Int32>("LPUSH", Key, value), true);
+        ///// <summary>生产添加</summary>
+        ///// <param name="value">消息</param>
+        ///// <returns></returns>
+        //public Int32 Add(T value) => Execute(rc => rc.Execute<Int32>("LPUSH", Key, value), true);
 
         /// <summary>批量生产添加</summary>
         /// <param name="values">消息集合</param>
         /// <returns></returns>
-        public Int32 Add(IEnumerable<T> values)
+        public Int32 Add(params T[] values)
         {
             var args = new List<Object> { Key };
             foreach (var item in values)
@@ -93,6 +94,18 @@ namespace NewLife.Caching
             return timeout >= 0 ?
                 Execute(rc => rc.Execute<T>("BRPOPLPUSH", Key, AckKey, timeout), true) :
                 Execute(rc => rc.Execute<T>("RPOPLPUSH", Key, AckKey), true);
+        }
+
+        /// <summary>异步消费获取</summary>
+        /// <param name="timeout"></param>
+        /// <returns></returns>
+        public async Task<T> TakeOneAsync(Int32 timeout = 0)
+        {
+            RetryDeadAck();
+
+            return timeout >= 0 ?
+                await ExecuteAsync(rc => rc.ExecuteAsync<T>("BRPOPLPUSH", Key, AckKey, timeout), true) :
+                await ExecuteAsync(rc => rc.ExecuteAsync<T>("RPOPLPUSH", Key, AckKey), true);
         }
 
         /// <summary>批量消费获取，从Key弹出并备份到AckKey</summary>
@@ -134,24 +147,24 @@ namespace NewLife.Caching
             }
         }
 
-        /// <summary>确认消费，从AckKey中删除</summary>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        public Int32 Acknowledge(T value) => Execute(r => r.Execute<Int32>("LREM", AckKey, 1, value), true);
+        ///// <summary>确认消费，从AckKey中删除</summary>
+        ///// <param name="value"></param>
+        ///// <returns></returns>
+        //public Int32 Acknowledge(T value) => Execute(r => r.Execute<Int32>("LREM", AckKey, 1, value), true);
 
         /// <summary>确认消费，从AckKey中删除</summary>
-        /// <param name="values"></param>
-        public Int32 Acknowledge(IEnumerable<T> values)
+        /// <param name="keys"></param>
+        public Int32 Acknowledge(params String[] keys)
         {
             var rs = 0;
 
             // 管道支持
-            if (values.Count() >= MinPipeline)
+            if (keys.Count() >= MinPipeline)
             {
                 var rds = Redis;
                 rds.StartPipeline();
 
-                foreach (var item in values)
+                foreach (var item in keys)
                 {
                     Execute(r => r.Execute<Int32>("LREM", AckKey, 1, item), true);
                 }
@@ -164,7 +177,7 @@ namespace NewLife.Caching
             }
             else
             {
-                foreach (var item in values)
+                foreach (var item in keys)
                 {
                     rs += Execute(r => r.Execute<Int32>("LREM", AckKey, 1, item), true);
                 }

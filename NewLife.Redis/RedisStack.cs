@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using NewLife.Data;
 
 namespace NewLife.Caching
 {
@@ -28,7 +30,7 @@ namespace NewLife.Caching
         /// <summary>批量生产添加</summary>
         /// <param name="values"></param>
         /// <returns></returns>
-        public Int32 Add(IEnumerable<T> values)
+        public Int32 Add(params T[] values)
         {
             var args = new List<Object> { Key };
             foreach (var item in values)
@@ -73,5 +75,29 @@ namespace NewLife.Caching
                 }
             }
         }
+
+        /// <summary>消费获取，支持阻塞</summary>
+        /// <param name="timeout">超时，0秒永远阻塞；负数表示直接返回，不阻塞。</param>
+        /// <returns></returns>
+        public T TakeOne(Int32 timeout = -1)
+        {
+            if (timeout < 0) return Execute(rc => rc.Execute<T>("RPOP", Key), true);
+
+            var rs = Execute(rc => rc.Execute<Packet[]>("BRPOP", Key, timeout), true);
+            return rs == null || rs.Length < 2 ? default : (T)Redis.Encoder.Decode(rs[1], typeof(T));
+        }
+
+        /// <summary>异步消费获取</summary>
+        /// <param name="timeout"></param>
+        /// <returns></returns>
+        public async Task<T> TakeOneAsync(Int32 timeout = 0)
+        {
+            if (timeout < 0) return await ExecuteAsync(rc => rc.ExecuteAsync<T>("RPOP", Key), true);
+
+            var rs = await ExecuteAsync(rc => rc.ExecuteAsync<Packet[]>("BRPOP", Key, timeout), true);
+            return rs == null || rs.Length < 2 ? default : (T)Redis.Encoder.Decode(rs[1], typeof(T));
+        }
+
+        Int32 IProducerConsumer<T>.Acknowledge(params String[] keys) => throw new NotSupportedException();
     }
 }

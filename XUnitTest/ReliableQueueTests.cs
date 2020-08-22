@@ -134,7 +134,7 @@ namespace XUnitTest
             Assert.Equal(vs2.Length, q2.Count);
 
             // 确认两个
-            var rs = queue.Acknowledge(vs2.Take(2));
+            var rs = queue.Acknowledge(vs2.Take(2).ToArray());
             Assert.Equal(2, rs);
             Assert.Equal(1, q2.Count);
 
@@ -273,7 +273,7 @@ namespace XUnitTest
                 {
                     list.Add(Rand.NextString(32));
                 }
-                q.Add(list);
+                q.Add(list.ToArray());
             }
 
             Assert.Equal(1_000 * 100, q.Count);
@@ -285,7 +285,7 @@ namespace XUnitTest
                 var list = q.Take(n).ToList();
                 if (list.Count == 0) break;
 
-                var n2 = q.Acknowledge(list);
+                var n2 = q.Acknowledge(list.ToArray());
                 Assert.Equal(list.Count, n2);
 
                 count += list.Count;
@@ -313,7 +313,7 @@ namespace XUnitTest
                 {
                     list.Add($"msgContent-{i}-{j}");
                 }
-                queue.Add(list);
+                queue.Add(list.ToArray());
             }
 
             Assert.Equal(1_000 * 100, queue.Count);
@@ -332,7 +332,7 @@ namespace XUnitTest
                         var list = queue2.Take(n).Where(e => !e.IsNullOrEmpty()).ToList();
                         if (list.Count == 0) break;
 
-                        var n2 = queue2.Acknowledge(list);
+                        var n2 = queue2.Acknowledge(list.ToArray());
                         // Ack返回值似乎没那么准
                         //Assert.Equal(list.Count, n2);
 
@@ -367,7 +367,7 @@ namespace XUnitTest
             {
                 list.Add(Rand.NextString(32));
             }
-            queue.Add(list);
+            queue.Add(list.ToArray());
 
             var list2 = queue.Take(10).ToList();
             Assert.Equal(list.Count, list2.Count);
