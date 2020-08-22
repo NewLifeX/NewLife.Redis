@@ -189,7 +189,7 @@ namespace XUnitTest
             // 延迟2秒生产消息
             ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); queue.Add("xxyy"); });
             var sw = Stopwatch.StartNew();
-            var rs = queue.TakeOne(2100);
+            var rs = queue.TakeOne(3);
             sw.Stop();
             Assert.Equal("xxyy", rs);
             Assert.True(sw.ElapsedMilliseconds >= 2000);
@@ -395,6 +395,41 @@ namespace XUnitTest
 
             // 确认队列应该空了
             Assert.Equal(0, q2.Count);
+        }
+
+        [Fact]
+        public async void Queue_Async()
+        {
+            var key = "ReliableQueue_Async";
+
+            // 删除已有
+            _redis.Remove(key);
+            var q = _redis.GetReliableQueue<String>(key);
+
+            // 添加
+            var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
+            q.Add(vs);
+
+            // 取出来
+            Assert.Equal("1234", await q.TakeOneAsync(0));
+            Assert.Equal("abcd", await q.TakeOneAsync(0));
+            Assert.Equal("新生命团队", await q.TakeOneAsync(0));
+            Assert.Equal("ABEF", await q.TakeOneAsync(0));
+
+            // 空消息
+            var sw = Stopwatch.StartNew();
+            var rs = await q.TakeOneAsync(2);
+            sw.Stop();
+            Assert.Null(rs);
+            Assert.True(sw.ElapsedMilliseconds >= 2000);
+
+            // 延迟2秒生产消息
+            ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); q.Add("xxyy"); });
+            sw = Stopwatch.StartNew();
+            rs = await q.TakeOneAsync(3);
+            sw.Stop();
+            Assert.Equal("xxyy", rs);
+            Assert.True(sw.ElapsedMilliseconds >= 2000);
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Data;
 
@@ -33,10 +34,7 @@ namespace NewLife.Caching
         /// <summary>生产添加</summary>
         /// <param name="value">消息</param>
         /// <returns></returns>
-        public Int32 Add(T value)
-        {
-            return Execute(rc => rc.Execute<Int32>("LPUSH", Key, value), true);
-        }
+        public Int32 Add(T value) => Execute(rc => rc.Execute<Int32>("LPUSH", Key, value), true);
 
         /// <summary>批量生产添加</summary>
         /// <param name="values">消息集合</param>
@@ -63,14 +61,20 @@ namespace NewLife.Caching
         }
 
         /// <summary>异步消费获取</summary>
-        /// <param name="timeout"></param>
+        /// <param name="timeout">超时，0秒永远阻塞；负数表示直接返回，不阻塞。</param>
         /// <returns></returns>
         public async Task<T> TakeOneAsync(Int32 timeout = 0)
         {
+#if NET4
+            throw new NotSupportedException();
+#else
             if (timeout < 0) return await ExecuteAsync(rc => rc.ExecuteAsync<T>("RPOP", Key), true);
 
-            var rs = await ExecuteAsync(rc => rc.ExecuteAsync<Packet[]>("BRPOP", Key, timeout), true);
+            var tm = timeout == 0 ? Redis.Timeout : (timeout * 1000);
+            var source = new CancellationTokenSource(tm + 100);
+            var rs = await ExecuteAsync(rc => rc.ExecuteAsync<Packet[]>("BRPOP", new Object[] { Key, timeout }, source.Token), true);
             return rs == null || rs.Length < 2 ? default : (T)Redis.Encoder.Decode(rs[1], typeof(T));
+#endif
         }
 
         /// <summary>批量消费获取</summary>

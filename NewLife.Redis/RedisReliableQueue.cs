@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Log;
 using NewLife.Security;
@@ -46,9 +47,9 @@ namespace NewLife.Caching
         /// <summary>是否为空</summary>
         public Boolean IsEmpty => Count == 0;
 
-        private String _Key;
-        private String _StatusKey;
-        private Status _Status;
+        private readonly String _Key;
+        private readonly String _StatusKey;
+        private readonly Status _Status;
         #endregion
 
         #region 构造
@@ -101,11 +102,17 @@ namespace NewLife.Caching
         /// <returns></returns>
         public async Task<T> TakeOneAsync(Int32 timeout = 0)
         {
+#if NET4
+            throw new NotSupportedException();
+#else
             RetryDeadAck();
 
-            return timeout >= 0 ?
-                await ExecuteAsync(rc => rc.ExecuteAsync<T>("BRPOPLPUSH", Key, AckKey, timeout), true) :
-                await ExecuteAsync(rc => rc.ExecuteAsync<T>("RPOPLPUSH", Key, AckKey), true);
+            if (timeout < 0) return await ExecuteAsync(rc => rc.ExecuteAsync<T>("RPOPLPUSH", Key, AckKey), true);
+
+            var tm = timeout == 0 ? Redis.Timeout : (timeout * 1000);
+            var source = new CancellationTokenSource(tm + 100);
+            return await ExecuteAsync(rc => rc.ExecuteAsync<T>("BRPOPLPUSH", new Object[] { Key, AckKey, timeout }, source.Token), true);
+#endif
         }
 
         /// <summary>批量消费获取，从Key弹出并备份到AckKey</summary>
@@ -313,7 +320,7 @@ namespace NewLife.Caching
         #endregion
 
         #region 状态
-        private static Status _def = new Status
+        private static readonly Status _def = new Status
         {
             MachineName = Environment.MachineName,
             UserName = Environment.UserName,
@@ -341,7 +348,7 @@ namespace NewLife.Caching
             Redis.Set(_StatusKey, _Status);
         }
 
-        class Status
+        private class Status
         {
             /// <summary>标识消费者的唯一Key</summary>
             public String UKey { get; set; }

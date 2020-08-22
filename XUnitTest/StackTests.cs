@@ -1,8 +1,10 @@
 ﻿using NewLife.Caching;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using Xunit;
 
 namespace XUnitTest
@@ -19,7 +21,7 @@ namespace XUnitTest
         [Fact]
         public void Stack_Normal()
         {
-            var key = "skey";
+            var key = "Stack_Normal";
 
             // 删除已有
             _redis.Remove(key);
@@ -58,6 +60,41 @@ namespace XUnitTest
             var count3 = stack.Count;
             Assert.True(stack.IsEmpty);
             Assert.Equal(count, count3);
+        }
+
+        [Fact]
+        public async void Queue_Async()
+        {
+            var key = "Stack_Async";
+
+            // 删除已有
+            _redis.Remove(key);
+            var q = _redis.GetStack<String>(key);
+
+            // 添加
+            var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
+            q.Add(vs);
+
+            // 取出来
+            Assert.Equal("ABEF", await q.TakeOneAsync(0));
+            Assert.Equal("新生命团队", await q.TakeOneAsync(0));
+            Assert.Equal("abcd", await q.TakeOneAsync(0));
+            Assert.Equal("1234", await q.TakeOneAsync(0));
+
+            // 空消息
+            var sw = Stopwatch.StartNew();
+            var rs = await q.TakeOneAsync(2);
+            sw.Stop();
+            Assert.Null(rs);
+            Assert.True(sw.ElapsedMilliseconds >= 2000);
+
+            // 延迟2秒生产消息
+            ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); q.Add("xxyy"); });
+            sw = Stopwatch.StartNew();
+            rs = await q.TakeOneAsync(3);
+            sw.Stop();
+            Assert.Equal("xxyy", rs);
+            Assert.True(sw.ElapsedMilliseconds >= 2000);
         }
     }
 }

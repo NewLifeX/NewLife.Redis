@@ -33,8 +33,7 @@ namespace XUnitTest
             var q = _redis.GetQueue<String>(key);
             _redis.SetExpire(key, TimeSpan.FromMinutes(60));
 
-            var queue = q as RedisQueue<String>;
-            Assert.NotNull(queue);
+            Assert.NotNull(q as RedisQueue<String>);
 
             // 取出个数
             var count = q.Count;
@@ -80,8 +79,7 @@ namespace XUnitTest
             var q = _redis.GetQueue<String>(key);
             _redis.SetExpire(key, TimeSpan.FromMinutes(60));
 
-            var queue = q as RedisQueue<String>;
-            Assert.NotNull(queue);
+            Assert.NotNull(q as RedisQueue<String>);
 
             // 取出个数
             var count = q.Count;
@@ -92,7 +90,7 @@ namespace XUnitTest
             var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
             foreach (var item in vs)
             {
-                queue.Add(item);
+                q.Add(item);
             }
 
             // 对比个数
@@ -101,15 +99,15 @@ namespace XUnitTest
             Assert.Equal(vs.Length, count2);
 
             // 取出来
-            Assert.Equal(vs[0], queue.TakeOne());
-            Assert.Equal(vs[1], queue.TakeOne());
-            Assert.Equal(vs[2], queue.TakeOne());
-            Assert.Equal(vs[3], queue.TakeOne());
+            Assert.Equal(vs[0], q.TakeOne());
+            Assert.Equal(vs[1], q.TakeOne());
+            Assert.Equal(vs[2], q.TakeOne());
+            Assert.Equal(vs[3], q.TakeOne());
 
             // 延迟2秒生产消息
-            ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); queue.Add("xxyy"); });
+            ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); q.Add("xxyy"); });
             var sw = Stopwatch.StartNew();
-            var rs = queue.TakeOne(2100);
+            var rs = q.TakeOne(3);
             sw.Stop();
             Assert.Equal("xxyy", rs);
             Assert.True(sw.ElapsedMilliseconds >= 2000);
@@ -125,8 +123,7 @@ namespace XUnitTest
             var q = _redis.GetQueue<String>(key);
             _redis.SetExpire(key, TimeSpan.FromMinutes(60));
 
-            var queue = q as RedisQueue<String>;
-            Assert.NotNull(queue);
+            Assert.NotNull(q as RedisQueue<String>);
 
             // 取出个数
             var count = q.Count;
@@ -227,6 +224,53 @@ namespace XUnitTest
             Task.WaitAll(ths.ToArray());
 
             Assert.Equal(1_000 * 100, count);
+        }
+
+        [Fact]
+        public async void Queue_Async()
+        {
+            var key = "Queue_Async";
+
+            // 删除已有
+            _redis.Remove(key);
+            var q = _redis.GetQueue<String>(key);
+
+            // 添加
+            var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
+            q.Add(vs);
+
+            // 取出来
+            Assert.Equal("1234", await q.TakeOneAsync(0));
+            Assert.Equal("abcd", await q.TakeOneAsync(0));
+            Assert.Equal("新生命团队", await q.TakeOneAsync(0));
+            Assert.Equal("ABEF", await q.TakeOneAsync(0));
+
+            // 空消息
+            var sw = Stopwatch.StartNew();
+            var rs = await q.TakeOneAsync(2);
+            sw.Stop();
+            Assert.Null(rs);
+            Assert.True(sw.ElapsedMilliseconds >= 2000);
+
+            // 延迟2秒生产消息
+            ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); q.Add("xxyy"); });
+            sw = Stopwatch.StartNew();
+            rs = await q.TakeOneAsync(3);
+            sw.Stop();
+            Assert.Equal("xxyy", rs);
+            Assert.True(sw.ElapsedMilliseconds >= 2000);
+        }
+
+        [Fact]
+        public void Queue_NoAck()
+        {
+            var key = "Queue_NoAck";
+
+            // 删除已有
+            _redis.Remove(key);
+            var q = _redis.GetQueue<String>(key);
+
+            Assert.Throws<NotSupportedException>(() => q.Acknowledge(""));
         }
     }
 }
