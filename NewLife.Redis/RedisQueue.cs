@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Data;
 
@@ -70,9 +69,7 @@ namespace NewLife.Caching
 #else
             if (timeout < 0) return await ExecuteAsync(rc => rc.ExecuteAsync<T>("RPOP", Key), true);
 
-            var tm = timeout == 0 ? Redis.Timeout : (timeout * 1000);
-            var source = new CancellationTokenSource(tm + 100);
-            var rs = await ExecuteAsync(rc => rc.ExecuteAsync<Packet[]>("BRPOP", new Object[] { Key, timeout }, source.Token), true);
+            var rs = await ExecuteAsync(rc => rc.ExecuteAsync<Packet[]>("BRPOP", Key, timeout), true);
             return rs == null || rs.Length < 2 ? default : (T)Redis.Encoder.Decode(rs[1], typeof(T));
 #endif
         }

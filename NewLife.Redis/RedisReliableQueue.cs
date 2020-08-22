@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Log;
 using NewLife.Security;
@@ -109,9 +108,7 @@ namespace NewLife.Caching
 
             if (timeout < 0) return await ExecuteAsync(rc => rc.ExecuteAsync<T>("RPOPLPUSH", Key, AckKey), true);
 
-            var tm = timeout == 0 ? Redis.Timeout : (timeout * 1000);
-            var source = new CancellationTokenSource(tm + 100);
-            return await ExecuteAsync(rc => rc.ExecuteAsync<T>("BRPOPLPUSH", new Object[] { Key, AckKey, timeout }, source.Token), true);
+            return await ExecuteAsync(rc => rc.ExecuteAsync<T>("BRPOPLPUSH", Key, AckKey, timeout), true);
 #endif
         }
 

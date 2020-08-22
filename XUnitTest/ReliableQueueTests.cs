@@ -356,7 +356,7 @@ namespace XUnitTest
 
             _redis.Remove(key);
             var queue = _redis.GetReliableQueue<String>(key);
-            queue.RetryInterval = 2;
+            queue.RetryInterval = 5;
 
             // 清空
             queue.TakeAllAck().ToArray();
@@ -405,6 +405,17 @@ namespace XUnitTest
             // 删除已有
             _redis.Remove(key);
             var q = _redis.GetReliableQueue<String>(key);
+
+            // 发现回滚
+            var rcount = q.RollbackAllAck();
+            if (rcount > 0)
+            {
+                XTrace.WriteLine("回滚：{0}", rcount);
+
+                Assert.Equal(rcount, q.Count);
+                var rcount2 = _redis.Remove(key);
+                Assert.Equal(1, rcount2);
+            }
 
             // 添加
             var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
