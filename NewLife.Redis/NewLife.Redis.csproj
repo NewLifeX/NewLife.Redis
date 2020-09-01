@@ -7,11 +7,11 @@
     <Description>Redis基础操作、列表结构、哈希结构、Set结构，经过日均100亿次调用量的项目验证</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2020 新生命开发团队</Copyright>
-    <Version>3.7.2020.0822-beta4</Version>
-    <FileVersion>3.7.2020.0822</FileVersion>
-    <AssemblyVersion>3.7.*</AssemblyVersion>
+    <Version>3.8.2020.0901</Version>
+    <FileVersion>3.8.2020.0901</FileVersion>
+    <AssemblyVersion>3.8.*</AssemblyVersion>
     <Deterministic>false</Deterministic>
-    <OutputPath>..\Bin</OutputPath>
+    <OutputPath>..\..\Bin</OutputPath>
     <DocumentationFile>$(OutputPath)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
     <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
@@ -24,7 +24,7 @@
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Redis</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>完整版Queue队列，支持Ack确认</PackageReleaseNotes>
+    <PackageReleaseNotes>增强版消息队列</PackageReleaseNotes>
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -47,7 +47,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="8.9.2020.822-beta6" />
+    <PackageReference Include="NewLife.Core" Version="8.10.2020.901" />
   </ItemGroup>
 
 </Project>
