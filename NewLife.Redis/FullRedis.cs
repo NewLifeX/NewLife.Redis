@@ -229,21 +229,24 @@ namespace NewLife.Caching
         /// <param name="count"></param>
         /// <param name="position"></param>
         /// <returns></returns>
-        public virtual String[] Search(String pattern, Int32 count, ref Int32 position)
+        public virtual IEnumerable<String> Search(String pattern, Int32 count, Int32 position = 0)
         {
-            var p = position;
-            var rs = Execute(null, r => r.Execute<Object[]>("SCAN", p, "MATCH", pattern + "", "COUNT", count));
-
-            if (rs != null)
+            while (count > 0)
             {
+                var rs = Execute(null, r => r.Execute<Object[]>("SCAN", position, "MATCH", pattern + "", "COUNT", count));
+                if (rs == null || rs.Length != 2) break;
+
                 position = (rs[0] as Packet).ToStr().ToInt();
+                if (position == 0) break;
 
                 var ps = rs[1] as Object[];
-                var ss = ps.Select(e => (e as Packet).ToStr()).ToArray();
-                return ss;
-            }
+                foreach (Packet item in ps)
+                {
+                    yield return item.ToStr();
+                }
 
-            return null;
+                count -= ps.Length;
+            }
         }
         #endregion
 
