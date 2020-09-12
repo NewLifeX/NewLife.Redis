@@ -35,7 +35,7 @@ namespace XUnitTest
             _redis.SetExpire(key, TimeSpan.FromMinutes(60));
 
             // 发现回滚
-            var rcount = queue.RetryDeadAck();
+            var rcount = queue.RollbackAllAck();
             if (rcount > 0)
             {
                 XTrace.WriteLine("回滚：{0}", rcount);
@@ -103,7 +103,7 @@ namespace XUnitTest
             _redis.SetExpire(key, TimeSpan.FromMinutes(60));
 
             // 回滚死信，然后清空
-            var dead = queue.RetryDeadAck();
+            var dead = queue.RollbackAllAck();
             if (dead > 0) _redis.Remove(key);
 
             // 取出个数
@@ -182,8 +182,14 @@ namespace XUnitTest
         public void Queue_Benchmark()
         {
             var key = "DelayQueue_benchmark";
+            _redis.Remove(key);
 
-            var q = _redis.GetDelayQueue<String>(key);
+            var queue = _redis.GetDelayQueue<String>(key);
+
+            // 回滚死信，然后清空
+            var dead = queue.RollbackAllAck();
+            if (dead > 0) _redis.Remove(key);
+
             for (var i = 0; i < 1_000; i++)
             {
                 var list = new List<String>();
@@ -191,17 +197,20 @@ namespace XUnitTest
                 {
                     list.Add(Rand.NextString(32));
                 }
-                q.Add(list.ToArray());
+                queue.Add(list.ToArray());
             }
 
-            Assert.Equal(1_000 * 20, q.Count);
+            Assert.Equal(1_000 * 20, queue.Count);
 
             var count = 0;
             while (true)
             {
                 var n = Rand.Next(1, 100);
-                var list = q.Take(n).ToList();
+                var list = queue.Take(n).ToList();
                 if (list.Count == 0) break;
+
+                var n2 = queue.Acknowledge(list.ToArray());
+                Assert.Equal(list.Count, n2);
 
                 count += list.Count;
             }
@@ -215,7 +224,12 @@ namespace XUnitTest
             var key = "DelayQueue_benchmark_mutilate";
             _redis.Remove(key);
 
-            var q = _redis.GetDelayQueue<String>(key);
+            var queue = _redis.GetDelayQueue<String>(key);
+
+            // 回滚死信，然后清空
+            var dead = queue.RollbackAllAck();
+            if (dead > 0) _redis.Remove(key);
+
             for (var i = 0; i < 1_000; i++)
             {
                 var list = new List<String>();
@@ -223,10 +237,10 @@ namespace XUnitTest
                 {
                     list.Add(Rand.NextString(32));
                 }
-                q.Add(list.ToArray());
+                queue.Add(list.ToArray());
             }
 
-            Assert.Equal(1_000 * 20, q.Count);
+            Assert.Equal(1_000 * 20, queue.Count);
 
             var count = 0;
             var ths = new List<Task>();
@@ -234,11 +248,15 @@ namespace XUnitTest
             {
                 ths.Add(Task.Run(() =>
                 {
+                    var queue2 = _redis.GetDelayQueue<String>(key);
                     while (true)
                     {
                         var n = Rand.Next(1, 100);
-                        var list = q.Take(n).ToList();
+                        var list = queue2.Take(n).ToList();
                         if (list.Count == 0) break;
+                      
+                        var n2 = queue2.Acknowledge(list.ToArray());
+                        Assert.Equal(list.Count, n2);
 
                         Interlocked.Add(ref count, list.Count);
                     }
@@ -257,29 +275,40 @@ namespace XUnitTest
 
             // 删除已有
             _redis.Remove(key);
-            var q = _redis.GetDelayQueue<String>(key);
+            var queue = _redis.GetDelayQueue<String>(key);
+
+            // 发现回滚
+            var rcount = queue.RollbackAllAck();
+            if (rcount > 0)
+            {
+                XTrace.WriteLine("回滚：{0}", rcount);
+
+                Assert.Equal(rcount, queue.Count);
+                var rcount2 = _redis.Remove(key);
+                Assert.Equal(1, rcount2);
+            }
 
             // 添加
             var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
-            q.Add(vs);
+            queue.Add(vs);
 
             // 取出来
-            Assert.Equal("1234", await q.TakeOneAsync(0));
-            Assert.Equal("ABEF", await q.TakeOneAsync(0));
-            Assert.Equal("abcd", await q.TakeOneAsync(0));
-            Assert.Equal("新生命团队", await q.TakeOneAsync(0));
+            Assert.Equal("1234", await queue.TakeOneAsync(0));
+            Assert.Equal("ABEF", await queue.TakeOneAsync(0));
+            Assert.Equal("abcd", await queue.TakeOneAsync(0));
+            Assert.Equal("新生命团队", await queue.TakeOneAsync(0));
 
             // 空消息
             var sw = Stopwatch.StartNew();
-            var rs = await q.TakeOneAsync(2);
+            var rs = await queue.TakeOneAsync(2);
             sw.Stop();
             Assert.Null(rs);
             Assert.True(sw.ElapsedMilliseconds >= 2000);
 
             // 延迟2秒生产消息
-            ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); q.Add("xxyy"); });
+            ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); queue.Add("xxyy"); });
             sw = Stopwatch.StartNew();
-            rs = await q.TakeOneAsync(3);
+            rs = await queue.TakeOneAsync(3);
             sw.Stop();
             Assert.Equal("xxyy", rs);
             Assert.True(sw.ElapsedMilliseconds >= 2000);

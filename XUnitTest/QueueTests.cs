@@ -270,7 +270,9 @@ namespace XUnitTest
             _redis.Remove(key);
             var q = _redis.GetQueue<String>(key);
 
-            Assert.Throws<NotSupportedException>(() => q.Acknowledge(""));
+            //Assert.Throws<NotSupportedException>(() => q.Acknowledge(""));
+            var rs = q.Acknowledge("");
+            Assert.Equal(-1, rs);
         }
     }
 }

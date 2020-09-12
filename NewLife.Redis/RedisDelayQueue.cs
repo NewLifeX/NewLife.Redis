@@ -207,7 +207,7 @@ namespace NewLife.Caching
         /// <summary>确认删除</summary>
         /// <param name="keys"></param>
         /// <returns></returns>
-        public Int32 Acknowledge(params String[] keys) => Remove(Key, keys);
+        public Int32 Acknowledge(params String[] keys) => Remove(AckKey, keys);
         #endregion
 
         #region 死信处理
@@ -236,7 +236,7 @@ namespace NewLife.Caching
 
         private DateTime _nextRetry;
         /// <summary>处理未确认的死信，重新放入队列</summary>
-        public Int32 RetryDeadAck()
+        private Int32 RetryDeadAck()
         {
             var now = DateTime.Now;
             // 一定间隔处理死信
@@ -255,6 +255,10 @@ namespace NewLife.Caching
 
             return 0;
         }
+
+        /// <summary>全局回滚死信，一般由单一线程执行，避免干扰处理中数据</summary>
+        /// <returns></returns>
+        public Int32 RollbackAllAck() => RetryDeadAck();
         #endregion
 
         #region 辅助方法
