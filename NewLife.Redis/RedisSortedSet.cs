@@ -10,7 +10,7 @@ namespace NewLife.Caching
     public class RedisSortedSet : RedisBase
     {
         #region 实例化
-        /// <summary>实例化超级基数</summary>
+        /// <summary>实例化有序集合</summary>
         /// <param name="redis"></param>
         /// <param name="key"></param>
         public RedisSortedSet(Redis redis, String key) : base(redis, key) { }
@@ -20,9 +20,9 @@ namespace NewLife.Caching
         /// <summary>个数</summary>
         public Int32 Count => Execute(rc => rc.Execute<Int32>("ZCARD", Key));
 
-        /// <summary>添加</summary>
-        /// <param name="item"></param>
-        /// <param name="score"></param>
+        /// <summary>添加元素并指定分数</summary>
+        /// <param name="item">元素</param>
+        /// <param name="score">分数</param>
         public Boolean Add(String item, Double score)
         {
             var dic = new Dictionary<String, Double>
@@ -33,7 +33,7 @@ namespace NewLife.Caching
             return Add(null, dic) == 1;
         }
 
-        /// <summary>删除</summary>
+        /// <summary>删除元素</summary>
         /// <param name="item"></param>
         /// <returns></returns>
         public Boolean Remove(String item) => Execute(r => r.Execute<Int32>("ZREM", Key, item), true) == 1;

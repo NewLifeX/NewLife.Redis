@@ -161,6 +161,12 @@ namespace NewLife.Caching
         /// <returns></returns>
         public RedisReliableQueue<T> GetReliableQueue<T>(String key) => new RedisReliableQueue<T>(this, key);
 
+        /// <summary>获取延迟队列</summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public RedisDelayQueue<T> GetDelayQueue<T>(String key) => new RedisDelayQueue<T>(this, key);
+
         /// <summary>获取栈</summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="key"></param>
