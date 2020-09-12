@@ -26,6 +26,15 @@ namespace NewLife.Caching
     /// 
     /// 消费者要慎重处理错误消息，有可能某条消息一直处理失败，如果未确认，队列会反复把消息送回主队列。
     /// 建议用户自己处理并确认消费，通过消息体或者redisKey计数。
+    /// 
+    /// 高级队列技巧：
+    /// 1，按kv写入消息体，然后key作为消息键写入队列并消费，成功消费后从kv删除；
+    /// 2，消息键key自定义，随时可以查看或删除消息体，也可以避免重复生产；
+    /// 3，Redis队列确保至少消费一次，消息体和消息键分离后，可以做到有且仅有一次，若有二次消费，再也拿不到数据内容；
+    /// 4，同一个消息被重复生产时，尽管队列里面有两条消息键，但由于消息键相同，消息体只有一份，从而避免重复消费；
+    /// 
+    /// 可信Redis队列，每次生产操作1次Redis，消费操作2次Redis；
+    /// 高级Redis队列，每次生产操作3次Redis，消费操作4次Redis；
     /// </remarks>
     /// <typeparam name="T"></typeparam>
     public class RedisReliableQueue<T> : RedisBase, IProducerConsumer<T>
@@ -39,6 +48,9 @@ namespace NewLife.Caching
 
         /// <summary>最小管道阈值，达到该值时使用管道，默认3</summary>
         public Int32 MinPipeline { get; set; } = 3;
+
+        /// <summary>消息体过期时间，仅用于高级消息生产和消费，默认10*24*3600</summary>
+        public Int32 BodyExpire { get; set; } = 10 * 24 * 3600;
 
         /// <summary>个数</summary>
         public Int32 Count => Execute(r => r.Execute<Int32>("LLEN", Key));
@@ -65,11 +77,6 @@ namespace NewLife.Caching
         #endregion
 
         #region 核心方法
-        ///// <summary>生产添加</summary>
-        ///// <param name="value">消息</param>
-        ///// <returns></returns>
-        //public Int32 Add(T value) => Execute(rc => rc.Execute<Int32>("LPUSH", Key, value), true);
-
         /// <summary>批量生产添加</summary>
         /// <param name="values">消息集合</param>
         /// <returns></returns>
@@ -106,9 +113,9 @@ namespace NewLife.Caching
 #else
             RetryDeadAck();
 
-            if (timeout < 0) return await ExecuteAsync(rc => rc.ExecuteAsync<T>("RPOPLPUSH", Key, AckKey), true);
-
-            return await ExecuteAsync(rc => rc.ExecuteAsync<T>("BRPOPLPUSH", Key, AckKey, timeout), true);
+            return (timeout < 0) ?
+                await ExecuteAsync(rc => rc.ExecuteAsync<T>("RPOPLPUSH", Key, AckKey), true) :
+                await ExecuteAsync(rc => rc.ExecuteAsync<T>("BRPOPLPUSH", Key, AckKey, timeout), true);
 #endif
         }
 
@@ -151,11 +158,6 @@ namespace NewLife.Caching
             }
         }
 
-        ///// <summary>确认消费，从AckKey中删除</summary>
-        ///// <param name="value"></param>
-        ///// <returns></returns>
-        //public Int32 Acknowledge(T value) => Execute(r => r.Execute<Int32>("LREM", AckKey, 1, value), true);
-
         /// <summary>确认消费，从AckKey中删除</summary>
         /// <param name="keys"></param>
         public Int32 Acknowledge(params String[] keys)
@@ -191,19 +193,84 @@ namespace NewLife.Caching
         }
         #endregion
 
+        #region 高级队列
+        /// <summary>高级生产消息。消息体和消息键分离，业务层指定消息键，可随时查看或删除，同时避免重复生产</summary>
+        /// <remarks>
+        /// Publish 必须跟 ConsumeAsync 配对使用。
+        /// </remarks>
+        /// <param name="messages"></param>
+        /// <returns></returns>
+        public Int32 Publish(IDictionary<String, T> messages)
+        {
+            // 消息体写入kv
+            Redis.SetAll(messages, BodyExpire);
+
+            // 消息键写入队列
+            var args = new List<Object> { Key };
+            foreach (var item in messages)
+            {
+                args.Add(item.Key);
+            }
+            var rs = Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
+
+            return rs;
+        }
+
+        /// <summary>高级消费消息。消息处理成功后，自动确认并删除消息体</summary>
+        /// <remarks>
+        /// Publish 必须跟 ConsumeAsync 配对使用。
+        /// </remarks>
+        /// <param name="func"></param>
+        /// <param name="timeout"></param>
+        /// <returns></returns>
+        public async Task<TResult> ConsumeAsync<TResult>(Func<T, Task<TResult>> func, Int32 timeout = 0)
+        {
+#if NET4
+            throw new NotSupportedException();
+#else
+            RetryDeadAck();
+
+            // 取出消息键
+            var msgId = (timeout < 0) ?
+                await ExecuteAsync(rc => rc.ExecuteAsync<String>("RPOPLPUSH", Key, AckKey), true) :
+                await ExecuteAsync(rc => rc.ExecuteAsync<String>("BRPOPLPUSH", Key, AckKey, timeout), true);
+
+            // 取出消息。如果重复消费，或者业务层已经删除消息，此时将拿不到
+            //var message = Redis.Get<T>(msgId);
+            //if (Equals(message, default)) return 0;
+            if (!Redis.TryGet(msgId, out T messge))
+            {
+                // 拿不到消息体，直接确认消息键
+                Acknowledge(msgId);
+                return default;
+            }
+
+            // 处理消息。如果消息已被删除，此时调用func将受到空引用
+            var rs = await func(messge);
+
+            // 确认并删除消息
+            Redis.Remove(msgId);
+            Acknowledge(msgId);
+
+            return rs;
+#endif
+        }
+        #endregion
+
         #region 死信处理
         /// <summary>从确认列表弹出消息，用于消费中断后，重新恢复现场时获取</summary>
         /// <remarks>理论上Ack队列只存储极少数数据</remarks>
         /// <param name="count"></param>
         /// <returns></returns>
-        public IEnumerable<T> TakeAck(Int32 count = 1)
+        public IEnumerable<String> TakeAck(Int32 count = 1)
         {
             if (count <= 0) yield break;
 
             for (var i = 0; i < count; i++)
             {
-                var value = Execute(rc => rc.Execute<T>("RPOP", AckKey), true);
-                if (Equals(value, default(T))) break;
+                var value = Execute(rc => rc.Execute<String>("RPOP", AckKey), true);
+                //if (Equals(value, default(T))) break;
+                if (value == null) break;
 
                 yield return value;
             }
@@ -211,7 +278,7 @@ namespace NewLife.Caching
 
         /// <summary>消费所有确认队列中的遗留数据，一般在应用启动时由单一线程执行</summary>
         /// <returns></returns>
-        public IEnumerable<T> TakeAllAck()
+        public IEnumerable<String> TakeAllAck()
         {
             var rds = Redis as FullRedis;
 
@@ -221,8 +288,9 @@ namespace NewLife.Caching
                 // 消费所有数据
                 while (true)
                 {
-                    var value = Execute(rc => rc.Execute<T>("RPOP", key), true);
-                    if (Equals(value, default(T))) break;
+                    var value = Execute(rc => rc.Execute<String>("RPOP", key), true);
+                    //if (Equals(value, default(T))) break;
+                    if (value == null) break;
 
                     yield return value;
                 }
@@ -237,14 +305,14 @@ namespace NewLife.Caching
         /// <param name="key"></param>
         /// <param name="ackKey"></param>
         /// <returns></returns>
-        private List<T> RollbackAck(String key, String ackKey)
+        private List<String> RollbackAck(String key, String ackKey)
         {
             // 消费所有数据
-            var list = new List<T>();
+            var list = new List<String>();
             while (true)
             {
-                var value = Execute(rc => rc.Execute<T>("RPOPLPUSH", ackKey, key), true);
-                if (Equals(value, default(T))) break;
+                var value = Execute(rc => rc.Execute<String>("RPOPLPUSH", ackKey, key), true);
+                if (value == null) break;
 
                 list.Add(value);
             }

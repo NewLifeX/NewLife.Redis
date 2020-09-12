@@ -14,14 +14,15 @@ namespace XUnitTest
 {
     public class ReliableQueueTests
     {
-        private FullRedis _redis;
+        private readonly FullRedis _redis;
 
         public ReliableQueueTests()
         {
-            _redis = new FullRedis("127.0.0.1:6379", null, 2);
+            var rds = new FullRedis("127.0.0.1:6379", null, 2);
 #if DEBUG
-            _redis.Log = XTrace.Log;
+            rds.Log = XTrace.Log;
 #endif
+            _redis = rds;
         }
 
         [Fact]
@@ -441,6 +442,86 @@ namespace XUnitTest
             sw.Stop();
             Assert.Equal("xxyy", rs);
             Assert.True(sw.ElapsedMilliseconds >= 2000);
+        }
+
+        [Fact]
+        public async void Queue_PublishAndConsume()
+        {
+            var key = "ReliableQueue_PublishAndConsume";
+
+            // 删除已有
+            _redis.Remove(key);
+            var q = _redis.GetReliableQueue<MyModel>(key);
+
+            // 改变有效期
+            q.BodyExpire = 5 * 60;
+
+            var dic = new Dictionary<String, MyModel>
+            {
+                ["aaa"] = new MyModel { Id = 123, Name = "a123" },
+                ["bbb"] = new MyModel { Id = 456, Name = "b456" },
+                ["ccc"] = new MyModel { Id = 789, Name = "c789" },
+            };
+
+            // 生产
+            var rs = q.Publish(dic);
+            Assert.Equal(dic.Count, rs);
+
+            // 查看并干掉第二项
+            var v2 = _redis.Get<MyModel>("bbb");
+            Assert.NotNull(v2);
+            Assert.Equal(456, v2.Id);
+            Assert.Equal("b456", v2.Name);
+
+            var ttl = _redis.GetExpire("bbb");
+            Assert.True(ttl.TotalSeconds <= q.BodyExpire);
+            Assert.True(ttl.TotalSeconds >= q.BodyExpire - 2);
+
+            rs = _redis.Remove("bbb");
+
+            // 消费第一项
+            XTrace.WriteLine("消费第一项");
+            var v1 = await q.ConsumeAsync(ProcessAsync, 3);
+            Assert.NotNull(v1);
+            Assert.Equal(123, v1.Id);
+
+            // 消费第二项
+            XTrace.WriteLine("消费第二项");
+            v2 = await q.ConsumeAsync(ProcessAsync, 3);
+            Assert.Null(v2);
+
+            // 消费第三项
+            XTrace.WriteLine("消费第三项");
+            var v3 = await q.ConsumeAsync(ProcessAsync, 3);
+            Assert.NotNull(v3);
+            Assert.Equal(789, v3.Id);
+        }
+
+        private Task<MyModel> ProcessAsync(MyModel msg)
+        {
+            switch (msg.Id)
+            {
+                case 123:
+                    Assert.NotNull(msg);
+                    Assert.Equal(123, msg.Id);
+                    Assert.Equal("a123", msg.Name);
+                    break;
+                case 456:
+                    Assert.Null(msg);
+                    break;
+                case 789:
+                    Assert.NotNull(msg);
+                    Assert.Equal(789, msg.Id);
+                    Assert.Equal("c789", msg.Name);
+                    break;
+            }
+            return Task.FromResult(msg);
+        }
+
+        private class MyModel
+        {
+            public Int32 Id { get; set; }
+            public String Name { get; set; }
         }
     }
 }

@@ -8,6 +8,8 @@ namespace NewLife.Caching
     /// <summary>Redis队列，左进右出</summary>
     /// <remarks>
     /// 默认弹出消费，不需要确认，使用非常简单，但如果消费者处理失败，消息将会丢失；
+    /// 
+    /// 普通Redis队列，每次生产操作1次Redis，消费操作1次Redis。
     /// </remarks>
     /// <typeparam name="T"></typeparam>
     public class RedisQueue<T> : RedisBase, IProducerConsumer<T>
