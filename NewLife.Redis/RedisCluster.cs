@@ -59,7 +59,7 @@ namespace NewLife.Caching
             foreach (var node in list)
             {
                 var name = Redis?.Name + "";
-                if (!name.IsNullOrEmpty()) name = "[{0}]".F(name);
+                if (!name.IsNullOrEmpty()) name = $"[{name}]";
                 XTrace.WriteLine("{0}节点：{1} {2} {3}", name, node, node.Flags, node.Slots.Join(" "));
 
                 if (node.Slaves != null)

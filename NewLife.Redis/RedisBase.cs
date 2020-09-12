@@ -57,7 +57,8 @@ namespace NewLife.Caching
             {
                 case TypeCode.Object: return value.ToJson().GetBytes();
                 case TypeCode.String: return (value as String).GetBytes();
-                default: return "{0}".F(value).GetBytes();
+                case TypeCode.DateTime: return ((DateTime)value).ToFullString().GetBytes();
+                default: return value.ToString().GetBytes();
             }
         }
 
