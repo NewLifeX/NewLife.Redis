@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Caching;
+using NewLife.Log;
 using NewLife.Security;
 using Xunit;
 
@@ -13,11 +15,14 @@ namespace XUnitTest
     {
         private readonly FullRedis _redis;
 
-        public DelayQueueTests() => _redis = new FullRedis("127.0.0.1:6379", null, 2);
+        public DelayQueueTests()
+        {
+            var rds = new FullRedis("127.0.0.1:6379", null, 2);
 #if DEBUG
-            _redis.Log = XTrace.Log;
+            rds.Log = NewLife.Log.XTrace.Log;
 #endif
-
+            _redis = rds;
+        }
 
         [Fact]
         public void Queue_Normal()
@@ -26,50 +31,65 @@ namespace XUnitTest
 
             // 删除已有
             _redis.Remove(key);
-            var q = _redis.GetDelayQueue<String>(key);
+            var queue = _redis.GetDelayQueue<String>(key);
             _redis.SetExpire(key, TimeSpan.FromMinutes(60));
 
+            // 发现回滚
+            var rcount = queue.RetryDeadAck();
+            if (rcount > 0)
+            {
+                XTrace.WriteLine("回滚：{0}", rcount);
+
+                Assert.Equal(rcount, queue.Count);
+                var rcount2 = _redis.Remove(key);
+                Assert.Equal(1, rcount2);
+            }
+
             // 取出个数
-            var count = q.Count;
-            Assert.True(q.IsEmpty);
+            var count = queue.Count;
+            Assert.True(queue.IsEmpty);
             Assert.Equal(0, count);
 
             // 添加
-            q.Add("1234", 3);
-            q.Add("abcd", 2);
+            queue.Add("1234", 3);
+            queue.Add("abcd", 2);
             var vs = new[] { "新生命团队", "ABEF" };
-            q.Add(vs);
+            queue.Add(vs);
 
             // 对比个数
-            var count2 = q.Count;
-            Assert.False(q.IsEmpty);
+            var count2 = queue.Count;
+            Assert.False(queue.IsEmpty);
             Assert.Equal(count + 2 + vs.Length, count2);
 
             // 取出来
-            var v1 = q.TakeOne();
+            var v1 = queue.TakeOne();
             Assert.Equal("ABEF", v1);
 
             // 批量获取
-            var vs2 = q.Take(5).ToArray();
+            var vs2 = queue.Take(5).ToArray();
             Assert.Single(vs2);
             Assert.Equal("新生命团队", vs2[0]);
 
             // 延迟获取
             Thread.Sleep(2000);
-            var vs3 = q.Take(5).ToArray();
+            var vs3 = queue.Take(5).ToArray();
             Assert.Single(vs3);
             Assert.Equal("abcd", vs3[0]);
 
             // 延迟获取
             Thread.Sleep(1000);
-            var vs4 = q.Take(5).ToArray();
+            var vs4 = queue.Take(5).ToArray();
             Assert.Single(vs4);
             Assert.Equal("1234", vs4[0]);
 
             // 对比个数
-            var count3 = q.Count;
-            Assert.True(q.IsEmpty);
+            var count3 = queue.Count;
+            Assert.True(queue.IsEmpty);
             Assert.Equal(count, count3);
+
+            // 检查Ack队列
+            var ackList = _redis.GetSortedSet(queue.AckKey);
+            Assert.Equal(2 + vs.Length, ackList.Count);
         }
 
         [Fact]
@@ -79,31 +99,44 @@ namespace XUnitTest
 
             // 删除已有
             _redis.Remove(key);
-            var q = _redis.GetDelayQueue<String>(key);
+            var queue = _redis.GetDelayQueue<String>(key);
             _redis.SetExpire(key, TimeSpan.FromMinutes(60));
 
+            // 回滚死信，然后清空
+            var dead = queue.RetryDeadAck();
+            if (dead > 0) _redis.Remove(key);
+
             // 取出个数
-            var count = q.Count;
-            Assert.True(q.IsEmpty);
+            var count = queue.Count;
+            Assert.True(queue.IsEmpty);
             Assert.Equal(0, count);
 
             // 添加
-            var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
+            var vs = new[] { "1234", "ABEF", "abcd", "新生命团队" };
             foreach (var item in vs)
             {
-                q.Add(item, 3);
+                queue.Add(item, 3);
             }
 
             // 对比个数
-            var count2 = q.Count;
-            Assert.False(q.IsEmpty);
+            var count2 = queue.Count;
+            Assert.False(queue.IsEmpty);
             Assert.Equal(vs.Length, count2);
 
             // 取出来
-            Assert.Equal(vs[0], q.TakeOne());
-            Assert.Equal(vs[1], q.TakeOne());
-            Assert.Equal(vs[2], q.TakeOne());
-            Assert.Equal(vs[3], q.TakeOne());
+            Assert.Equal(vs[0], queue.TakeOne());
+            Assert.Equal(vs[1], queue.TakeOne());
+            Assert.Equal(vs[2], queue.TakeOne());
+            Assert.Equal(vs[3], queue.TakeOne());
+            queue.Acknowledge(vs);
+
+            // 延迟2秒生产消息
+            ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); queue.Add("xxyy"); });
+            var sw = Stopwatch.StartNew();
+            var rs = queue.TakeOne(3);
+            sw.Stop();
+            Assert.Equal("xxyy", rs);
+            Assert.True(sw.ElapsedMilliseconds >= 2000);
         }
 
         [Fact]
@@ -154,14 +187,14 @@ namespace XUnitTest
             for (var i = 0; i < 1_000; i++)
             {
                 var list = new List<String>();
-                for (var j = 0; j < 100; j++)
+                for (var j = 0; j < 20; j++)
                 {
                     list.Add(Rand.NextString(32));
                 }
                 q.Add(list.ToArray());
             }
 
-            Assert.Equal(1_000 * 100, q.Count);
+            Assert.Equal(1_000 * 20, q.Count);
 
             var count = 0;
             while (true)
@@ -173,7 +206,7 @@ namespace XUnitTest
                 count += list.Count;
             }
 
-            Assert.Equal(1_000 * 100, count);
+            Assert.Equal(1_000 * 20, count);
         }
 
         [Fact]
@@ -186,14 +219,14 @@ namespace XUnitTest
             for (var i = 0; i < 1_000; i++)
             {
                 var list = new List<String>();
-                for (var j = 0; j < 100; j++)
+                for (var j = 0; j < 20; j++)
                 {
                     list.Add(Rand.NextString(32));
                 }
                 q.Add(list.ToArray());
             }
 
-            Assert.Equal(1_000 * 100, q.Count);
+            Assert.Equal(1_000 * 20, q.Count);
 
             var count = 0;
             var ths = new List<Task>();
@@ -214,7 +247,7 @@ namespace XUnitTest
 
             Task.WaitAll(ths.ToArray());
 
-            Assert.Equal(1_000 * 100, count);
+            Assert.Equal(1_000 * 20, count);
         }
 
         [Fact]
@@ -236,20 +269,20 @@ namespace XUnitTest
             Assert.Equal("abcd", await q.TakeOneAsync(0));
             Assert.Equal("新生命团队", await q.TakeOneAsync(0));
 
-            //// 空消息
-            //var sw = Stopwatch.StartNew();
-            //var rs = await q.TakeOneAsync(2);
-            //sw.Stop();
-            //Assert.Null(rs);
-            //Assert.True(sw.ElapsedMilliseconds >= 2000);
+            // 空消息
+            var sw = Stopwatch.StartNew();
+            var rs = await q.TakeOneAsync(2);
+            sw.Stop();
+            Assert.Null(rs);
+            Assert.True(sw.ElapsedMilliseconds >= 2000);
 
-            //// 延迟2秒生产消息
-            //ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); q.Add("xxyy"); });
-            //sw = Stopwatch.StartNew();
-            //rs = await q.TakeOneAsync(3);
-            //sw.Stop();
-            //Assert.Equal("xxyy", rs);
-            //Assert.True(sw.ElapsedMilliseconds >= 2000);
+            // 延迟2秒生产消息
+            ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); q.Add("xxyy"); });
+            sw = Stopwatch.StartNew();
+            rs = await q.TakeOneAsync(3);
+            sw.Stop();
+            Assert.Equal("xxyy", rs);
+            Assert.True(sw.ElapsedMilliseconds >= 2000);
         }
 
         [Fact]

@@ -1,9 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Data;
 using NewLife.Log;
+#if !NET40
+using TaskEx = System.Threading.Tasks.Task;
+#endif
 
 namespace NewLife.Caching
 {
@@ -82,12 +86,37 @@ namespace NewLife.Caching
         {
             RetryDeadAck();
 
-            var source = DateTime.Now.ToInt();
-            var rs = Execute(r => r.Execute<Object[]>("ZRANGEBYSCORE", Key, 0, source, "LIMIT", 0, 1));
-            if (rs == null || rs.Length == 0) return default;
+            // 最长等待
+            if (timeout == 0) timeout = 60;
 
-            // 争夺消费
-            return TryPop(rs[0], out var result) ? result : default;
+            var next = -1;
+            while (true)
+            {
+                var source = DateTime.Now.ToInt();
+                var rs = Execute(r => r.Execute<Object[]>("ZRANGEBYSCORE", Key, 0, source, "LIMIT", 0, 1));
+                if (rs != null && rs.Length > 0)
+                {
+                    // 争夺消费
+                    if (TryPop(rs[0], out var result)) return result;
+                }
+
+                // 是否需要等待
+                if (timeout <= 0 || timeout > 60) break;
+
+                // 如果还有时间，试试下一个
+                if (next < 0)
+                {
+                    var kv = GetNext();
+                    next = (Int32)kv.Value - DateTime.Now.ToInt();
+                }
+                if (next > 60) break;
+                if (next <= 0) next = timeout;
+
+                Thread.Sleep(next * 1000);
+                timeout -= next;
+            }
+
+            return default;
         }
 
         /// <summary>异步获取一个</summary>
@@ -97,12 +126,37 @@ namespace NewLife.Caching
         {
             RetryDeadAck();
 
-            var source = DateTime.Now.ToInt();
-            var rs = await ExecuteAsync(r => r.ExecuteAsync<Object[]>("ZRANGEBYSCORE", new Object[] { Key, 0, source, "LIMIT", 0, 1 }));
-            if (rs == null || rs.Length == 0) return default;
+            // 最长等待
+            if (timeout == 0) timeout = 60;
 
-            // 争夺消费
-            return TryPop(rs[0], out var result) ? result : default;
+            var next = -1;
+            while (true)
+            {
+                var source = DateTime.Now.ToInt();
+                var rs = await ExecuteAsync(r => r.ExecuteAsync<Object[]>("ZRANGEBYSCORE", new Object[] { Key, 0, source, "LIMIT", 0, 1 }));
+                if (rs != null && rs.Length > 0)
+                {
+                    // 争夺消费
+                    if (TryPop(rs[0], out var result)) return result;
+                }
+
+                // 是否需要等待
+                if (timeout <= 0 || timeout > 60) break;
+
+                // 如果还有时间，试试下一个
+                if (next < 0)
+                {
+                    var kv = GetNext();
+                    next = (Int32)kv.Value - DateTime.Now.ToInt();
+                }
+                if (next > 60) break;
+                if (next <= 0) next = timeout;
+
+                await TaskEx.Delay(next * 1000);
+                timeout -= next;
+            }
+
+            return default;
         }
 
         /// <summary>获取一批</summary>
@@ -139,7 +193,7 @@ namespace NewLife.Caching
                 Execute(rc => rc.Execute<Int32>("ZADD", AckKey, source, pk), true);
 
                 // 删除作为抢夺
-                if (Remove(new[] { value }) > 0)
+                if (Remove(Key, new[] { value }) > 0)
                 {
                     result = (T)Redis.Encoder.Decode(pk, typeof(T));
                     return true;
@@ -153,7 +207,7 @@ namespace NewLife.Caching
         /// <summary>确认删除</summary>
         /// <param name="keys"></param>
         /// <returns></returns>
-        public Int32 Acknowledge(params String[] keys) => Remove(keys);
+        public Int32 Acknowledge(params String[] keys) => Remove(Key, keys);
         #endregion
 
         #region 死信处理
@@ -172,7 +226,7 @@ namespace NewLife.Caching
 
                 // 加入原始队列
                 Add(rs, 0);
-                Remove(rs);
+                Remove(AckKey, rs);
 
                 list.AddRange(rs);
             }
@@ -182,7 +236,7 @@ namespace NewLife.Caching
 
         private DateTime _nextRetry;
         /// <summary>处理未确认的死信，重新放入队列</summary>
-        private void RetryDeadAck()
+        public Int32 RetryDeadAck()
         {
             var now = DateTime.Now;
             // 一定间隔处理死信
@@ -196,7 +250,10 @@ namespace NewLife.Caching
                 {
                     XTrace.WriteLine("定时回滚死信：{0}", item);
                 }
+                return list.Count;
             }
+
+            return 0;
         }
         #endregion
 
@@ -215,11 +272,12 @@ namespace NewLife.Caching
         }
 
         /// <summary>删除一批</summary>
+        /// <param name="key"></param>
         /// <param name="values"></param>
         /// <returns></returns>
-        private Int32 Remove(Object[] values)
+        private Int32 Remove(String key, Object[] values)
         {
-            var args = new List<Object> { Key };
+            var args = new List<Object> { key };
             foreach (var item in values)
             {
                 args.Add(item);

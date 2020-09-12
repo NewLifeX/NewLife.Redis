@@ -183,6 +183,11 @@ namespace NewLife.Caching
         /// <param name="key"></param>
         /// <returns></returns>
         public RedisStream<T> GetStream<T>(String key) => new RedisStream<T>(this, key);
+
+        /// <summary>获取有序集合</summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public RedisSortedSet GetSortedSet(String key) => new RedisSortedSet(this, key);
         #endregion
 
         #region 字符串操作
