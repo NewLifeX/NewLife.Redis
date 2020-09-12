@@ -115,6 +115,6 @@ namespace NewLife.Caching
         /// <summary>确认消费。不支持</summary>
         /// <param name="keys"></param>
         /// <returns></returns>
-        Int32 IProducerConsumer<T>.Acknowledge(params String[] keys) => throw new NotSupportedException();
+        Int32 IProducerConsumer<T>.Acknowledge(params String[] keys) => -1;
     }
 }
