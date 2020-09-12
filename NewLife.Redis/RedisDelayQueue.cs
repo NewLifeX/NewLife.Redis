@@ -69,7 +69,7 @@ namespace NewLife.Caching
         public IEnumerable<T> Take(Int32 count = 1)
         {
             var source = DateTime.Now.ToInt();
-            var rs = Execute(r => r.Execute<Object[]>("ZRANGEBYSCORE", Key, "0", source, "LIMIT", 0, count));
+            var rs = Execute(r => r.Execute<Object[]>("ZRANGEBYSCORE", Key, 0, source, "LIMIT", 0, count));
             if (rs == null || rs.Length == 0) yield break;
 
             foreach (var item in rs)
@@ -86,7 +86,7 @@ namespace NewLife.Caching
         public T TakeOne(Int32 timeout = 0)
         {
             var source = DateTime.Now.ToInt();
-            var rs = Execute(r => r.Execute<Object[]>("ZRANGEBYSCORE", Key, "0", source, "LIMIT", 0, 1));
+            var rs = Execute(r => r.Execute<Object[]>("ZRANGEBYSCORE", Key, 0, source, "LIMIT", 0, 1));
             if (rs == null || rs.Length == 0) return default;
 
             // 删除作为抢夺
@@ -104,7 +104,7 @@ namespace NewLife.Caching
         public async Task<T> TakeOneAsync(Int32 timeout = 0)
         {
             var source = DateTime.Now.ToInt();
-            var rs = await ExecuteAsync(r => r.ExecuteAsync<Object[]>("ZRANGEBYSCORE", new Object[] { Key, "0", source, "LIMIT", 0, 1 }));
+            var rs = await ExecuteAsync(r => r.ExecuteAsync<Object[]>("ZRANGEBYSCORE", new Object[] { Key, 0, source, "LIMIT", 0, 1 }));
             if (rs == null || rs.Length == 0) return default;
 
             // 删除作为抢夺
@@ -117,6 +117,21 @@ namespace NewLife.Caching
         }
 
         Int32 IProducerConsumer<T>.Acknowledge(params String[] keys) => throw new NotImplementedException();
+        #endregion
+
+        #region 辅助方法
+        /// <summary>获取最近一个消息的到期时间，便于上层控制调度器</summary>
+        /// <returns></returns>
+        public KeyValuePair<String, Double> GetNext()
+        {
+            var source = DateTime.Now.AddYears(1).ToInt();
+            var rs = Execute(r => r.Execute<Object[]>("ZRANGE", Key, 0, 0, "WITHSCORES"));
+            if (rs == null || rs.Length < 2) return default;
+
+            var item = (rs[0] as Packet).ToStr();
+            var source2 = (rs[1] as Packet).ToStr().ToDouble();
+            return new KeyValuePair<String, Double>(item, source2);
+        }
         #endregion
     }
 }

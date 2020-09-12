@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Caching;
-using NewLife.Log;
 using NewLife.Security;
 using Xunit;
 
@@ -13,15 +11,13 @@ namespace XUnitTest
 {
     public class DelayQueueTests
     {
-        private FullRedis _redis;
+        private readonly FullRedis _redis;
 
-        public DelayQueueTests()
-        {
-            _redis = new FullRedis("127.0.0.1:6379", null, 2);
+        public DelayQueueTests() => _redis = new FullRedis("127.0.0.1:6379", null, 2);
 #if DEBUG
             _redis.Log = XTrace.Log;
 #endif
-        }
+
 
         [Fact]
         public void Queue_Normal()
@@ -254,6 +250,28 @@ namespace XUnitTest
             //sw.Stop();
             //Assert.Equal("xxyy", rs);
             //Assert.True(sw.ElapsedMilliseconds >= 2000);
+        }
+
+        [Fact]
+        public void GetNext()
+        {
+            var key = "DelayQueue_Async";
+
+            // 删除已有
+            _redis.Remove(key);
+            var q = _redis.GetDelayQueue<String>(key);
+
+            // 添加
+            var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
+            for (var i = 0; i < vs.Length; i++)
+            {
+                q.Add(vs[i], 10 - i + 1);
+            }
+
+            // 取出来
+            var kv = q.GetNext();
+            Assert.Equal("ABEF", kv.Key);
+            Assert.Equal(DateTime.Now.ToInt() + 10 - 3 + 1, kv.Value);
         }
     }
 }
