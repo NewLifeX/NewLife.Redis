@@ -138,56 +138,120 @@ namespace NewLife.Caching
 
         #region 集合操作
         /// <summary>获取列表</summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="key"></param>
+        /// <typeparam name="T">元素类型</typeparam>
+        /// <param name="key">键</param>
+        /// <param name="expire">过期时间，秒</param>
         /// <returns></returns>
-        public override IList<T> GetList<T>(String key) => new RedisList<T>(this, key);
+        public override IList<T> GetList<T>(String key, Int32 expire = -1)
+        {
+            var rs = new RedisList<T>(this, key);
+            if (expire > 0) SetExpire(key, TimeSpan.FromSeconds(expire));
+
+            return rs;
+        }
 
         /// <summary>获取哈希</summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="key"></param>
+        /// <typeparam name="T">元素类型</typeparam>
+        /// <param name="key">键</param>
+        /// <param name="expire">过期时间，秒</param>
         /// <returns></returns>
-        public override IDictionary<String, T> GetDictionary<T>(String key) => new RedisHash<String, T>(this, key);
+        public override IDictionary<String, T> GetDictionary<T>(String key, Int32 expire = -1)
+        {
+            var rs = new RedisHash<String, T>(this, key);
+            if (expire > 0) SetExpire(key, TimeSpan.FromSeconds(expire));
+
+            return rs;
+        }
 
         /// <summary>获取队列，快速LIST结构，无需确认</summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="key"></param>
+        /// <typeparam name="T">元素类型</typeparam>
+        /// <param name="key">键</param>
+        /// <param name="expire">过期时间，秒</param>
         /// <returns></returns>
-        public override IProducerConsumer<T> GetQueue<T>(String key) => new RedisQueue<T>(this, key);
+        public override IProducerConsumer<T> GetQueue<T>(String key, Int32 expire = -1)
+        {
+            var rs = new RedisQueue<T>(this, key);
+            if (expire > 0) SetExpire(key, TimeSpan.FromSeconds(expire));
+
+            return rs;
+        }
 
         /// <summary>获取可靠队列，消息需要确认</summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="key"></param>
+        /// <typeparam name="T">元素类型</typeparam>
+        /// <param name="key">键</param>
+        /// <param name="expire">过期时间，秒</param>
         /// <returns></returns>
-        public RedisReliableQueue<T> GetReliableQueue<T>(String key) => new RedisReliableQueue<T>(this, key);
+        public RedisReliableQueue<T> GetReliableQueue<T>(String key, Int32 expire = -1)
+        {
+            var rs = new RedisReliableQueue<T>(this, key);
+            if (expire > 0) SetExpire(key, TimeSpan.FromSeconds(expire));
+
+            return rs;
+        }
 
         /// <summary>获取延迟队列</summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="key"></param>
+        /// <typeparam name="T">元素类型</typeparam>
+        /// <param name="key">键</param>
+        /// <param name="expire">过期时间，秒</param>
         /// <returns></returns>
-        public RedisDelayQueue<T> GetDelayQueue<T>(String key) => new RedisDelayQueue<T>(this, key);
+        public RedisDelayQueue<T> GetDelayQueue<T>(String key, Int32 expire = -1)
+        {
+            var rs = new RedisDelayQueue<T>(this, key);
+            if (expire > 0) SetExpire(key, TimeSpan.FromSeconds(expire));
+
+            return rs;
+        }
 
         /// <summary>获取栈</summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="key"></param>
+        /// <typeparam name="T">元素类型</typeparam>
+        /// <param name="key">键</param>
+        /// <param name="expire">过期时间，秒</param>
         /// <returns></returns>
-        public override IProducerConsumer<T> GetStack<T>(String key) => new RedisStack<T>(this, key);
+        public override IProducerConsumer<T> GetStack<T>(String key, Int32 expire = -1)
+        {
+            var rs = new RedisStack<T>(this, key);
+            if (expire > 0) SetExpire(key, TimeSpan.FromSeconds(expire));
+
+            return rs;
+        }
 
         /// <summary>获取Set</summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="key"></param>
+        /// <typeparam name="T">元素类型</typeparam>
+        /// <param name="key">键</param>
+        /// <param name="expire">过期时间，秒</param>
         /// <returns></returns>
-        public override ICollection<T> GetSet<T>(String key) => new RedisSet<T>(this, key);
+        public override ICollection<T> GetSet<T>(String key, Int32 expire = -1)
+        {
+            var rs = new RedisSet<T>(this, key);
+            if (expire > 0) SetExpire(key, TimeSpan.FromSeconds(expire));
+
+            return rs;
+        }
 
         /// <summary>获取消息流</summary>
-        /// <param name="key"></param>
+        /// <typeparam name="T">元素类型</typeparam>
+        /// <param name="key">键</param>
+        /// <param name="expire">过期时间，秒</param>
         /// <returns></returns>
-        public RedisStream<T> GetStream<T>(String key) => new RedisStream<T>(this, key);
+        public RedisStream<T> GetStream<T>(String key, Int32 expire = -1)
+        {
+            var rs = new RedisStream<T>(this, key);
+            if (expire > 0) SetExpire(key, TimeSpan.FromSeconds(expire));
+
+            return rs;
+        }
 
         /// <summary>获取有序集合</summary>
-        /// <param name="key"></param>
+        /// <param name="key">键</param>
+        /// <param name="expire">过期时间，秒</param>
         /// <returns></returns>
-        public RedisSortedSet GetSortedSet(String key) => new RedisSortedSet(this, key);
+        public RedisSortedSet GetSortedSet(String key, Int32 expire = -1)
+        {
+            var rs = new RedisSortedSet(this, key);
+            if (expire > 0) SetExpire(key, TimeSpan.FromSeconds(expire));
+
+            return rs;
+        }
         #endregion
 
         #region 字符串操作
