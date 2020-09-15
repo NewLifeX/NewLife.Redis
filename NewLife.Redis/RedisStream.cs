@@ -33,6 +33,9 @@ namespace NewLife.Caching
         /// <summary>开始编号。默认0-0</summary>
         public String StartId { get; set; } = "0-0";
 
+        /// <summary>消费者组</summary>
+        public String Group { get; set; }
+
         private IDictionary<String, PropertyInfo> _properties;
         #endregion
 
@@ -107,55 +110,45 @@ namespace NewLife.Caching
         /// <summary>批量消费获取，前移指针StartId</summary>
         /// <param name="count"></param>
         /// <returns></returns>
-        public IList<T> Take(Int32 count = 1)
+        public IEnumerable<T> Take(Int32 count = 1)
         {
-            var rs = Read(StartId, count);
-            if (rs == null || rs.Count == 0) return new List<T>();
+            var rs = !Group.IsNullOrEmpty() ? ReadGroup(Group, null, count) : Read(StartId, count);
+            if (rs == null || rs.Count == 0) yield break;
 
-            var lastId = "";
-            var list = new List<T>();
             foreach (var item in rs)
             {
+                SetNextId(item.Key);
+
                 var vs = item.Value;
-                if (vs != null)
-                {
-                    if (vs.Length == 2 && vs[0] == PrimitiveKey)
-                        list.Add(vs[1].ChangeType<T>());
-                    else
-                    {
-                        if (_properties == null) _properties = typeof(T).GetProperties(true).ToDictionary(e => e.Name, e => e);
-
-                        // 字节数组转实体对象
-                        var entry = Activator.CreateInstance<T>();
-                        for (var i = 0; i < vs.Length - 1; i += 2)
-                        {
-                            if (_properties.TryGetValue(vs[i], out var pi))
-                            {
-                                pi.SetValue(entry, vs[i + 1].ChangeType(pi.PropertyType), null);
-                            }
-                        }
-                        list.Add(entry);
-                    }
-                }
-
-                // 最大编号
-                if (String.Compare(item.Key, lastId) > 0) lastId = item.Key;
+                if (vs != null) yield return Convert(vs);
             }
-
-            // 更新编号
-            if (!lastId.IsNullOrEmpty())
-            {
-                var ss = lastId.Split('-');
-                if (ss.Length == 2) StartId = $"{ss[0]}-{ss[1].ToInt() + 1}";
-            }
-
-            return list;
         }
 
-        /// <summary>批量消费获取</summary>
-        /// <param name="count"></param>
-        /// <returns></returns>
-        IEnumerable<T> IProducerConsumer<T>.Take(Int32 count) => Take(count);
+        private T Convert(String[] vs)
+        {
+            if (vs.Length == 2 && vs[0] == PrimitiveKey)
+                return vs[1].ChangeType<T>();
+
+            if (_properties == null) _properties = typeof(T).GetProperties(true).ToDictionary(e => e.Name, e => e);
+
+            // 字节数组转实体对象
+            var entry = Activator.CreateInstance<T>();
+            for (var i = 0; i < vs.Length - 1; i += 2)
+            {
+                if (_properties.TryGetValue(vs[i], out var pi))
+                {
+                    pi.SetValue(entry, vs[i + 1].ChangeType(pi.PropertyType), null);
+                }
+            }
+            return entry;
+        }
+
+        private void SetNextId(String key)
+        {
+            var lastId = key;
+            var ss = lastId.Split('-');
+            if (ss.Length == 2) StartId = $"{ss[0]}-{ss[1].ToInt() + 1}";
+        }
 
         /// <summary>消费获取一个</summary>
         /// <param name="timeout"></param>
@@ -165,19 +158,46 @@ namespace NewLife.Caching
         /// <summary>异步消费获取一个</summary>
         /// <param name="timeout"></param>
         /// <returns></returns>
-        public Task<T> TakeOneAsync(Int32 timeout = 0) => TaskEx.FromResult(Take(1).FirstOrDefault());
+        public async Task<T> TakeOneAsync(Int32 timeout = 0)
+        {
+            var rs = !Group.IsNullOrEmpty() ?
+                await ReadGroupAsync(Group, null, 1, timeout * 1000) :
+                await ReadAsync(StartId, 1, timeout * 1000);
+            if (rs == null || rs.Count == 0) return default;
+
+            var kv = rs.First();
+
+            // 全局消费（非消费组）时，更新编号
+            if (Group.IsNullOrEmpty()) SetNextId(kv.Key);
+
+            return Convert(kv.Value);
+        }
 
         /// <summary>消费确认</summary>
         /// <param name="keys"></param>
         /// <returns></returns>
-        public Int32 Acknowledge(params String[] keys) => throw new NotImplementedException();
+        public Int32 Acknowledge(params String[] keys)
+        {
+            var rs = 0;
+            foreach (var item in keys)
+            {
+                rs += Ack(null, item);
+            }
+            return rs;
+        }
         #endregion
 
         #region 内部命令
         /// <summary>删除指定消息</summary>
-        /// <param name="id"></param>
+        /// <param name="id">消息Id</param>
         /// <returns></returns>
         public Int32 Delete(String id) => Execute(rc => rc.Execute<Int32>("XDEL", Key, id), true);
+
+        /// <summary>确认消息</summary>
+        /// <param name="group">消费组名称</param>
+        /// <param name="id">消息Id</param>
+        /// <returns></returns>
+        public Int32 Ack(String group, String id) => Execute(rc => rc.Execute<Int32>("XACK", Key, group, id), true);
 
         /// <summary>获取区间消息</summary>
         /// <param name="startId"></param>
@@ -301,7 +321,9 @@ XREAD count 3 streams stream_key 0-0
             }
             return dic;
         }
+        #endregion
 
+        #region 消费组
         /// <summary>创建消费组</summary>
         /// <param name="group">消费组名称</param>
         /// <param name="startId">开始编号。0表示从开头，$表示从末尾，收到下一条生产消息才开始消费</param>
@@ -375,7 +397,9 @@ XREAD count 3 streams stream_key 0-0
 
             return null;
         }
+        #endregion
 
+        #region 队列信息
         /// <summary>获取信息</summary>
         /// <returns></returns>
         public StreamInfo GetInfo()

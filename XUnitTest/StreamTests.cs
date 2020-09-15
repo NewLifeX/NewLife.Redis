@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using NewLife;
 using NewLife.Caching;
 using NewLife.Log;
@@ -77,7 +79,7 @@ namespace XUnitTest
             Assert.Equal(1234, vs2[1].ToInt());
 
             // 智能读取
-            var vs3 = s.Take(5);
+            var vs3 = s.Take(5).ToList();
             Assert.Single(vs3);
             Assert.Equal(1234, vs3[0]);
 
@@ -141,7 +143,7 @@ namespace XUnitTest
             Assert.Equal(id, vs1.FirstOrDefault().Key);
 
             // 取出来
-            var vs2 = s.Take(2);
+            var vs2 = s.Take(2).ToList();
             Assert.Equal(2, vs2.Count);
             Assert.Equal("smartStone", vs2[0].Name);
             Assert.Equal(36, vs2[0].Age);
@@ -149,7 +151,7 @@ namespace XUnitTest
 
             id = s.StartId;
 
-            var vs3 = s.Take(7);
+            var vs3 = s.Take(7).ToList();
             Assert.Equal(3, vs3.Count);
             Assert.Equal(vs[1].Name, vs3[0].Name);
             Assert.Equal(vs[2].Name, vs3[1].Name);
@@ -220,6 +222,78 @@ namespace XUnitTest
             var consumers = s.GetConsumers("mygroup");
             Assert.Equal(1, consumers.Length);
             XTrace.WriteLine(consumers.ToJson(true));
+        }
+
+        [Fact]
+        public async void GlobalConsume()
+        {
+            var key = "stream_GlobalConsume";
+
+            // 删除已有
+            _redis.Remove(key);
+            var queue = _redis.GetStream<String>(key);
+            _redis.SetExpire(key, TimeSpan.FromMinutes(60));
+
+            // 添加基础类型
+            for (var i = 0; i < 7; i++)
+            {
+                queue.Add(Rand.NextString(8));
+            }
+
+            // 消费
+            var rs = queue.Take(6).ToList();
+            Assert.Equal(6, rs.Count);
+
+            var rs2 = queue.TakeOne();
+            Assert.NotNull(rs2);
+
+            // 延迟2秒生产消息
+            ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); queue.Add("xxyy"); });
+            var sw = Stopwatch.StartNew();
+            var rs3 = await queue.TakeOneAsync(3);
+            sw.Stop();
+            Assert.Equal("xxyy", rs3);
+            Assert.True(sw.ElapsedMilliseconds >= 2000);
+        }
+
+        [Fact]
+        public async void GroupConsume()
+        {
+            var key = "stream_GroupConsume";
+
+            // 删除已有
+            _redis.Remove(key);
+            var queue = _redis.GetStream<String>(key);
+            _redis.SetExpire(key, TimeSpan.FromMinutes(60));
+            queue.Group = "mygroup";
+
+            // 添加基础类型
+            for (var i = 0; i < 7; i++)
+            {
+                queue.Add(Rand.NextString(8));
+            }
+
+            // 创建
+            queue.GroupCreate(queue.Group);
+
+            // 消费
+            var rs = queue.Take(6).ToList();
+            Assert.Equal(6, rs.Count);
+
+            var rs2 = queue.TakeOne();
+            Assert.NotNull(rs2);
+
+            // 延迟2秒生产消息
+            ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); queue.Add("xxyy"); });
+            var sw = Stopwatch.StartNew();
+            var rs3 = await queue.TakeOneAsync(3);
+            sw.Stop();
+            Assert.Equal("xxyy", rs3);
+            Assert.True(sw.ElapsedMilliseconds >= 2000);
+
+            // 确认消费
+            Assert.False(true, "Acknowledge");
+            queue.Acknowledge(null);
         }
     }
 }
