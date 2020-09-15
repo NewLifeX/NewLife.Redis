@@ -294,10 +294,10 @@ namespace NewLife.Caching
             return Execute(key, r => r.Execute<Boolean>(cmd, key, newKey), true);
         }
 
-        /// <summary>模糊搜索，支持?和*</summary>
-        /// <param name="pattern"></param>
-        /// <returns></returns>
-        public virtual String[] Search(String pattern) => Execute(null, r => r.Execute<String[]>("KEYS", pattern));
+        ///// <summary>模糊搜索，支持?和*</summary>
+        ///// <param name="pattern"></param>
+        ///// <returns></returns>
+        //public virtual String[] Search(String pattern) => Execute(null, r => r.Execute<String[]>("KEYS", pattern));
 
         /// <summary>模糊搜索，支持?和*</summary>
         /// <param name="pattern"></param>

@@ -62,8 +62,8 @@ namespace XUnitTest
             Assert.True(ic.ContainsKey(key2));
             Assert.False(ic.ContainsKey(key));
 
-            var ss = ic.Search("*");
-            Assert.True(ss.Length > 0);
+            //var ss = ic.Search("*");
+            //Assert.True(ss.Length > 0);
 
             var n = 0;
             var ss2 = ic.Search("Name*", 10, n).ToArray();
