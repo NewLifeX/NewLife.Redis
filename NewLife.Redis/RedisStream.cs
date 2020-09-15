@@ -206,18 +206,12 @@ namespace NewLife.Caching
         /// <summary>原始独立消费</summary>
         /// <param name="startId">开始编号</param>
         /// <param name="count">消息个数</param>
-        /// <param name="block">阻塞描述，0表示永远</param>
         /// <returns></returns>
-        public IDictionary<String, String[]> Read(String startId, Int32 count, Int32 block = -1)
+        public IDictionary<String, String[]> Read(String startId, Int32 count)
         {
             if (startId.IsNullOrEmpty()) startId = "$";
 
             var args = new List<Object>();
-            if (block > 0)
-            {
-                args.Add("block");
-                args.Add(block);
-            }
             if (count > 0)
             {
                 args.Add("count");
@@ -255,6 +249,39 @@ XREAD count 3 streams stream_key 0-0
 #if DEBUG
                 System.Diagnostics.Debug.Assert(vs[0] is Packet pk && pk.ToStr() == Key);
 #endif
+                if (vs[1] is Object[] vs2) return Parse(vs2);
+            }
+
+            return null;
+        }
+
+        /// <summary>异步原始独立消费</summary>
+        /// <param name="startId">开始编号</param>
+        /// <param name="count">消息个数</param>
+        /// <param name="block">阻塞秒数，0表示永远</param>
+        /// <returns></returns>
+        public async Task<IDictionary<String, String[]>> ReadAsync(String startId, Int32 count, Int32 block = -1)
+        {
+            if (startId.IsNullOrEmpty()) startId = "$";
+
+            var args = new List<Object>();
+            if (block > 0)
+            {
+                args.Add("block");
+                args.Add(block);
+            }
+            if (count > 0)
+            {
+                args.Add("count");
+                args.Add(count);
+            }
+            args.Add("streams");
+            args.Add(Key);
+            args.Add(startId);
+
+            var rs = await ExecuteAsync(rc => rc.ExecuteAsync<Object[]>("XREAD", args.ToArray()), true);
+            if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
+            {
                 if (vs[1] is Object[] vs2) return Parse(vs2);
             }
 
