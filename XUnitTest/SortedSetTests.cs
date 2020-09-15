@@ -21,7 +21,8 @@ namespace XUnitTest
             var config = "";
             var file = @"config\redis.config";
             if (File.Exists(file)) config = File.ReadAllText(file.GetFullPath())?.Trim();
-            if (config.IsNullOrEmpty()) config = "server=127.0.0.1;port=6379;db=3";
+            if (config.IsNullOrEmpty()) config = "server=127.0.0.1:6379;db=3";
+            File.WriteAllText(file.GetFullPath(), config);
 
             _redis = new FullRedis();
             _redis.Init(config);
@@ -124,7 +125,32 @@ namespace XUnitTest
             var zset = new RedisSortedSet(_redis, rkey);
 
             // 插入数据
-            var count = Rand.Next(1000, 10000);
+            var count = 10;
+            var list = new List<String>();
+            for (var i = 0; i < count; i++)
+            {
+                list.Add(Rand.NextString(8));
+            }
+
+            var score = Rand.Next() / 1000d;
+            var rs = zset.Add(list, score);
+
+            Assert.Equal(count, rs);
+            Assert.Equal(count, zset.Count);
+        }
+
+        [Fact]
+        public void Adds_null()
+        {
+            var rkey = "zset_adds_null";
+
+            // 删除已有
+            _redis.Remove(rkey);
+
+            var zset = new RedisSortedSet(_redis, rkey);
+
+            // 插入数据
+            var count = 10;
             var dic = new Dictionary<String, Double>();
             for (var i = 0; i < count; i++)
             {
@@ -137,7 +163,6 @@ namespace XUnitTest
             var rs = zset.Add(null, dic);
             Assert.Equal(count, rs);
             Assert.Equal(count, zset.Count);
-
         }
 
         [Fact]
@@ -269,9 +294,9 @@ namespace XUnitTest
         }
 
         [Fact]
-        public void FindCount_Test()
+        public void Range_Test()
         {
-            var rkey = "zset_zcount";
+            var rkey = "zset_Range";
 
             // 删除已有
             _redis.Remove(rkey);
@@ -287,6 +312,16 @@ namespace XUnitTest
 
             var count = zset.FindCount(13.56, 14.34);
             Assert.Equal(2, count);
+
+            var rs = zset.RangeByScore(13.56, 14.34, 1, 2);
+            Assert.Equal(1, rs.Length);
+            Assert.Equal("stone3", rs[0]);
+
+            var rs2 = zset.RangeWithScores(13.56, 14.34, 1, 2);
+            Assert.Equal(1, rs2.Count);
+            var kv2 = rs2.FirstOrDefault();
+            Assert.Equal("stone3", kv2.Key);
+            Assert.Equal(14.34, kv2.Value);
         }
 
         [Fact]

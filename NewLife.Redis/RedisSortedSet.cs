@@ -30,7 +30,7 @@ namespace NewLife.Caching
         /// <param name="values"></param>
         /// <param name="score"></param>
         /// <returns></returns>
-        public Int32 Add(String[] values, Int32 score)
+        public Int32 Add(IEnumerable<String> values, Double score)
         {
             var args = new List<Object> { Key };
 
@@ -86,14 +86,6 @@ namespace NewLife.Caching
             return Execute(rc => rc.Execute<Int32>("ZADD", args.ToArray()), true);
         }
 
-        /// <summary>
-        /// 返回有序集key中，score值在min和max之间(默认包括score值等于min或max)的成员个数
-        /// </summary>
-        /// <param name="min"></param>
-        /// <param name="max"></param>
-        /// <returns></returns>
-        public Int32 FindCount(Double min, Double max) => Execute(rc => rc.Execute<Int32>("ZCOUNT", Key, min, max));
-
         /// <summary>为有序集key的成员member的score值加上增量increment</summary>
         /// <param name="member"></param>
         /// <param name="score"></param>
@@ -138,11 +130,49 @@ namespace NewLife.Caching
             return dic;
         }
 
+        /// <summary>
+        /// 返回有序集key中，score值在min和max之间(默认包括score值等于min或max)的成员个数
+        /// </summary>
+        /// <param name="min"></param>
+        /// <param name="max"></param>
+        /// <returns></returns>
+        public Int32 FindCount(Double min, Double max) => Execute(rc => rc.Execute<Int32>("ZCOUNT", Key, min, max));
+
         /// <summary>返回指定范围的列表</summary>
         /// <param name="start"></param>
         /// <param name="stop"></param>
         /// <returns></returns>
         public String[] Range(Int32 start, Int32 stop) => Execute(r => r.Execute<String[]>("ZRANGE", Key, start, stop));
+
+        /// <summary>返回指定分数区间的成员列表，低分到高分排序</summary>
+        /// <param name="min">低分，包含</param>
+        /// <param name="max">高分，包含</param>
+        /// <param name="offset">偏移</param>
+        /// <param name="count">个数</param>
+        /// <returns></returns>
+        public String[] RangeByScore(Double min, Double max, Int32 offset, Int32 count) => Execute(r => r.Execute<String[]>("ZRANGEBYSCORE", Key, min, max, "LIMIT", offset, count));
+
+        /// <summary>返回指定分数区间的成员分数对，低分到高分排序</summary>
+        /// <param name="min">低分，包含</param>
+        /// <param name="max">高分，包含</param>
+        /// <param name="offset">偏移</param>
+        /// <param name="count">个数</param>
+        /// <returns></returns>
+        public IDictionary<String, Double> RangeWithScores(Double min, Double max, Int32 offset, Int32 count)
+        {
+            var dic = new Dictionary<String, Double>();
+
+            var rs = Execute(r => r.Execute<Packet[]>("ZRANGEBYSCORE", Key, min, max, "WITHSCORES", "LIMIT", offset, count));
+            if (rs != null && rs.Length >= 2)
+            {
+                for (var i = 0; i < rs.Length - 1; i++)
+                {
+                    dic[rs[i].ToStr()] = rs[i + 1].ToStr().ToDouble();
+                }
+            }
+
+            return dic;
+        }
 
         /// <summary>返回有序集key中成员member的排名。其中有序集成员按score值递增(从小到大)顺序排列</summary>
         /// <param name="member"></param>
