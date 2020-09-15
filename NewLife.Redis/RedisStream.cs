@@ -258,7 +258,7 @@ XREAD count 3 streams stream_key 0-0
         /// <summary>异步原始独立消费</summary>
         /// <param name="startId">开始编号</param>
         /// <param name="count">消息个数</param>
-        /// <param name="block">阻塞秒数，0表示永远</param>
+        /// <param name="block">阻塞毫秒数，0表示永远</param>
         /// <returns></returns>
         public async Task<IDictionary<String, String[]>> ReadAsync(String startId, Int32 count, Int32 block = -1)
         {
@@ -303,9 +303,43 @@ XREAD count 3 streams stream_key 0-0
         }
 
         /// <summary>创建消费组</summary>
-        /// <param name="group"></param>
+        /// <param name="group">消费组名称</param>
+        /// <param name="startId">开始编号</param>
         /// <returns></returns>
-        public Boolean CreateGroup(String group) => Execute(rc => rc.Execute<Boolean>("XGROUP", "create " + group), true);
+        public Boolean GroupCreate(String group, String startId = null)
+        {
+            if (startId.IsNullOrEmpty()) startId = "$";
+
+            return Execute(rc => rc.Execute<Boolean>("XGROUP", "CREATE", Key, group, startId), true);
+        }
+
+        /// <summary>销毁消费组</summary>
+        /// <param name="group">消费组名称</param>
+        /// <returns></returns>
+        public Boolean GroupDestroy(String group)
+        {
+            return Execute(rc => rc.Execute<Boolean>("XGROUP", "DESTROY", Key, group), true);
+        }
+
+        /// <summary>销毁消费组</summary>
+        /// <param name="group">消费组名称</param>
+        /// <param name="consumer">消费者</param>
+        /// <returns>返回消费者在被删除之前所拥有的待处理消息数量</returns>
+        public Int32 GroupDeleteConsumer(String group, String consumer)
+        {
+            return Execute(rc => rc.Execute<Int32>("XGROUP", "DELCONSUMER", Key, group, consumer), true);
+        }
+
+        /// <summary>设置消费组Id</summary>
+        /// <param name="group">消费组名称</param>
+        /// <param name="startId">开始编号</param>
+        /// <returns></returns>
+        public Boolean GroupSetId(String group, String startId)
+        {
+            if (startId.IsNullOrEmpty()) startId = "$";
+
+            return Execute(rc => rc.Execute<Boolean>("XGROUP", "SETID", Key, group, startId), true);
+        }
 
         /// <summary>消费组消费</summary>
         /// <param name="group"></param>

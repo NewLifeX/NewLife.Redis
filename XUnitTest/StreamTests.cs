@@ -155,5 +155,27 @@ namespace XUnitTest
             // 开始编号改变
             Assert.NotEqual(id, s.StartId);
         }
+
+        [Fact]
+        public void CreateGroup()
+        {
+            var key = "stream_group";
+
+            // 删除已有
+            _redis.Remove(key);
+            var s = _redis.GetStream<Int32>(key);
+            _redis.SetExpire(key, TimeSpan.FromMinutes(60));
+
+            // 添加基础类型
+            var id = s.Add(1234);
+
+            // 创建
+            s.GroupCreate("mygroup");
+            s.GroupDeleteConsumer("mygroup", "stone");
+            s.GroupSetId("mygroup", "0-0");
+
+            // 删除
+            s.GroupDestroy("mygroup");
+        }
     }
 }
