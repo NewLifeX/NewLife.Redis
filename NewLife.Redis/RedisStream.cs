@@ -5,7 +5,6 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using NewLife.Caching.Models;
-using NewLife.Collections;
 using NewLife.Data;
 using NewLife.Reflection;
 #if !NET4
@@ -305,11 +304,11 @@ XREAD count 3 streams stream_key 0-0
 
         /// <summary>创建消费组</summary>
         /// <param name="group">消费组名称</param>
-        /// <param name="startId">开始编号</param>
+        /// <param name="startId">开始编号。0表示从开头，$表示从末尾，收到下一条生产消息才开始消费</param>
         /// <returns></returns>
         public Boolean GroupCreate(String group, String startId = null)
         {
-            if (startId.IsNullOrEmpty()) startId = "$";
+            if (startId.IsNullOrEmpty()) startId = "0";
 
             return Execute(rc => rc.Execute<Boolean>("XGROUP", "CREATE", Key, group, startId), true);
         }
@@ -317,19 +316,13 @@ XREAD count 3 streams stream_key 0-0
         /// <summary>销毁消费组</summary>
         /// <param name="group">消费组名称</param>
         /// <returns></returns>
-        public Boolean GroupDestroy(String group)
-        {
-            return Execute(rc => rc.Execute<Boolean>("XGROUP", "DESTROY", Key, group), true);
-        }
+        public Boolean GroupDestroy(String group) => Execute(rc => rc.Execute<Boolean>("XGROUP", "DESTROY", Key, group), true);
 
         /// <summary>销毁消费组</summary>
         /// <param name="group">消费组名称</param>
         /// <param name="consumer">消费者</param>
         /// <returns>返回消费者在被删除之前所拥有的待处理消息数量</returns>
-        public Int32 GroupDeleteConsumer(String group, String consumer)
-        {
-            return Execute(rc => rc.Execute<Int32>("XGROUP", "DELCONSUMER", Key, group, consumer), true);
-        }
+        public Int32 GroupDeleteConsumer(String group, String consumer) => Execute(rc => rc.Execute<Int32>("XGROUP", "DELCONSUMER", Key, group, consumer), true);
 
         /// <summary>设置消费组Id</summary>
         /// <param name="group">消费组名称</param>
@@ -344,25 +337,43 @@ XREAD count 3 streams stream_key 0-0
 
         /// <summary>消费组消费</summary>
         /// <param name="group"></param>
-        /// <param name="concumer"></param>
+        /// <param name="consumer"></param>
         /// <param name="count"></param>
-        /// <param name="block">阻塞描述，0表示永远</param>
         /// <returns></returns>
-        public String[] ReadGroup(String group, String concumer, Int32 count, Int32 block = -1)
+        public IDictionary<String, String[]> ReadGroup(String group, String consumer, Int32 count)
         {
-            if (concumer.IsNullOrEmpty()) concumer = $"{Environment.MachineName}@{Process.GetCurrentProcess().Id}";
+            if (consumer.IsNullOrEmpty()) consumer = $"{Environment.MachineName}@{Process.GetCurrentProcess().Id}";
 
-            var sb = Pool.StringBuilder.Get();
-            sb.AppendFormat("group {0} ", group);
+            var rs = count > 0 ?
+                Execute(rc => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "COUNT", count, "STREAMS", Key, ">"), true) :
+                Execute(rc => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "STREAMS", Key, ">"), true);
+            if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
+            {
+                if (vs[1] is Object[] vs2) return Parse(vs2);
+            }
 
-            if (block >= 0) sb.AppendFormat("block {0} ", block);
-            if (count > 0) sb.AppendFormat("count {0} ", count);
+            return null;
+        }
 
-            sb.AppendFormat("streams {0} >", Key);
+        /// <summary>异步消费组消费</summary>
+        /// <param name="group"></param>
+        /// <param name="consumer"></param>
+        /// <param name="count"></param>
+        /// <param name="block">阻塞毫秒数，0表示永远</param>
+        /// <returns></returns>
+        public async Task<IDictionary<String, String[]>> ReadGroupAsync(String group, String consumer, Int32 count, Int32 block = -1)
+        {
+            if (consumer.IsNullOrEmpty()) consumer = $"{Environment.MachineName}@{Process.GetCurrentProcess().Id}";
 
-            var cmd = sb.Put(true);
+            var rs = count > 0 ?
+                await ExecuteAsync(rc => rc.ExecuteAsync<Object[]>("XREADGROUP", new Object[] { "GROUP", group, consumer, "BLOCK", block, "COUNT", count, "STREAMS", Key, ">" }), true) :
+                await ExecuteAsync(rc => rc.ExecuteAsync<Object[]>("XREADGROUP", new Object[] { "GROUP", group, consumer, "BLOCK", block, "STREAMS", Key, ">" }), true);
+            if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
+            {
+                if (vs[1] is Object[] vs2) return Parse(vs2);
+            }
 
-            return Execute(rc => rc.Execute<String[]>("XREADGROUP", cmd), true);
+            return null;
         }
 
         /// <summary>获取信息</summary>
@@ -376,6 +387,41 @@ XREAD count 3 streams stream_key 0-0
             info.Parse(rs);
 
             return info;
+        }
+
+        /// <summary>获取消费组</summary>
+        /// <returns></returns>
+        public GroupInfo[] GetGroups()
+        {
+            var rs = Execute(rc => rc.Execute<Object[]>("XINFO", "GROUPS", Key), false);
+            if (rs == null) return null;
+
+            var gs = new GroupInfo[rs.Length];
+            for (var i = 0; i < rs.Length; i++)
+            {
+                gs[i] = new GroupInfo();
+                gs[i].Parse(rs[i] as Object[]);
+            }
+
+            return gs;
+        }
+
+        /// <summary>获取消费者</summary>
+        /// <param name="group">消费组名称</param>
+        /// <returns></returns>
+        public ConsumerInfo[] GetConsumers(String group)
+        {
+            var rs = Execute(rc => rc.Execute<Object[]>("XINFO", "CONSUMERS", Key, group), false);
+            if (rs == null) return null;
+
+            var cs = new ConsumerInfo[rs.Length];
+            for (var i = 0; i < rs.Length; i++)
+            {
+                cs[i] = new ConsumerInfo();
+                cs[i].Parse(rs[i] as Object[]);
+            }
+
+            return cs;
         }
         #endregion
     }

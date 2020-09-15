@@ -198,14 +198,28 @@ namespace XUnitTest
             }
 
             // 创建
-            s.GroupCreate("mygroup");
+            s.GroupCreate("mygroup", "0");
             s.GroupCreate("mygroup2");
             s.GroupCreate("mygroup3");
 
+            // 消费
+            var rs = s.ReadGroup("mygroup", "stone", 3);
+
+            // 消息流
             var info = s.GetInfo();
             Assert.NotNull(info);
 
             XTrace.WriteLine(info.ToJson(true));
+
+            // 消费者
+            var groups = s.GetGroups();
+            Assert.Equal(3, groups.Length);
+            XTrace.WriteLine(groups.ToJson(true));
+
+            // 消费者
+            var consumers = s.GetConsumers("mygroup");
+            Assert.Equal(1, consumers.Length);
+            XTrace.WriteLine(consumers.ToJson(true));
         }
     }
 }
