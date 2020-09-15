@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NewLife;
 using NewLife.Caching;
-using NewLife.Data;
-using NewLife.Log;
-using NewLife.Serialization;
 using Xunit;
 
 namespace XUnitTest
@@ -28,7 +24,7 @@ namespace XUnitTest
             _redis = new FullRedis();
             _redis.Init(config);
 #if DEBUG
-            _redis.Log = XTrace.Log;
+            _redis.Log = NewLife.Log.XTrace.Log;
 #endif
         }
 
@@ -54,6 +50,10 @@ namespace XUnitTest
             var count2 = s.Count;
             Assert.False(s.IsEmpty);
             Assert.Equal(count + 1, count2);
+
+            // 范围
+            var rs = s.Range(null, null);
+            Assert.Equal(count + 1, rs.Count);
 
             // 尾部消费
             var vs1 = s.Read(null, 3);
@@ -81,6 +81,11 @@ namespace XUnitTest
             // 指针已经前移
             var ss = id.Split('-');
             Assert.Equal($"{ss[0]}-{ss[1].ToInt() + 1}", s.StartId);
+
+            // 删除
+            var rs2 = s.Delete(rs.First().Key);
+            Assert.Equal(1, rs2);
+            Assert.Equal(count + 1, s.Count + 1);
         }
 
         class UserInfo

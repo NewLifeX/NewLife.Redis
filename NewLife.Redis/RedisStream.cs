@@ -24,7 +24,7 @@ namespace NewLife.Caching
         /// <summary>是否为空</summary>
         public Boolean IsEmpty => Count == 0;
 
-        /// <summary>基元类型数据添加该key构成集合</summary>
+        /// <summary>基元类型数据添加该key构成集合。默认__data</summary>
         public String PrimitiveKey { get; set; } = "__data";
 
         /// <summary>最大队列长度。默认10万</summary>
@@ -45,9 +45,10 @@ namespace NewLife.Caching
 
         #region 核心生产消费
         /// <summary>生产添加</summary>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        public String Add(T value)
+        /// <param name="value">消息体</param>
+        /// <param name="msgId">消息ID</param>
+        /// <returns>返回消息ID</returns>
+        public String Add(T value, String msgId = null)
         {
             if (value == null) throw new ArgumentNullException(nameof(value));
 
@@ -55,11 +56,12 @@ namespace NewLife.Caching
             if (MaxLenngth > 0)
             {
                 args.Add("maxlen");
+                args.Add("~");
                 args.Add(MaxLenngth);
             }
 
             // *号表示服务器自动生成ID
-            args.Add("*");
+            args.Add(msgId.IsNullOrEmpty() ? "*" : msgId);
 
             // 数组和复杂对象字典，分开处理
             if (Type.GetTypeCode(value.GetType()) != TypeCode.Object)
@@ -94,13 +96,12 @@ namespace NewLife.Caching
         {
             if (values == null) throw new ArgumentNullException(nameof(values));
 
-            var count = 0;
             foreach (var item in values)
             {
                 Add(item);
-                count++;
             }
-            return count;
+
+            return values.Length;
         }
 
         /// <summary>批量消费获取，前移指针StartId</summary>
@@ -176,22 +177,23 @@ namespace NewLife.Caching
         /// <summary>删除指定消息</summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public Int32 Delete(String id) => Execute(rc => rc.Execute<Int32>("XDEL", $"{Key} {id}"), true);
+        public Int32 Delete(String id) => Execute(rc => rc.Execute<Int32>("XDEL", Key, id), true);
 
         /// <summary>获取区间消息</summary>
         /// <param name="startId"></param>
         /// <param name="endId"></param>
         /// <param name="count"></param>
         /// <returns></returns>
-        public String[] Range(String startId, String endId, Int32 count = -1)
+        public IDictionary<String, String[]> Range(String startId, String endId, Int32 count = -1)
         {
             if (startId.IsNullOrEmpty()) startId = "-";
             if (endId.IsNullOrEmpty()) endId = "+";
 
-            var cmd = $"{Key} {startId} {endId}";
-            if (count > 0) cmd += $" COUNT {count}";
+            var rs = count > 0 ?
+                Execute(rc => rc.Execute<Object[]>("XRANGE", Key, startId, endId, "COUNT", count), false) :
+                Execute(rc => rc.Execute<Object[]>("XRANGE", Key, startId, endId), false);
 
-            return Execute(rc => rc.Execute<String[]>("XRANGE", cmd), false);
+            return Parse(rs);
         }
 
         /// <summary>获取区间消息</summary>
@@ -199,7 +201,7 @@ namespace NewLife.Caching
         /// <param name="end"></param>
         /// <param name="count"></param>
         /// <returns></returns>
-        public String[] Range(DateTime start, DateTime end, Int32 count = -1) => Range(start.ToLong() + "-0", end.ToLong() + "-0", count);
+        public IDictionary<String, String[]> Range(DateTime start, DateTime end, Int32 count = -1) => Range(start.ToLong() + "-0", end.ToLong() + "-0", count);
 
         /// <summary>原始独立消费</summary>
         /// <param name="startId">开始编号</param>
@@ -253,22 +255,24 @@ XREAD count 3 streams stream_key 0-0
 #if DEBUG
                 System.Diagnostics.Debug.Assert(vs[0] is Packet pk && pk.ToStr() == Key);
 #endif
-                if (vs[1] is Object[] vs2)
-                {
-                    var dic = new Dictionary<String, String[]>();
-                    foreach (var item in vs2)
-                    {
-                        if (item is Object[] vs3 && vs3.Length == 2 && vs3[0] is Packet pkId && vs3[1] is Object[] vs4)
-                        {
-                            var id = pkId.ToStr();
-                            dic[id] = vs4.Select(e => (e as Packet).ToStr()).ToArray();
-                        }
-                    }
-                    return dic;
-                }
+                if (vs[1] is Object[] vs2) return Parse(vs2);
             }
 
             return null;
+        }
+
+        private IDictionary<String, String[]> Parse(Object[] vs2)
+        {
+            var dic = new Dictionary<String, String[]>();
+            foreach (var item in vs2)
+            {
+                if (item is Object[] vs3 && vs3.Length == 2 && vs3[0] is Packet pkId && vs3[1] is Object[] vs4)
+                {
+                    var id = pkId.ToStr();
+                    dic[id] = vs4.Select(e => (e as Packet).ToStr()).ToArray();
+                }
+            }
+            return dic;
         }
 
         /// <summary>创建消费组</summary>
