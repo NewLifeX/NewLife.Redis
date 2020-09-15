@@ -3,6 +3,9 @@ using System.IO;
 using System.Linq;
 using NewLife;
 using NewLife.Caching;
+using NewLife.Log;
+using NewLife.Security;
+using NewLife.Serialization;
 using Xunit;
 
 namespace XUnitTest
@@ -176,6 +179,33 @@ namespace XUnitTest
 
             // 删除
             s.GroupDestroy("mygroup");
+        }
+
+        [Fact]
+        public void GetInfo()
+        {
+            var key = "stream_info";
+
+            // 删除已有
+            _redis.Remove(key);
+            var s = _redis.GetStream<String>(key);
+            _redis.SetExpire(key, TimeSpan.FromMinutes(60));
+
+            // 添加基础类型
+            for (var i = 0; i < 7; i++)
+            {
+                s.Add(Rand.NextString(8));
+            }
+
+            // 创建
+            s.GroupCreate("mygroup");
+            s.GroupCreate("mygroup2");
+            s.GroupCreate("mygroup3");
+
+            var info = s.GetInfo();
+            Assert.NotNull(info);
+
+            XTrace.WriteLine(info.ToJson(true));
         }
     }
 }

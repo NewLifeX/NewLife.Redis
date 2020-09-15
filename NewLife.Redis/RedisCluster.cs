@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using NewLife.Caching.Models;
 using NewLife.Log;
 
 namespace NewLife.Caching

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using NewLife.Caching.Models;
 using NewLife.Collections;
 using NewLife.Data;
 using NewLife.Reflection;
@@ -362,6 +363,19 @@ XREAD count 3 streams stream_key 0-0
             var cmd = sb.Put(true);
 
             return Execute(rc => rc.Execute<String[]>("XREADGROUP", cmd), true);
+        }
+
+        /// <summary>获取信息</summary>
+        /// <returns></returns>
+        public StreamInfo GetInfo()
+        {
+            var rs = Execute(rc => rc.Execute<Object[]>("XINFO", "STREAM", Key), false);
+            if (rs == null) return null;
+
+            var info = new StreamInfo();
+            info.Parse(rs);
+
+            return info;
         }
         #endregion
     }

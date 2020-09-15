@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace NewLife.Caching
+namespace NewLife.Caching.Models
 {
     /// <summary>数据槽区间</summary>
     public struct Slot

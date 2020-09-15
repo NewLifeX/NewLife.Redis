@@ -6,7 +6,7 @@ using NewLife.Collections;
 using NewLife.Log;
 using NewLife.Net;
 
-namespace NewLife.Caching
+namespace NewLife.Caching.Models
 {
     /// <summary>服务器节点。内部连接池</summary>
     public class Node
