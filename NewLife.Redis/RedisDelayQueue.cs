@@ -107,7 +107,7 @@ namespace NewLife.Caching
                 if (next < 0)
                 {
                     var kv = GetNext();
-                    next = (Int32)kv.Value - DateTime.Now.ToInt();
+                    if (kv != null) next = (Int32)kv.Item2 - DateTime.Now.ToInt();
                 }
                 if (next > 60) break;
                 if (next <= 0) next = timeout;
@@ -147,7 +147,7 @@ namespace NewLife.Caching
                 if (next < 0)
                 {
                     var kv = GetNext();
-                    next = (Int32)kv.Value - DateTime.Now.ToInt();
+                    if (kv != null) next = (Int32)kv.Item2 - DateTime.Now.ToInt();
                 }
                 if (next > 60) break;
                 if (next <= 0) next = timeout;
@@ -264,15 +264,14 @@ namespace NewLife.Caching
         #region 辅助方法
         /// <summary>获取最近一个消息的到期时间，便于上层控制调度器</summary>
         /// <returns></returns>
-        public KeyValuePair<String, Double> GetNext()
+        public Tuple<String, Double> GetNext()
         {
-            var score = DateTime.Now.AddYears(1).ToInt();
             var rs = Execute(r => r.Execute<Object[]>("ZRANGE", Key, 0, 0, "WITHSCORES"));
-            if (rs == null || rs.Length < 2) return default;
+            if (rs == null || rs.Length < 2) return null;
 
             var item = (rs[0] as Packet).ToStr();
-            var source2 = (rs[1] as Packet).ToStr().ToDouble();
-            return new KeyValuePair<String, Double>(item, source2);
+            var score = (rs[1] as Packet).ToStr().ToDouble();
+            return new Tuple<String, Double>(item, score);
         }
 
         /// <summary>删除一批</summary>

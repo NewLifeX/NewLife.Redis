@@ -144,6 +144,26 @@ namespace NewLife.Caching
         /// <returns></returns>
         public String[] Range(Int32 start, Int32 stop) => Execute(r => r.Execute<String[]>("ZRANGE", Key, start, stop));
 
+        /// <summary>返回指定范围的成员分数对</summary>
+        /// <param name="start"></param>
+        /// <param name="stop"></param>
+        /// <returns></returns>
+        public IDictionary<String, Double> RangeWithScores(Int32 start, Int32 stop)
+        {
+            var dic = new Dictionary<String, Double>();
+
+            var rs = Execute(r => r.Execute<Packet[]>("ZRANGE", Key, start, stop, "WITHSCORES"));
+            if (rs != null && rs.Length >= 2)
+            {
+                for (var i = 0; i < rs.Length - 1; i += 2)
+                {
+                    dic[rs[i].ToStr()] = rs[i + 1].ToStr().ToDouble();
+                }
+            }
+
+            return dic;
+        }
+
         /// <summary>返回指定分数区间的成员列表，低分到高分排序</summary>
         /// <param name="min">低分，包含</param>
         /// <param name="max">高分，包含</param>
@@ -158,7 +178,7 @@ namespace NewLife.Caching
         /// <param name="offset">偏移</param>
         /// <param name="count">个数</param>
         /// <returns></returns>
-        public IDictionary<String, Double> RangeWithScores(Double min, Double max, Int32 offset, Int32 count)
+        public IDictionary<String, Double> RangeByScoreWithScores(Double min, Double max, Int32 offset, Int32 count)
         {
             var dic = new Dictionary<String, Double>();
 

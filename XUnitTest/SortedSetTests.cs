@@ -313,11 +313,43 @@ namespace XUnitTest
             var count = zset.FindCount(13.56, 14.34);
             Assert.Equal(2, count);
 
+            var rs = zset.Range(1, 2);
+            Assert.Equal(2, rs.Length);
+            Assert.Equal("stone2", rs[0]);
+            Assert.Equal("stone3", rs[1]);
+
+            var rs2 = zset.RangeWithScores(1, 2);
+            Assert.Equal(2, rs2.Count);
+            var kv2 = rs2.FirstOrDefault();
+            Assert.Equal("stone2", kv2.Key);
+            Assert.Equal(13.56, kv2.Value);
+        }
+
+        [Fact]
+        public void RangeByScore_Test()
+        {
+            var rkey = "zset_RangeByScore";
+
+            // 删除已有
+            _redis.Remove(rkey);
+
+            var zset = new RedisSortedSet(_redis, rkey);
+
+            // 插入数据
+            zset.Add("stone1", 12.34);
+            zset.Add("stone2", 13.56);
+            zset.Add("stone3", 14.34);
+            zset.Add("stone4", 15.34);
+            Assert.Equal(4, zset.Count);
+
+            var count = zset.FindCount(13.56, 14.34);
+            Assert.Equal(2, count);
+
             var rs = zset.RangeByScore(13.56, 14.34, 1, 2);
             Assert.Equal(1, rs.Length);
             Assert.Equal("stone3", rs[0]);
 
-            var rs2 = zset.RangeWithScores(13.56, 14.34, 1, 2);
+            var rs2 = zset.RangeByScoreWithScores(13.56, 14.34, 1, 2);
             Assert.Equal(1, rs2.Count);
             var kv2 = rs2.FirstOrDefault();
             Assert.Equal("stone3", kv2.Key);

@@ -254,7 +254,7 @@ namespace XUnitTest
                         var n = Rand.Next(1, 100);
                         var list = queue2.Take(n).ToList();
                         if (list.Count == 0) break;
-                      
+
                         var n2 = queue2.Acknowledge(list.ToArray());
                         Assert.Equal(list.Count, n2);
 
@@ -332,8 +332,8 @@ namespace XUnitTest
 
             // 取出来
             var kv = q.GetNext();
-            Assert.Equal("ABEF", kv.Key);
-            Assert.Equal(DateTime.Now.ToInt() + 10 - 3 + 1, kv.Value);
+            Assert.Equal("ABEF", kv.Item1);
+            Assert.Equal(DateTime.Now.ToInt() + 10 - 3 + 1, kv.Item2);
         }
     }
 }
