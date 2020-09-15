@@ -51,8 +51,8 @@ namespace NewLife.Caching
         /// <returns></returns>
         public Int32 Add(T value, Int32 delay)
         {
-            var source = DateTime.Now.ToInt() + delay;
-            var rs = Execute(rc => rc.Execute<Int32>("ZADD", Key, source, value), true);
+            var score = DateTime.Now.ToInt() + delay;
+            var rs = Execute(rc => rc.Execute<Int32>("ZADD", Key, score, value), true);
 
             return rs;
         }
@@ -92,8 +92,8 @@ namespace NewLife.Caching
             var next = -1;
             while (true)
             {
-                var source = DateTime.Now.ToInt();
-                var rs = Execute(r => r.Execute<Object[]>("ZRANGEBYSCORE", Key, 0, source, "LIMIT", 0, 1));
+                var score = DateTime.Now.ToInt();
+                var rs = Execute(r => r.Execute<Object[]>("ZRANGEBYSCORE", Key, 0, score, "LIMIT", 0, 1));
                 if (rs != null && rs.Length > 0)
                 {
                     // 争夺消费
@@ -132,8 +132,8 @@ namespace NewLife.Caching
             var next = -1;
             while (true)
             {
-                var source = DateTime.Now.ToInt();
-                var rs = await ExecuteAsync(r => r.ExecuteAsync<Object[]>("ZRANGEBYSCORE", new Object[] { Key, 0, source, "LIMIT", 0, 1 }));
+                var score = DateTime.Now.ToInt();
+                var rs = await ExecuteAsync(r => r.ExecuteAsync<Object[]>("ZRANGEBYSCORE", new Object[] { Key, 0, score, "LIMIT", 0, 1 }));
                 if (rs != null && rs.Length > 0)
                 {
                     // 争夺消费
@@ -168,8 +168,8 @@ namespace NewLife.Caching
 
             RetryDeadAck();
 
-            var source = DateTime.Now.ToInt();
-            var rs = Execute(r => r.Execute<Object[]>("ZRANGEBYSCORE", Key, 0, source, "LIMIT", 0, count));
+            var score = DateTime.Now.ToInt();
+            var rs = Execute(r => r.Execute<Object[]>("ZRANGEBYSCORE", Key, 0, score, "LIMIT", 0, count));
             if (rs == null || rs.Length == 0) yield break;
 
             foreach (var item in rs)
@@ -189,8 +189,8 @@ namespace NewLife.Caching
             if (value is Packet pk)
             {
                 // 备份到Ack队列
-                var source = DateTime.Now.ToInt() + RetryInterval;
-                Execute(rc => rc.Execute<Int32>("ZADD", AckKey, source, pk), true);
+                var score = DateTime.Now.ToInt() + RetryInterval;
+                Execute(rc => rc.Execute<Int32>("ZADD", AckKey, score, pk), true);
 
                 // 删除作为抢夺
                 if (Remove(Key, new[] { value }) > 0)
@@ -220,8 +220,8 @@ namespace NewLife.Caching
             var list = new List<String>();
             while (true)
             {
-                var source = DateTime.Now.ToInt();
-                var rs = Execute(r => r.Execute<String[]>("ZRANGEBYSCORE", key, 0, source, "LIMIT", 0, 100));
+                var score = DateTime.Now.ToInt();
+                var rs = Execute(r => r.Execute<String[]>("ZRANGEBYSCORE", key, 0, score, "LIMIT", 0, 100));
                 if (rs == null || rs.Length == 0) break;
 
                 // 加入原始队列
@@ -266,7 +266,7 @@ namespace NewLife.Caching
         /// <returns></returns>
         public KeyValuePair<String, Double> GetNext()
         {
-            var source = DateTime.Now.AddYears(1).ToInt();
+            var score = DateTime.Now.AddYears(1).ToInt();
             var rs = Execute(r => r.Execute<Object[]>("ZRANGE", Key, 0, 0, "WITHSCORES"));
             if (rs == null || rs.Length < 2) return default;
 

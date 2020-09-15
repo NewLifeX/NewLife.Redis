@@ -49,7 +49,7 @@ namespace XUnitTest
 
                 list.Add(score, key);
                 var rs = zset.Add(key, score);
-                Assert.True(rs);
+                Assert.Equal(1, rs);
             }
 
             Assert.Equal(list.Count, zset.Count);

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using NewLife.Data;
 using NewLife.Reflection;
 
@@ -9,6 +8,11 @@ namespace NewLife.Caching
     /// <summary>有序集合ZSET</summary>
     public class RedisSortedSet : RedisBase
     {
+        #region 属性
+        /// <summary>个数</summary>
+        public Int32 Count => Execute(rc => rc.Execute<Int32>("ZCARD", Key));
+        #endregion
+
         #region 实例化
         /// <summary>实例化有序集合</summary>
         /// <param name="redis"></param>
@@ -17,20 +21,25 @@ namespace NewLife.Caching
         #endregion
 
         #region 方法
-        /// <summary>个数</summary>
-        public Int32 Count => Execute(rc => rc.Execute<Int32>("ZCARD", Key));
-
         /// <summary>添加元素并指定分数</summary>
         /// <param name="item">元素</param>
         /// <param name="score">分数</param>
-        public Boolean Add(String item, Double score)
-        {
-            var dic = new Dictionary<String, Double>
-            {
-                [item] = score
-            };
+        public Int32 Add(String item, Double score) => Execute(rc => rc.Execute<Int32>("ZADD", Key, score, item), true);
 
-            return Add(null, dic) == 1;
+        /// <summary>批量添加</summary>
+        /// <param name="values"></param>
+        /// <param name="score"></param>
+        /// <returns></returns>
+        public Int32 Add(String[] values, Int32 score)
+        {
+            var args = new List<Object> { Key };
+
+            foreach (var item in values)
+            {
+                args.Add(score);
+                args.Add(item);
+            }
+            return Execute(rc => rc.Execute<Int32>("ZADD", args.ToArray()), true);
         }
 
         /// <summary>删除元素</summary>
@@ -64,10 +73,7 @@ namespace NewLife.Caching
         /// <returns></returns>
         public Int32 Add(String options, IDictionary<String, Double> members)
         {
-            var args = new List<Object>
-            {
-                Key
-            };
+            var args = new List<Object> { Key };
 
             // 支持参数
             if (!options.IsNullOrEmpty() && options.EqualIgnoreCase("XX", "NX", "CH", "INCR")) args.Add(options);
@@ -148,21 +154,24 @@ namespace NewLife.Caching
         /// <param name="count"></param>
         /// <param name="position"></param>
         /// <returns></returns>
-        public virtual String[] Search(String pattern, Int32 count, ref Int32 position)
+        public virtual IEnumerable<String> Search(String pattern, Int32 count, Int32 position = 0)
         {
-            var p = position;
-            var rs = Execute(r => r.Execute<Object[]>("ZSCAN", p, "MATCH", pattern + "", "COUNT", count));
-
-            if (rs != null)
+            while (count > 0)
             {
+                var rs = Execute(r => r.Execute<Object[]>("ZSCAN", position, "MATCH", pattern + "", "COUNT", count));
+                if (rs == null || rs.Length != 2) break;
+
                 position = (rs[0] as Packet).ToStr().ToInt();
+                if (position == 0) break;
 
                 var ps = rs[1] as Object[];
-                var ss = ps.Select(e => (e as Packet).ToStr()).ToArray();
-                return ss;
-            }
+                foreach (Packet item in ps)
+                {
+                    yield return item.ToStr();
+                }
 
-            return null;
+                count -= ps.Length;
+            }
         }
         #endregion
     }
