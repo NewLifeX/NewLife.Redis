@@ -374,5 +374,28 @@ namespace XUnitTest
             Assert.Equal("stone2", ks[1]);
             Assert.Equal(13.56, vs[1]);
         }
+
+        [Fact]
+        public void Search()
+        {
+            var rkey = "zset_Search";
+
+            // 删除已有
+            _redis.Remove(rkey);
+
+            var zset = new RedisSortedSet(_redis, rkey);
+
+            // 插入数据
+            zset.Add("stone1", 12.34);
+            zset.Add("stone2", 13.56);
+            zset.Add("stone3", 14.34);
+            zset.Add("stone4", 15.34);
+            Assert.Equal(4, zset.Count);
+
+            var dic = zset.Search("*one?", 3, 2).ToList();
+            Assert.Equal(3, dic.Count);
+            //Assert.Equal("stone3", dic[0]);
+            //Assert.Equal("stone4", dic[1]);
+        }
     }
 }

@@ -165,7 +165,7 @@ namespace NewLife.Caching
             var rs = Execute(r => r.Execute<Packet[]>("ZRANGEBYSCORE", Key, min, max, "WITHSCORES", "LIMIT", offset, count));
             if (rs != null && rs.Length >= 2)
             {
-                for (var i = 0; i < rs.Length - 1; i++)
+                for (var i = 0; i < rs.Length - 1; i += 2)
                 {
                     dic[rs[i].ToStr()] = rs[i + 1].ToStr().ToDouble();
                 }
@@ -184,23 +184,27 @@ namespace NewLife.Caching
         /// <param name="count"></param>
         /// <param name="position"></param>
         /// <returns></returns>
-        public virtual IEnumerable<String> Search(String pattern, Int32 count, Int32 position = 0)
+        public virtual IEnumerable<KeyValuePair<String, Double>> Search(String pattern, Int32 count, Int32 position = 0)
         {
             while (count > 0)
             {
-                var rs = Execute(r => r.Execute<Object[]>("ZSCAN", position, "MATCH", pattern + "", "COUNT", count));
+                var rs = Execute(r => r.Execute<Object[]>("ZSCAN", Key, position, "MATCH", pattern + "", "COUNT", count));
                 if (rs == null || rs.Length != 2) break;
 
                 position = (rs[0] as Packet).ToStr().ToInt();
-                if (position == 0) break;
 
                 var ps = rs[1] as Object[];
-                foreach (Packet item in ps)
+                for (var i = 0; i < ps.Length - 1; i += 2)
                 {
-                    yield return item.ToStr();
+                    if (count-- > 0)
+                    {
+                        var item = (ps[i] as Packet).ToStr();
+                        var score = (ps[i + 1] as Packet).ToStr().ToDouble();
+                        yield return new KeyValuePair<String, Double>(item, score);
+                    }
                 }
 
-                count -= ps.Length;
+                if (position == 0) break;
             }
         }
         #endregion

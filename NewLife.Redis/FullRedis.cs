@@ -312,15 +312,14 @@ namespace NewLife.Caching
                 if (rs == null || rs.Length != 2) break;
 
                 position = (rs[0] as Packet).ToStr().ToInt();
-                if (position == 0) break;
 
                 var ps = rs[1] as Object[];
                 foreach (Packet item in ps)
                 {
-                    yield return item.ToStr();
+                    if (count-- > 0) yield return item.ToStr();
                 }
 
-                count -= ps.Length;
+                if (position == 0) break;
             }
         }
         #endregion
