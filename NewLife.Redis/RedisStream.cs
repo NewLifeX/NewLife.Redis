@@ -27,6 +27,9 @@ namespace NewLife.Caching
         /// <summary>基元类型数据添加该key构成集合</summary>
         public String PrimitiveKey { get; set; } = "__data";
 
+        /// <summary>最大队列长度。默认10万</summary>
+        public Int32 MaxLenngth { get; set; } = 100_000;
+
         /// <summary>开始编号。默认0-0</summary>
         public String StartId { get; set; } = "0-0";
 
@@ -43,18 +46,19 @@ namespace NewLife.Caching
         #region 核心生产消费
         /// <summary>生产添加</summary>
         /// <param name="value"></param>
-        /// <param name="maxlen"></param>
         /// <returns></returns>
-        public String Add(T value, Int32 maxlen = -1)
+        public String Add(T value)
         {
             if (value == null) throw new ArgumentNullException(nameof(value));
 
             var args = new List<Object> { Key };
-            if (maxlen > 0)
+            if (MaxLenngth > 0)
             {
                 args.Add("maxlen");
-                args.Add(maxlen);
+                args.Add(MaxLenngth);
             }
+
+            // *号表示服务器自动生成ID
             args.Add("*");
 
             // 数组和复杂对象字典，分开处理
@@ -195,10 +199,7 @@ namespace NewLife.Caching
         /// <param name="end"></param>
         /// <param name="count"></param>
         /// <returns></returns>
-        public String[] Range(DateTime start, DateTime end, Int32 count = -1)
-        {
-            return Range(start.ToLong() + "-0", end.ToLong() + "-0", count);
-        }
+        public String[] Range(DateTime start, DateTime end, Int32 count = -1) => Range(start.ToLong() + "-0", end.ToLong() + "-0", count);
 
         /// <summary>原始独立消费</summary>
         /// <param name="startId">开始编号</param>
@@ -273,10 +274,7 @@ XREAD count 3 streams stream_key 0-0
         /// <summary>创建消费组</summary>
         /// <param name="group"></param>
         /// <returns></returns>
-        public Boolean CreateGroup(String group)
-        {
-            return Execute(rc => rc.Execute<Boolean>("XGROUP", "create " + group), true);
-        }
+        public Boolean CreateGroup(String group) => Execute(rc => rc.Execute<Boolean>("XGROUP", "create " + group), true);
 
         /// <summary>消费组消费</summary>
         /// <param name="group"></param>
