@@ -72,7 +72,7 @@ namespace NewLife.Caching
         /// <summary>批量生产</summary>
         /// <param name="values"></param>
         /// <returns></returns>
-        public Int32 Add(params T[] values) => Add(values.Cast<Object>().ToArray(), Redis.Expire);
+        public Int32 Add(params T[] values) => Add(values.Cast<Object>().ToArray(), Delay);
 
         /// <summary>删除项</summary>
         /// <param name="value"></param>
