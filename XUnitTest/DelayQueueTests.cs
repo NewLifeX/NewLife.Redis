@@ -337,5 +337,43 @@ namespace XUnitTest
             Assert.Equal("abcd", await queue.TakeOneAsync(0));
             Assert.Equal("新生命团队", await queue.TakeOneAsync(0));
         }
+
+        [Fact]
+        public async void TransferAsync()
+        {
+            var key = "transfer_delay";
+            var key2 = "transfer";
+
+            // 删除已有
+            _redis.Remove(key);
+            _redis.Remove(key2);
+            var queue = _redis.GetDelayQueue<String>(key);
+            var queue2 = _redis.GetReliableQueue<String>(key2);
+
+            // 添加
+            var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
+            queue.Delay = 2;
+            queue.Add(vs);
+
+            // 开始转移
+            XTrace.WriteLine("开始转移");
+            var source = new CancellationTokenSource(3000);
+            var task = queue.TransferAsync(queue2, null, source.Token);
+
+            // 可信队列消费
+            var v1 = await queue2.TakeOneAsync(-1);
+            Assert.Null(v1);
+
+            // 到期以后
+            XTrace.WriteLine("可信队列阻塞消费");
+            var sw = Stopwatch.StartNew();
+            var v2 = await queue2.TakeOneAsync(3);
+            sw.Stop();
+            Assert.Equal("1234", v2);
+            Assert.True(sw.ElapsedMilliseconds <= 2000);
+            queue2.Acknowledge(v2);
+
+            //await task;
+        }
     }
 }

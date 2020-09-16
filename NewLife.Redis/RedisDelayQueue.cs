@@ -226,5 +226,57 @@ namespace NewLife.Caching
         /// <returns></returns>
         public Int32 RollbackAllAck() => RollbackAck(DateTime.Today.AddDays(1)).Count;
         #endregion
+
+        #region 消息交换
+        /// <summary>异步转移消息，已到期消息转移到目标队列</summary>
+        /// <param name="queue">队列</param>
+        /// <param name="onException">异常处理</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns></returns>
+        public async Task TransferAsync(IProducerConsumer<T> queue, Action<Exception> onException = null, CancellationToken cancellationToken = default)
+        {
+            // 超时时间，用于阻塞等待
+            var timeout = Redis.Timeout / 1000 - 1;
+            var topic = Key;
+            var tracer = Redis.Tracer;
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                ISpan span = null;
+                try
+                {
+                    // 异步阻塞消费
+                    var msg = await TakeOneAsync(timeout);
+                    if (msg != null)
+                    {
+                        span = tracer?.NewSpan($"mq:{topic}:Transfer", msg);
+
+                        // 转移消息
+                        queue.Add(msg);
+
+                        // 确认消息
+                        Acknowledge(msg);
+                    }
+                    else
+                    {
+                        // 没有消息，歇一会
+                        await TaskEx.Delay(1000);
+                    }
+                }
+                catch (ThreadAbortException) { break; }
+                catch (ThreadInterruptedException) { break; }
+                catch (Exception ex)
+                {
+                    span?.SetError(ex, null);
+
+                    onException?.Invoke(ex);
+                }
+                finally
+                {
+                    span?.Dispose();
+                }
+            }
+        }
+        #endregion
     }
 }

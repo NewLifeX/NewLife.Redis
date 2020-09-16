@@ -56,6 +56,8 @@ namespace NewLife.Caching
                         await TaskEx.Delay(1000);
                     }
                 }
+                catch (ThreadAbortException) { break; }
+                catch (ThreadInterruptedException) { break; }
                 catch (Exception ex)
                 {
                     span?.SetError(ex, null);
