@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using NewLife.Data;
 using NewLife.Log;
 using NewLife.Reflection;
 #if !NET40
@@ -20,7 +19,7 @@ namespace NewLife.Caching
     {
         #region 属性
         /// <summary>用于确认的列表</summary>
-        public String AckKey { get; set; }
+        public String AckKey { get; }
 
         /// <summary>重新处理确认队列中死信的间隔。默认60s</summary>
         public Int32 RetryInterval { get; set; } = 60;
@@ -42,12 +41,16 @@ namespace NewLife.Caching
         /// <summary>实例化延迟队列</summary>
         /// <param name="redis"></param>
         /// <param name="key"></param>
-        public RedisDelayQueue(Redis redis, String key) : base(redis, key)
+        /// <param name="useAck"></param>
+        public RedisDelayQueue(Redis redis, String key, Boolean useAck = true) : base(redis, key)
         {
-            AckKey = $"{key}:Ack";
-
             _sort = new RedisSortedSet<T>(redis, key);
-            _ack = new RedisSortedSet<T>(redis, AckKey);
+
+            if (useAck)
+            {
+                AckKey = $"{key}:Ack";
+                _ack = new RedisSortedSet<T>(redis, AckKey);
+            }
         }
         #endregion
 
@@ -145,9 +148,12 @@ namespace NewLife.Caching
         /// <returns></returns>
         private Boolean TryPop(T value)
         {
-            // 先备份，再删除。备份到Ack队列
-            var score = DateTime.Now.ToInt() + RetryInterval;
-            _ack.Add(value, score);
+            if (_ack != null)
+            {
+                // 先备份，再删除。备份到Ack队列
+                var score = DateTime.Now.ToInt() + RetryInterval;
+                _ack.Add(value, score);
+            }
 
             // 删除作为抢夺
             return _sort.Remove(value) > 0;
@@ -156,12 +162,12 @@ namespace NewLife.Caching
         /// <summary>确认删除</summary>
         /// <param name="keys"></param>
         /// <returns></returns>
-        public Int32 Acknowledge(params T[] keys) => _ack.Remove(keys);
+        public Int32 Acknowledge(params T[] keys) => _ack?.Remove(keys) ?? -1;
 
         /// <summary>确认删除</summary>
         /// <param name="keys"></param>
         /// <returns></returns>
-        Int32 IProducerConsumer<T>.Acknowledge(params String[] keys) => _ack.Remove(keys.Select(e => e.ChangeType<T>()).ToArray());
+        Int32 IProducerConsumer<T>.Acknowledge(params String[] keys) => _ack?.Remove(keys.Select(e => e.ChangeType<T>()).ToArray()) ?? -1;
         #endregion
 
         #region 死信处理
@@ -170,6 +176,8 @@ namespace NewLife.Caching
         /// <returns></returns>
         private List<T> RollbackAck(DateTime time)
         {
+            if (_ack == null) return null;
+
             // 消费所有数据
             var score = time.ToInt();
             var list = new List<T>();
@@ -194,6 +202,8 @@ namespace NewLife.Caching
         /// <summary>处理未确认的死信，重新放入队列</summary>
         private Int32 RetryAck()
         {
+            if (_ack == null) return 0;
+
             var now = DateTime.Now;
             // 一定间隔处理死信
             if (_nextRetry < now)

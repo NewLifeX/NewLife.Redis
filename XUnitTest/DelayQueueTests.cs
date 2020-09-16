@@ -317,5 +317,25 @@ namespace XUnitTest
             Assert.Equal("xxyy", rs);
             Assert.True(sw.ElapsedMilliseconds >= 2000);
         }
+
+        [Fact]
+        public async void NoAck()
+        {
+            var key = "DelayQueue_NoAck";
+
+            // 删除已有
+            _redis.Remove(key);
+            var queue = new RedisDelayQueue<String>(_redis, key, false);
+
+            // 添加
+            var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
+            queue.Add(vs);
+
+            // 取出来
+            Assert.Equal("1234", await queue.TakeOneAsync(0));
+            Assert.Equal("ABEF", await queue.TakeOneAsync(0));
+            Assert.Equal("abcd", await queue.TakeOneAsync(0));
+            Assert.Equal("新生命团队", await queue.TakeOneAsync(0));
+        }
     }
 }
