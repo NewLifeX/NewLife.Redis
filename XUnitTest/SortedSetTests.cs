@@ -39,7 +39,7 @@ namespace XUnitTest
             // 删除已有
             _redis.Remove(rkey);
 
-            var zset = new RedisSortedSet(_redis, rkey);
+            var zset = new RedisSortedSet<String>(_redis, rkey);
             var list = new SortedList<Double, String>();
 
             // 插入数据
@@ -63,7 +63,7 @@ namespace XUnitTest
                 list.Remove(ks[0]);
 
                 var rs = zset.Remove(vs[0]);
-                Assert.True(rs);
+                Assert.Equal(1, rs);
 
                 Assert.Equal(list.Count, zset.Count);
 
@@ -122,7 +122,7 @@ namespace XUnitTest
             // 删除已有
             _redis.Remove(rkey);
 
-            var zset = new RedisSortedSet(_redis, rkey);
+            var zset = new RedisSortedSet<String>(_redis, rkey);
 
             // 插入数据
             var count = 10;
@@ -147,7 +147,7 @@ namespace XUnitTest
             // 删除已有
             _redis.Remove(rkey);
 
-            var zset = new RedisSortedSet(_redis, rkey);
+            var zset = new RedisSortedSet<String>(_redis, rkey);
 
             // 插入数据
             var count = 10;
@@ -173,7 +173,7 @@ namespace XUnitTest
             // 删除已有
             _redis.Remove(rkey);
 
-            var zset = new RedisSortedSet(_redis, rkey);
+            var zset = new RedisSortedSet<String>(_redis, rkey);
 
             // 插入数据
             zset.Add("stone", 123.456);
@@ -203,7 +203,7 @@ namespace XUnitTest
             // 删除已有
             _redis.Remove(rkey);
 
-            var zset = new RedisSortedSet(_redis, rkey);
+            var zset = new RedisSortedSet<String>(_redis, rkey);
 
             // 插入数据
             zset.Add("stone", 123.456);
@@ -232,7 +232,7 @@ namespace XUnitTest
             // 删除已有
             _redis.Remove(rkey);
 
-            var zset = new RedisSortedSet(_redis, rkey);
+            var zset = new RedisSortedSet<String>(_redis, rkey);
 
             // 插入数据
             zset.Add("stone", 123.456);
@@ -271,7 +271,7 @@ namespace XUnitTest
             // 删除已有
             _redis.Remove(rkey);
 
-            var zset = new RedisSortedSet(_redis, rkey);
+            var zset = new RedisSortedSet<String>(_redis, rkey);
 
             // 插入数据
             zset.Add("stone", 123.456);
@@ -301,7 +301,7 @@ namespace XUnitTest
             // 删除已有
             _redis.Remove(rkey);
 
-            var zset = new RedisSortedSet(_redis, rkey);
+            var zset = new RedisSortedSet<String>(_redis, rkey);
 
             // 插入数据
             zset.Add("stone1", 12.34);
@@ -333,7 +333,7 @@ namespace XUnitTest
             // 删除已有
             _redis.Remove(rkey);
 
-            var zset = new RedisSortedSet(_redis, rkey);
+            var zset = new RedisSortedSet<String>(_redis, rkey);
 
             // 插入数据
             zset.Add("stone1", 12.34);
@@ -364,7 +364,7 @@ namespace XUnitTest
             // 删除已有
             _redis.Remove(rkey);
 
-            var zset = new RedisSortedSet(_redis, rkey);
+            var zset = new RedisSortedSet<String>(_redis, rkey);
 
             // 插入数据
             zset.Add("stone", 12.34);
@@ -382,7 +382,7 @@ namespace XUnitTest
             // 删除已有
             _redis.Remove(rkey);
 
-            var zset = new RedisSortedSet(_redis, rkey);
+            var zset = new RedisSortedSet<String>(_redis, rkey);
 
             // 插入数据
             zset.Add("stone1", 12.34);
@@ -415,7 +415,7 @@ namespace XUnitTest
             // 删除已有
             _redis.Remove(rkey);
 
-            var zset = new RedisSortedSet(_redis, rkey);
+            var zset = new RedisSortedSet<String>(_redis, rkey);
 
             // 插入数据
             zset.Add("stone1", 12.34);

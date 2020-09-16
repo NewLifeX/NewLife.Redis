@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using NewLife.Data;
 using NewLife.Reflection;
 
 namespace NewLife.Caching
 {
     /// <summary>有序集合ZSET</summary>
-    public class RedisSortedSet : RedisBase
+    public class RedisSortedSet<T> : RedisBase
     {
         #region 属性
         /// <summary>个数</summary>
@@ -22,19 +23,19 @@ namespace NewLife.Caching
 
         #region 方法
         /// <summary>添加元素并指定分数</summary>
-        /// <param name="item">元素</param>
+        /// <param name="member">元素</param>
         /// <param name="score">分数</param>
-        public Int32 Add(String item, Double score) => Execute(rc => rc.Execute<Int32>("ZADD", Key, score, item), true);
+        public Int32 Add(T member, Double score) => Execute(rc => rc.Execute<Int32>("ZADD", Key, score, member), true);
 
         /// <summary>批量添加</summary>
-        /// <param name="values"></param>
+        /// <param name="members"></param>
         /// <param name="score"></param>
         /// <returns></returns>
-        public Int32 Add(IEnumerable<String> values, Double score)
+        public Int32 Add(IEnumerable<T> members, Double score)
         {
             var args = new List<Object> { Key };
 
-            foreach (var item in values)
+            foreach (var item in members)
             {
                 args.Add(score);
                 args.Add(item);
@@ -43,14 +44,24 @@ namespace NewLife.Caching
         }
 
         /// <summary>删除元素</summary>
-        /// <param name="item"></param>
+        /// <param name="members"></param>
         /// <returns></returns>
-        public Boolean Remove(String item) => Execute(r => r.Execute<Int32>("ZREM", Key, item), true) == 1;
+        public Int32 Remove(params T[] members)
+        {
+            var args = new List<Object> { Key };
+
+            foreach (var item in members)
+            {
+                args.Add(item);
+            }
+            return Execute(rc => rc.Execute<Int32>("ZREM", args.ToArray()), true);
+        }
+
 
         /// <summary>返回有序集key中，成员member的score值</summary>
-        /// <param name="item"></param>
+        /// <param name="member"></param>
         /// <returns></returns>
-        public Double GetScore(String item) => Execute(r => r.Execute<Double>("ZSCORE", Key, item), false);
+        public Double GetScore(T member) => Execute(r => r.Execute<Double>("ZSCORE", Key, member), false);
         #endregion
 
         #region 高级操作
@@ -71,7 +82,7 @@ namespace NewLife.Caching
         /// <param name="options">支持参数</param>
         /// <param name="members"></param>
         /// <returns></returns>
-        public Int32 Add(String options, IDictionary<String, Double> members)
+        public Int32 Add(String options, IDictionary<T, Double> members)
         {
             var args = new List<Object> { Key };
 
@@ -90,20 +101,20 @@ namespace NewLife.Caching
         /// <param name="member"></param>
         /// <param name="score"></param>
         /// <returns></returns>
-        public Double Increment(String member, Double score) => Execute(rc => rc.Execute<Double>("ZINCRBY", Key, score, member));
+        public Double Increment(T member, Double score) => Execute(rc => rc.Execute<Double>("ZINCRBY", Key, score, member));
 
         /// <summary>删除并返回有序集合key中的最多count个具有最高得分的成员</summary>
         /// <param name="count"></param>
         /// <returns></returns>
-        public IDictionary<String, Double> PopMax(Int32 count = 1)
+        public IDictionary<T, Double> PopMax(Int32 count = 1)
         {
             var list = Execute(rc => rc.Execute<String[]>("ZPOPMAX", Key, count), true);
             if (list == null || list.Length == 0) return null;
 
-            var dic = new Dictionary<String, Double>();
+            var dic = new Dictionary<T, Double>();
             for (var i = 0; i < list.Length; i += 2)
             {
-                var member = list[i].ChangeType<String>();
+                var member = list[i].ChangeType<T>();
                 var score = list[i + 1].ToDouble();
                 dic[member] = score;
             }
@@ -114,15 +125,15 @@ namespace NewLife.Caching
         /// <summary>删除并返回有序集合key中的最多count个具有最低得分的成员</summary>
         /// <param name="count"></param>
         /// <returns></returns>
-        public IDictionary<String, Double> PopMin(Int32 count = 1)
+        public IDictionary<T, Double> PopMin(Int32 count = 1)
         {
             var list = Execute(rc => rc.Execute<String[]>("ZPOPMIN", Key, count), true);
             if (list == null || list.Length == 0) return null;
 
-            var dic = new Dictionary<String, Double>();
+            var dic = new Dictionary<T, Double>();
             for (var i = 0; i < list.Length; i += 2)
             {
-                var member = list[i].ChangeType<String>();
+                var member = list[i].ChangeType<T>();
                 var score = list[i + 1].ToDouble();
                 dic[member] = score;
             }
@@ -142,22 +153,24 @@ namespace NewLife.Caching
         /// <param name="start"></param>
         /// <param name="stop"></param>
         /// <returns></returns>
-        public String[] Range(Int32 start, Int32 stop) => Execute(r => r.Execute<String[]>("ZRANGE", Key, start, stop));
+        public T[] Range(Int32 start, Int32 stop) => Execute(r => r.Execute<T[]>("ZRANGE", Key, start, stop));
 
         /// <summary>返回指定范围的成员分数对</summary>
         /// <param name="start"></param>
         /// <param name="stop"></param>
         /// <returns></returns>
-        public IDictionary<String, Double> RangeWithScores(Int32 start, Int32 stop)
+        public IDictionary<T, Double> RangeWithScores(Int32 start, Int32 stop)
         {
-            var dic = new Dictionary<String, Double>();
+            var dic = new Dictionary<T, Double>();
 
-            var rs = Execute(r => r.Execute<Packet[]>("ZRANGE", Key, start, stop, "WITHSCORES"));
+            var rs = Execute(r => r.Execute<String[]>("ZRANGE", Key, start, stop, "WITHSCORES"));
             if (rs != null && rs.Length >= 2)
             {
                 for (var i = 0; i < rs.Length - 1; i += 2)
                 {
-                    dic[rs[i].ToStr()] = rs[i + 1].ToStr().ToDouble();
+                    var member = rs[i].ChangeType<T>();
+                    var score = rs[i + 1].ToDouble();
+                    dic[member] = score;
                 }
             }
 
@@ -170,7 +183,15 @@ namespace NewLife.Caching
         /// <param name="offset">偏移</param>
         /// <param name="count">个数</param>
         /// <returns></returns>
-        public String[] RangeByScore(Double min, Double max, Int32 offset, Int32 count) => Execute(r => r.Execute<String[]>("ZRANGEBYSCORE", Key, min, max, "LIMIT", offset, count));
+        public T[] RangeByScore(Double min, Double max, Int32 offset, Int32 count) => Execute(r => r.Execute<T[]>("ZRANGEBYSCORE", Key, min, max, "LIMIT", offset, count));
+
+        /// <summary>返回指定分数区间的成员列表，低分到高分排序</summary>
+        /// <param name="min">低分，包含</param>
+        /// <param name="max">高分，包含</param>
+        /// <param name="offset">偏移</param>
+        /// <param name="count">个数</param>
+        /// <returns></returns>
+        public async Task<T[]> RangeByScoreAsync(Double min, Double max, Int32 offset, Int32 count) => await ExecuteAsync(r => r.ExecuteAsync<T[]>("ZRANGEBYSCORE", new Object[] { Key, min, max, "LIMIT", offset, count }));
 
         /// <summary>返回指定分数区间的成员分数对，低分到高分排序</summary>
         /// <param name="min">低分，包含</param>
@@ -178,16 +199,18 @@ namespace NewLife.Caching
         /// <param name="offset">偏移</param>
         /// <param name="count">个数</param>
         /// <returns></returns>
-        public IDictionary<String, Double> RangeByScoreWithScores(Double min, Double max, Int32 offset, Int32 count)
+        public IDictionary<T, Double> RangeByScoreWithScores(Double min, Double max, Int32 offset, Int32 count)
         {
-            var dic = new Dictionary<String, Double>();
+            var dic = new Dictionary<T, Double>();
 
-            var rs = Execute(r => r.Execute<Packet[]>("ZRANGEBYSCORE", Key, min, max, "WITHSCORES", "LIMIT", offset, count));
+            var rs = Execute(r => r.Execute<String[]>("ZRANGEBYSCORE", Key, min, max, "WITHSCORES", "LIMIT", offset, count));
             if (rs != null && rs.Length >= 2)
             {
                 for (var i = 0; i < rs.Length - 1; i += 2)
                 {
-                    dic[rs[i].ToStr()] = rs[i + 1].ToStr().ToDouble();
+                    var member = rs[i].ChangeType<T>();
+                    var score = rs[i + 1].ToDouble();
+                    dic[member] = score;
                 }
             }
 
@@ -197,14 +220,14 @@ namespace NewLife.Caching
         /// <summary>返回有序集key中成员member的排名。其中有序集成员按score值递增(从小到大)顺序排列</summary>
         /// <param name="member"></param>
         /// <returns></returns>
-        public Int32 Rank(String member) => Execute(r => r.Execute<Int32>("ZRANK", Key, member));
+        public Int32 Rank(T member) => Execute(r => r.Execute<Int32>("ZRANK", Key, member));
 
         /// <summary>模糊搜索，支持?和*</summary>
         /// <param name="pattern"></param>
         /// <param name="count"></param>
         /// <param name="position"></param>
         /// <returns></returns>
-        public virtual IEnumerable<KeyValuePair<String, Double>> Search(String pattern, Int32 count, Int32 position = 0)
+        public virtual IEnumerable<KeyValuePair<T, Double>> Search(String pattern, Int32 count, Int32 position = 0)
         {
             while (count > 0)
             {
@@ -218,9 +241,9 @@ namespace NewLife.Caching
                 {
                     if (count-- > 0)
                     {
-                        var item = (ps[i] as Packet).ToStr();
+                        var item = (ps[i] as Packet).ToStr().ChangeType<T>();
                         var score = (ps[i + 1] as Packet).ToStr().ToDouble();
-                        yield return new KeyValuePair<String, Double>(item, score);
+                        yield return new KeyValuePair<T, Double>(item, score);
                     }
                 }
 

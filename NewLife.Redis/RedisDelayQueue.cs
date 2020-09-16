@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Data;
 using NewLife.Log;
+using NewLife.Reflection;
 #if !NET40
 using TaskEx = System.Threading.Tasks.Task;
 #endif
@@ -25,13 +26,16 @@ namespace NewLife.Caching
         public Int32 RetryInterval { get; set; } = 60;
 
         /// <summary>个数</summary>
-        public Int32 Count => Execute(rc => rc.Execute<Int32>("ZCARD", Key));
+        public Int32 Count => _sort?.Count ?? 0;
 
         /// <summary>是否为空</summary>
         public Boolean IsEmpty => Count == 0;
 
         /// <summary>默认延迟时间。单位，秒</summary>
         public Int32 Delay { get; set; }
+
+        private RedisSortedSet<T> _sort;
+        private RedisSortedSet<T> _ack;
         #endregion
 
         #region 实例化
@@ -41,6 +45,9 @@ namespace NewLife.Caching
         public RedisDelayQueue(Redis redis, String key) : base(redis, key)
         {
             AckKey = $"{key}:Ack";
+
+            _sort = new RedisSortedSet<T>(redis, key);
+            _ack = new RedisSortedSet<T>(redis, AckKey);
         }
         #endregion
 
@@ -49,111 +56,65 @@ namespace NewLife.Caching
         /// <param name="value"></param>
         /// <param name="delay"></param>
         /// <returns></returns>
-        public Int32 Add(T value, Int32 delay)
-        {
-            var score = DateTime.Now.ToInt() + delay;
-            var rs = Execute(rc => rc.Execute<Int32>("ZADD", Key, score, value), true);
-
-            return rs;
-        }
-
-        private Int32 Add(Object[] values, Int32 delay)
-        {
-            var args = new List<Object> { Key };
-
-            foreach (var item in values)
-            {
-                args.Add(delay);
-                args.Add(item);
-            }
-            return Execute(rc => rc.Execute<Int32>("ZADD", args.ToArray()), true);
-        }
+        public Int32 Add(T value, Int32 delay) => _sort.Add(value, DateTime.Now.ToInt() + delay);
 
         /// <summary>批量生产</summary>
         /// <param name="values"></param>
         /// <returns></returns>
-        public Int32 Add(params T[] values) => Add(values.Cast<Object>().ToArray(), Delay);
+        public Int32 Add(params T[] values) => _sort.Add(values, DateTime.Now.ToInt() + Delay);
 
         /// <summary>删除项</summary>
         /// <param name="value"></param>
         /// <returns></returns>
-        public Int32 Remove(T value) => Execute(r => r.Execute<Int32>("ZREM", Key, value), true);
+        public Int32 Remove(T value) => _sort.Remove(value);
 
         /// <summary>获取一个</summary>
-        /// <param name="timeout"></param>
+        /// <param name="timeout">超时时间，默认0秒永远阻塞；负数表示直接返回，不阻塞。</param>
         /// <returns></returns>
         public T TakeOne(Int32 timeout = 0)
         {
-            RetryDeadAck();
+            RetryAck();
 
             // 最长等待
             if (timeout == 0) timeout = 60;
 
-            var next = -1;
             while (true)
             {
                 var score = DateTime.Now.ToInt();
-                var rs = Execute(r => r.Execute<Object[]>("ZRANGEBYSCORE", Key, 0, score, "LIMIT", 0, 1));
-                if (rs != null && rs.Length > 0)
-                {
-                    // 争夺消费
-                    if (TryPop(rs[0], out var result)) return result;
-                }
+                var rs = _sort.RangeByScore(0, score, 0, 1);
+                if (rs != null && rs.Length > 0 && TryPop(rs[0])) return rs[0];
 
                 // 是否需要等待
-                if (timeout <= 0 || timeout > 60) break;
+                if (timeout <= 0) break;
 
-                // 如果还有时间，试试下一个
-                if (next < 0)
-                {
-                    var kv = GetNext();
-                    if (kv != null) next = (Int32)kv.Item2 - DateTime.Now.ToInt();
-                }
-                if (next > 60) break;
-                if (next <= 0) next = timeout;
-
-                Thread.Sleep(next * 1000);
-                timeout -= next;
+                Thread.Sleep(1000);
+                timeout--;
             }
 
             return default;
         }
 
         /// <summary>异步获取一个</summary>
-        /// <param name="timeout"></param>
+        /// <param name="timeout">超时时间，默认0秒永远阻塞；负数表示直接返回，不阻塞。</param>
         /// <returns></returns>
         public async Task<T> TakeOneAsync(Int32 timeout = 0)
         {
-            RetryDeadAck();
+            RetryAck();
 
             // 最长等待
             if (timeout == 0) timeout = 60;
 
-            var next = -1;
             while (true)
             {
                 var score = DateTime.Now.ToInt();
-                var rs = await ExecuteAsync(r => r.ExecuteAsync<Object[]>("ZRANGEBYSCORE", new Object[] { Key, 0, score, "LIMIT", 0, 1 }));
-                if (rs != null && rs.Length > 0)
-                {
-                    // 争夺消费
-                    if (TryPop(rs[0], out var result)) return result;
-                }
+                var rs = await _sort.RangeByScoreAsync(0, score, 0, 1);
+                if (rs != null && rs.Length > 0 && TryPop(rs[0])) return rs[0];
 
                 // 是否需要等待
-                if (timeout <= 0 || timeout > 60) break;
+                if (timeout <= 0) break;
 
-                // 如果还有时间，试试下一个
-                if (next < 0)
-                {
-                    var kv = GetNext();
-                    if (kv != null) next = (Int32)kv.Item2 - DateTime.Now.ToInt();
-                }
-                if (next > 60) break;
-                if (next <= 0) next = timeout;
-
-                await TaskEx.Delay(next * 1000);
-                timeout -= next;
+                await TaskEx.Delay(1000);
+                timeout--;
             }
 
             return default;
@@ -166,69 +127,64 @@ namespace NewLife.Caching
         {
             if (count <= 0) yield break;
 
-            RetryDeadAck();
+            RetryAck();
 
             var score = DateTime.Now.ToInt();
-            var rs = Execute(r => r.Execute<Object[]>("ZRANGEBYSCORE", Key, 0, score, "LIMIT", 0, count));
+            var rs = _sort.RangeByScore(0, score, 0, count);
             if (rs == null || rs.Length == 0) yield break;
 
             foreach (var item in rs)
             {
                 // 争夺消费
-                if (TryPop(item, out var result)) yield return result;
+                if (TryPop(item)) yield return item;
             }
         }
 
         /// <summary>争夺消费，只有一个线程能够成功删除，作为抢到的标志。同时备份到Ack队列</summary>
         /// <param name="value"></param>
-        /// <param name="result"></param>
         /// <returns></returns>
-        private Boolean TryPop(Object value, out T result)
+        private Boolean TryPop(T value)
         {
-            // 先备份，再删除
-            if (value is Packet pk)
-            {
-                // 备份到Ack队列
-                var score = DateTime.Now.ToInt() + RetryInterval;
-                Execute(rc => rc.Execute<Int32>("ZADD", AckKey, score, pk), true);
+            // 先备份，再删除。备份到Ack队列
+            var score = DateTime.Now.ToInt() + RetryInterval;
+            _ack.Add(value, score);
 
-                // 删除作为抢夺
-                if (Remove(Key, new[] { value }) > 0)
-                {
-                    result = (T)Redis.Encoder.Decode(pk, typeof(T));
-                    return true;
-                }
-            }
-
-            result = default;
-            return false;
+            // 删除作为抢夺
+            return _sort.Remove(value) > 0;
         }
 
         /// <summary>确认删除</summary>
         /// <param name="keys"></param>
         /// <returns></returns>
-        public Int32 Acknowledge(params String[] keys) => Remove(AckKey, keys);
+        public Int32 Acknowledge(params T[] keys) => _ack.Remove(keys);
+
+        /// <summary>确认删除</summary>
+        /// <param name="keys"></param>
+        /// <returns></returns>
+        Int32 IProducerConsumer<T>.Acknowledge(params String[] keys) => _ack.Remove(keys.Select(e => e.ChangeType<T>()).ToArray());
         #endregion
 
         #region 死信处理
         /// <summary>回滚指定AckKey内的消息到Key</summary>
-        /// <param name="key"></param>
+        /// <param name="time"></param>
         /// <returns></returns>
-        private List<String> RollbackAck(String key)
+        private List<T> RollbackAck(DateTime time)
         {
             // 消费所有数据
-            var list = new List<String>();
+            var score = time.ToInt();
+            var list = new List<T>();
             while (true)
             {
-                var score = DateTime.Now.ToInt();
-                var rs = Execute(r => r.Execute<String[]>("ZRANGEBYSCORE", key, 0, score, "LIMIT", 0, 100));
+                var rs = _ack.RangeByScore(0, score, 0, 100);
                 if (rs == null || rs.Length == 0) break;
 
                 // 加入原始队列
-                Add(rs, 0);
-                Remove(AckKey, rs);
+                _sort.Add(rs, score);
+                _ack.Remove(rs);
 
                 list.AddRange(rs);
+
+                if (rs.Length < 100) break;
             }
 
             return list;
@@ -236,7 +192,7 @@ namespace NewLife.Caching
 
         private DateTime _nextRetry;
         /// <summary>处理未确认的死信，重新放入队列</summary>
-        private Int32 RetryDeadAck()
+        private Int32 RetryAck()
         {
             var now = DateTime.Now;
             // 一定间隔处理死信
@@ -245,7 +201,7 @@ namespace NewLife.Caching
                 _nextRetry = now.AddSeconds(RetryInterval);
 
                 // 拿到死信，重新放入队列
-                var list = RollbackAck(AckKey);
+                var list = RollbackAck(now);
                 foreach (var item in list)
                 {
                     XTrace.WriteLine("定时回滚死信：{0}", item);
@@ -258,35 +214,7 @@ namespace NewLife.Caching
 
         /// <summary>全局回滚死信，一般由单一线程执行，避免干扰处理中数据</summary>
         /// <returns></returns>
-        public Int32 RollbackAllAck() => RetryDeadAck();
-        #endregion
-
-        #region 辅助方法
-        /// <summary>获取最近一个消息的到期时间，便于上层控制调度器</summary>
-        /// <returns></returns>
-        public Tuple<String, Double> GetNext()
-        {
-            var rs = Execute(r => r.Execute<Object[]>("ZRANGE", Key, 0, 0, "WITHSCORES"));
-            if (rs == null || rs.Length < 2) return null;
-
-            var item = (rs[0] as Packet).ToStr();
-            var score = (rs[1] as Packet).ToStr().ToDouble();
-            return new Tuple<String, Double>(item, score);
-        }
-
-        /// <summary>删除一批</summary>
-        /// <param name="key"></param>
-        /// <param name="values"></param>
-        /// <returns></returns>
-        private Int32 Remove(String key, Object[] values)
-        {
-            var args = new List<Object> { key };
-            foreach (var item in values)
-            {
-                args.Add(item);
-            }
-            return Execute(rc => rc.Execute<Int32>("ZREM", args.ToArray()), true);
-        }
+        public Int32 RollbackAllAck() => RollbackAck(DateTime.Today.AddDays(1)).Count;
         #endregion
     }
 }

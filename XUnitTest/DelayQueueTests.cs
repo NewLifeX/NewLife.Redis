@@ -33,6 +33,7 @@ namespace XUnitTest
             _redis.Remove(key);
             var queue = _redis.GetDelayQueue<String>(key);
             _redis.SetExpire(key, TimeSpan.FromMinutes(60));
+            queue.Delay = 1;
 
             // 发现回滚
             var rcount = queue.RollbackAllAck();
@@ -64,17 +65,20 @@ namespace XUnitTest
             // 取出来
             var v1 = queue.TakeOne();
             Assert.Equal("ABEF", v1);
+            queue.Acknowledge(v1);
 
             // 批量获取
             var vs2 = queue.Take(5).ToArray();
             Assert.Single(vs2);
             Assert.Equal("新生命团队", vs2[0]);
+            queue.Acknowledge(vs2[0]);
 
             // 延迟获取
-            Thread.Sleep(2000);
+            Thread.Sleep(1000);
             var vs3 = queue.Take(5).ToArray();
             Assert.Single(vs3);
             Assert.Equal("abcd", vs3[0]);
+            queue.Acknowledge(vs3[0]);
 
             // 延迟获取
             Thread.Sleep(1000);
@@ -88,8 +92,8 @@ namespace XUnitTest
             Assert.Equal(count, count3);
 
             // 检查Ack队列
-            var ackList = _redis.GetSortedSet(queue.AckKey);
-            Assert.Equal(2 + vs.Length, ackList.Count);
+            var ackList = _redis.GetSortedSet<String>(queue.AckKey);
+            Assert.Equal(2 + vs.Length - 1 - 1 - 1, ackList.Count);
         }
 
         [Fact]
@@ -115,7 +119,7 @@ namespace XUnitTest
             var vs = new[] { "1234", "ABEF", "abcd", "新生命团队" };
             foreach (var item in vs)
             {
-                queue.Add(item, 3);
+                queue.Add(item, 2);
             }
 
             // 对比个数
@@ -312,28 +316,6 @@ namespace XUnitTest
             sw.Stop();
             Assert.Equal("xxyy", rs);
             Assert.True(sw.ElapsedMilliseconds >= 2000);
-        }
-
-        [Fact]
-        public void GetNext()
-        {
-            var key = "DelayQueue_Async";
-
-            // 删除已有
-            _redis.Remove(key);
-            var q = _redis.GetDelayQueue<String>(key);
-
-            // 添加
-            var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
-            for (var i = 0; i < vs.Length; i++)
-            {
-                q.Add(vs[i], 10 - i + 1);
-            }
-
-            // 取出来
-            var kv = q.GetNext();
-            Assert.Equal("ABEF", kv.Item1);
-            Assert.Equal(DateTime.Now.ToInt() + 10 - 3 + 1, kv.Item2);
         }
     }
 }

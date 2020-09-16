@@ -92,7 +92,7 @@ namespace NewLife.Caching
 
         /// <summary>消费获取，从Key弹出并备份到AckKey，支持阻塞</summary>
         /// <remarks>假定前面获取的消息已经确认，因该方法内部可能回滚确认队列，避免误杀</remarks>
-        /// <param name="timeout">超时，0秒永远阻塞；负数表示直接返回，不阻塞。</param>
+        /// <param name="timeout">超时时间，默认0秒永远阻塞；负数表示直接返回，不阻塞。</param>
         /// <returns></returns>
         public T TakeOne(Int32 timeout = 0)
         {
@@ -104,7 +104,7 @@ namespace NewLife.Caching
         }
 
         /// <summary>异步消费获取</summary>
-        /// <param name="timeout"></param>
+        /// <param name="timeout">超时时间，默认0秒永远阻塞；负数表示直接返回，不阻塞。</param>
         /// <returns></returns>
         public async Task<T> TakeOneAsync(Int32 timeout = 0)
         {

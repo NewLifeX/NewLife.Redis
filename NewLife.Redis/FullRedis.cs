@@ -180,14 +180,16 @@ namespace NewLife.Caching
         public override ICollection<T> GetSet<T>(String key) => new RedisSet<T>(this, key);
 
         /// <summary>获取消息流</summary>
+        /// <typeparam name="T"></typeparam>
         /// <param name="key"></param>
         /// <returns></returns>
         public RedisStream<T> GetStream<T>(String key) => new RedisStream<T>(this, key);
 
         /// <summary>获取有序集合</summary>
+        /// <typeparam name="T"></typeparam>
         /// <param name="key"></param>
         /// <returns></returns>
-        public RedisSortedSet GetSortedSet(String key) => new RedisSortedSet(this, key);
+        public RedisSortedSet<T> GetSortedSet<T>(String key) => new RedisSortedSet<T>(this, key);
         #endregion
 
         #region 字符串操作
