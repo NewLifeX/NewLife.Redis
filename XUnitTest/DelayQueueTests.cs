@@ -349,6 +349,7 @@ namespace XUnitTest
             _redis.Remove(key2);
             var queue = _redis.GetDelayQueue<String>(key);
             var queue2 = _redis.GetReliableQueue<String>(key2);
+            queue2.ClearAllAck();
 
             // 添加
             var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
@@ -370,7 +371,7 @@ namespace XUnitTest
             var v2 = await queue2.TakeOneAsync(3);
             sw.Stop();
             Assert.Equal("1234", v2);
-            Assert.True(sw.ElapsedMilliseconds <= 2000);
+            Assert.True(sw.ElapsedMilliseconds <= 3000);
             queue2.Acknowledge(v2);
 
             //await task;

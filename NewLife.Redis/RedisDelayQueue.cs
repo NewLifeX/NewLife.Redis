@@ -246,16 +246,22 @@ namespace NewLife.Caching
                 try
                 {
                     // 异步阻塞消费
-                    var msg = await TakeOneAsync(timeout);
-                    if (msg != null)
+                    var score = DateTime.Now.ToInt();
+                    var msgs = await _sort.RangeByScoreAsync(0, score, 0, 10);
+                    if (msgs != null && msgs.Length > 0)
                     {
-                        span = tracer?.NewSpan($"mq:{topic}:Transfer", msg);
+                        // 删除消息后直接进入目标队列，无需进入Ack
+                        span = tracer?.NewSpan($"mq:{topic}:Transfer");
+
+                        // 逐个删除，多线程争夺可能失败
+                        var list = new List<T>();
+                        for (var i = 0; i < msgs.Length; i++)
+                        {
+                            if (Remove(msgs[i]) > 0) list.Add(msgs[i]);
+                        }
 
                         // 转移消息
-                        queue.Add(msg);
-
-                        // 确认消息
-                        Acknowledge(msg);
+                        queue.Add(list.ToArray());
                     }
                     else
                     {

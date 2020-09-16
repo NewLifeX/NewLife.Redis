@@ -57,7 +57,6 @@ namespace NewLife.Caching
             return Execute(rc => rc.Execute<Int32>("ZREM", args.ToArray()), true);
         }
 
-
         /// <summary>返回有序集key中，成员member的score值</summary>
         /// <param name="member"></param>
         /// <returns></returns>
