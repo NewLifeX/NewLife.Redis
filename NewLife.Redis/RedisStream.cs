@@ -30,10 +30,10 @@ namespace NewLife.Caching
         /// <summary>最大队列长度。默认10万</summary>
         public Int32 MaxLenngth { get; set; } = 100_000;
 
-        /// <summary>开始编号。默认0-0</summary>
+        /// <summary>开始编号。独立消费时使用，消费组消费时不使用，默认0-0</summary>
         public String StartId { get; set; } = "0-0";
 
-        /// <summary>消费者组</summary>
+        /// <summary>消费者组。指定消费组后，不再使用独立消费</summary>
         public String Group { get; set; }
 
         private IDictionary<String, PropertyInfo> _properties;
@@ -117,7 +117,7 @@ namespace NewLife.Caching
 
             foreach (var item in rs)
             {
-                SetNextId(item.Key);
+                if (Group.IsNullOrEmpty()) SetNextId(item.Key);
 
                 var vs = item.Value;
                 if (vs != null) yield return Convert(vs);

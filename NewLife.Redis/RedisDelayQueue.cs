@@ -11,9 +11,9 @@ using TaskEx = System.Threading.Tasks.Task;
 
 namespace NewLife.Caching
 {
-    /// <summary>Redis延迟队列，key放在zset，消息体放在kv</summary>
+    /// <summary>Redis延迟队列</summary>
     /// <remarks>
-    /// 延迟Redis队列，每次生产操作1次Redis，消费操作2次Redis。
+    /// 延迟Redis队列，每次生产操作1次Redis，消费操作4次Redis。
     /// </remarks>
     public class RedisDelayQueue<T> : RedisBase, IProducerConsumer<T>
     {
