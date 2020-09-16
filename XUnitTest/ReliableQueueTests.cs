@@ -523,5 +523,55 @@ namespace XUnitTest
             public Int32 Id { get; set; }
             public String Name { get; set; }
         }
+
+        [Fact]
+        public async void AddDelay()
+        {
+            var key = "ReliableQueue_addDelay";
+
+            // 删除已有
+            _redis.Remove(key);
+            var queue = _redis.GetReliableQueue<String>(key);
+            queue.RetryInterval = 5;
+
+            // 发现回滚
+            var rcount = queue.RollbackAllAck();
+            if (rcount > 0)
+            {
+                XTrace.WriteLine("回滚：{0}", rcount);
+
+                Assert.Equal(rcount, queue.Count);
+                var rcount2 = _redis.Remove(key);
+                Assert.Equal(1, rcount2);
+            }
+
+            // 取出个数
+            var count = queue.Count;
+            Assert.True(queue.IsEmpty);
+            Assert.Equal(0, count);
+
+            // 初始化延迟
+            queue.InitDelay();
+
+            // 添加延迟消息
+            var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
+            foreach (var item in vs)
+            {
+                queue.Add(item, 2);
+            }
+
+            // 可信队列消费
+            var v1 = await queue.TakeOneAsync(-1);
+            Assert.Null(v1);
+
+            // 到期以后
+            XTrace.WriteLine("可信队列阻塞消费");
+            var sw = Stopwatch.StartNew();
+            var v2 = await queue.TakeOneAsync(3);
+            sw.Stop();
+            Assert.Equal("1234", v2);
+            Assert.True(sw.ElapsedMilliseconds <= 2000);
+            queue.Acknowledge(v2);
+        }
     }
 }

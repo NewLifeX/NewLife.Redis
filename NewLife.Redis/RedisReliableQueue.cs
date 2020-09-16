@@ -2,10 +2,14 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Log;
 using NewLife.Security;
 using NewLife.Serialization;
+#if !NET40
+using TaskEx = System.Threading.Tasks.Task;
+#endif
 
 namespace NewLife.Caching
 {
@@ -37,7 +41,7 @@ namespace NewLife.Caching
     /// 高级Redis队列，每次生产操作3次Redis，消费操作4次Redis；
     /// </remarks>
     /// <typeparam name="T"></typeparam>
-    public class RedisReliableQueue<T> : RedisBase, IProducerConsumer<T>
+    public class RedisReliableQueue<T> : RedisBase, IProducerConsumer<T>, IDisposable
     {
         #region 属性
         /// <summary>用于确认的列表</summary>
@@ -61,6 +65,10 @@ namespace NewLife.Caching
         private readonly String _Key;
         private readonly String _StatusKey;
         private readonly Status _Status;
+
+        private RedisDelayQueue<T> _delay;
+        private CancellationTokenSource _source;
+        private Task _delayTask;
         #endregion
 
         #region 构造
@@ -73,6 +81,24 @@ namespace NewLife.Caching
             _Status = CreateStatus();
             AckKey = $"{key}:Ack:{_Status.UKey}";
             _StatusKey = $"{key}:Status:{_Status.UKey}";
+        }
+
+        /// <summary>析构</summary>
+        ~RedisReliableQueue() => Dispose(false);
+
+        /// <summary>释放</summary>
+        public void Dispose() => Dispose(true);
+
+        /// <summary>释放</summary>
+        /// <param name="disposing"></param>
+        protected virtual void Dispose(Boolean disposing)
+        {
+            if (_delay != null)
+            {
+                _delay = null;
+                _delayTask = null;
+                _source?.Cancel();
+            }
         }
         #endregion
 
@@ -194,6 +220,34 @@ namespace NewLife.Caching
         #endregion
 
         #region 高级队列
+        /// <summary>初始化延迟队列功能。该功能是附加功能，需要生产者或消费者主动初始化</summary>
+        public void InitDelay()
+        {
+            if (_delay == null)
+            {
+                lock (this)
+                {
+                    if (_delay == null)
+                    {
+                        _delay = new RedisDelayQueue<T>(Redis, $"{Key}:Delay", false);
+                        _source = new CancellationTokenSource();
+                        _delayTask = TaskEx.Run(() => _delay.TransferAsync(this, null, _source.Token));
+                    }
+                }
+            }
+        }
+
+        /// <summary>添加延迟消息</summary>
+        /// <param name="value"></param>
+        /// <param name="delay"></param>
+        /// <returns></returns>
+        public Int32 Add(T value, Int32 delay)
+        {
+            InitDelay();
+
+            return _delay.Add(value, delay);
+        }
+
         /// <summary>高级生产消息。消息体和消息键分离，业务层指定消息键，可随时查看或删除，同时避免重复生产</summary>
         /// <remarks>
         /// Publish 必须跟 ConsumeAsync 配对使用。
