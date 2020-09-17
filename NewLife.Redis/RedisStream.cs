@@ -33,8 +33,8 @@ namespace NewLife.Caching
         /// <summary>基元类型数据添加该key构成集合。默认__data</summary>
         public String PrimitiveKey { get; set; } = "__data";
 
-        /// <summary>最大队列长度。默认10万</summary>
-        public Int32 MaxLenngth { get; set; } = 100_000;
+        /// <summary>最大队列长度。默认100万</summary>
+        public Int32 MaxLenngth { get; set; } = 1_000_000;
 
         /// <summary>最大重试次数。超过该次数后，消息将被抛弃，默认10次</summary>
         public Int32 MaxRetry { get; set; } = 10;
@@ -70,23 +70,19 @@ namespace NewLife.Caching
         {
             if (value == null) throw new ArgumentNullException(nameof(value));
 
-            // 自动修剪超长部分
+            // 自动修剪超长部分，每1000次生产，修剪一次
             if (_count <= 0) _count = Count;
-            if (_count > MaxLenngth * 1.2 && MaxLenngth > 0)
-            {
-                Trim(MaxLenngth);
-                _count = Count;
-            }
-
             Interlocked.Increment(ref _count);
 
             var args = new List<Object> { Key };
-            //if (MaxLenngth > 0)
-            //{
-            //    args.Add("maxlen");
-            //    args.Add("~");
-            //    args.Add(MaxLenngth);
-            //}
+            if (MaxLenngth > 0 && _count % 1000 == 0)
+            {
+                _count = Count + 1;
+
+                args.Add("maxlen");
+                args.Add("~");
+                args.Add(MaxLenngth);
+            }
 
             // *号表示服务器自动生成ID
             args.Add(msgId.IsNullOrEmpty() ? "*" : msgId);
