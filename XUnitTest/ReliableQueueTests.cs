@@ -360,7 +360,7 @@ namespace XUnitTest
             queue.RetryInterval = 5;
 
             // 清空
-            queue.TakeAllAck().ToArray();
+            queue.ClearAllAck();
 
             // 生产几个消息，消费但不确认
             var list = new List<String>();

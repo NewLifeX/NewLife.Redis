@@ -6,7 +6,9 @@ using System.Reflection;
 using System.Threading.Tasks;
 using NewLife.Caching.Models;
 using NewLife.Data;
+using NewLife.Log;
 using NewLife.Reflection;
+using NewLife.Serialization;
 #if !NET4
 using TaskEx = System.Threading.Tasks.Task;
 #endif
@@ -24,6 +26,9 @@ namespace NewLife.Caching
         /// <summary>是否为空</summary>
         public Boolean IsEmpty => Count == 0;
 
+        /// <summary>重新处理确认队列中死信的间隔。默认60s</summary>
+        public Int32 RetryInterval { get; set; } = 60;
+
         /// <summary>基元类型数据添加该key构成集合。默认__data</summary>
         public String PrimitiveKey { get; set; } = "__data";
 
@@ -35,6 +40,9 @@ namespace NewLife.Caching
 
         /// <summary>消费者组。指定消费组后，不再使用独立消费</summary>
         public String Group { get; set; }
+
+        /// <summary>消费者</summary>
+        public String Consumer { get; set; }
 
         private IDictionary<String, PropertyInfo> _properties;
         #endregion
@@ -112,6 +120,8 @@ namespace NewLife.Caching
         /// <returns></returns>
         public IEnumerable<T> Take(Int32 count = 1)
         {
+            RetryAck();
+
             var rs = !Group.IsNullOrEmpty() ?
                 ReadGroup(Group, null, count) :
                 Read(StartId, count);
@@ -161,6 +171,8 @@ namespace NewLife.Caching
         /// <returns></returns>
         public async Task<T> TakeOneAsync(Int32 timeout = 0)
         {
+            RetryAck();
+
             var rs = !Group.IsNullOrEmpty() ?
                 await ReadGroupAsync(Group, null, 1, timeout * 1000) :
                 await ReadAsync(StartId, 1, timeout * 1000);
@@ -177,6 +189,8 @@ namespace NewLife.Caching
         /// <returns></returns>
         public async Task<Message> TakeMessageAsync(Int32 timeout = 0)
         {
+            RetryAck();
+
             var rs = !Group.IsNullOrEmpty() ?
                 await ReadGroupAsync(Group, null, 1, timeout * 1000) :
                 await ReadAsync(StartId, 1, timeout * 1000);
@@ -202,6 +216,32 @@ namespace NewLife.Caching
         }
         #endregion
 
+        #region 死信处理
+        private DateTime _nextRetry;
+        /// <summary>处理未确认的死信，重新放入队列</summary>
+        private void RetryAck()
+        {
+            var now = DateTime.Now;
+            // 一定间隔处理当前ukey死信
+            if (_nextRetry < now)
+            {
+                _nextRetry = now.AddSeconds(RetryInterval);
+                var retry = RetryInterval * 1000;
+
+                // 拿到死信，重新放入队列
+                var list = Pending(Group, null, null, 100);
+                foreach (var item in list)
+                {
+                    if (item.Idle > retry)
+                    {
+                        Claim(Group, "", item.Id, retry);
+                        XTrace.WriteLine("定时回滚死信：{0}", item.ToJson());
+                    }
+                }
+            }
+        }
+        #endregion
+
         #region 内部命令
         /// <summary>删除指定消息</summary>
         /// <param name="id">消息Id</param>
@@ -213,6 +253,14 @@ namespace NewLife.Caching
         /// <param name="id">消息Id</param>
         /// <returns></returns>
         public Int32 Ack(String group, String id) => Execute(rc => rc.Execute<Int32>("XACK", Key, group, id), true);
+
+        /// <summary>确认消息</summary>
+        /// <param name="group">消费组名称</param>
+        /// <param name="consumer">目标消费者</param>
+        /// <param name="id">消息Id</param>
+        /// <param name="msIdle">空闲时间。默认3600_000</param>
+        /// <returns></returns>
+        public Int32 Claim(String group, String consumer, String id, Int32 msIdle = 3_600_000) => Execute(rc => rc.Execute<Int32>("XCLAIM", Key, group, consumer, msIdle, id), true);
 
         /// <summary>获取区间消息</summary>
         /// <param name="startId"></param>

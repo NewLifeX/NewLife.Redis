@@ -119,7 +119,7 @@ namespace NewLife.Caching
         /// <returns></returns>
         public T TakeOne(Int32 timeout = 0)
         {
-            RetryDeadAck();
+            RetryAck();
 
             return timeout >= 0 ?
                 Execute(rc => rc.Execute<T>("BRPOPLPUSH", Key, AckKey, timeout), true) :
@@ -134,7 +134,7 @@ namespace NewLife.Caching
 #if NET4
             throw new NotSupportedException();
 #else
-            RetryDeadAck();
+            RetryAck();
 
             return (timeout < 0) ?
                 await ExecuteAsync(rc => rc.ExecuteAsync<T>("RPOPLPUSH", Key, AckKey), true) :
@@ -150,7 +150,7 @@ namespace NewLife.Caching
         {
             if (count <= 0) yield break;
 
-            RetryDeadAck();
+            RetryAck();
 
             // 借助管道支持批量获取
             if (count >= MinPipeline)
@@ -279,7 +279,7 @@ namespace NewLife.Caching
 #if NET4
             throw new NotSupportedException();
 #else
-            RetryDeadAck();
+            RetryAck();
 
             // 取出消息键
             var msgId = (timeout < 0) ?
@@ -327,30 +327,16 @@ namespace NewLife.Caching
             }
         }
 
-        /// <summary>消费所有确认队列中的遗留数据，一般在应用启动时由单一线程执行</summary>
+        /// <summary>清空所有Ack队列。危险操作！！！</summary>
         /// <returns></returns>
-        public IEnumerable<String> TakeAllAck()
+        public Int32 ClearAllAck()
         {
             var rds = Redis as FullRedis;
 
             // 先找到所有Key
-            foreach (var key in rds.Search($"{_Key}:Ack:*", 100))
-            {
-                // 消费所有数据
-                while (true)
-                {
-                    var value = Execute(rc => rc.Execute<String>("RPOP", key), true);
-                    //if (Equals(value, default(T))) break;
-                    if (value == null) break;
-
-                    yield return value;
-                }
-            }
+            var keys = rds.Search($"{_Key}:Ack:*", 1000).ToArray();
+            return keys.Length > 0 ? rds.Remove(keys) : 0;
         }
-
-        /// <summary>清空所有Ack队列。危险操作！！！</summary>
-        /// <returns></returns>
-        public Int32 ClearAllAck() => TakeAllAck().Count();
 
         /// <summary>回滚指定AckKey内的消息到Key</summary>
         /// <param name="key"></param>
@@ -409,7 +395,7 @@ namespace NewLife.Caching
 
         private DateTime _nextRetry;
         /// <summary>处理未确认的死信，重新放入队列</summary>
-        private void RetryDeadAck()
+        private void RetryAck()
         {
             var now = DateTime.Now;
             // 一定间隔处理当前ukey死信
