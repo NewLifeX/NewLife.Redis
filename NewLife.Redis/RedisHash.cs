@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using NewLife.Data;
+using NewLife.Reflection;
 
 namespace NewLife.Caching
 {
@@ -191,21 +192,28 @@ namespace NewLife.Caching
         /// <param name="count"></param>
         /// <param name="position"></param>
         /// <returns></returns>
-        public virtual String[] Search(String pattern, Int32 count, ref Int32 position)
+        public virtual IEnumerable<KeyValuePair<TKey, TValue>> Search(String pattern, Int32 count, Int32 position = 0)
         {
-            var p = position;
-            var rs = Execute(r => r.Execute<Object[]>("HSCAN", Key, p, "MATCH", pattern + "", "COUNT", count));
-
-            if (rs != null)
+            while (count > 0)
             {
+                var rs = Execute(r => r.Execute<Object[]>("HSCAN", Key, position, "MATCH", pattern + "", "COUNT", count));
+                if (rs == null || rs.Length != 2) break;
+
                 position = (rs[0] as Packet).ToStr().ToInt();
 
                 var ps = rs[1] as Object[];
-                var ss = ps.Select(e => (e as Packet).ToStr()).ToArray();
-                return ss;
-            }
+                for (var i = 0; i < ps.Length - 1; i += 2)
+                {
+                    if (count-- > 0)
+                    {
+                        var key = (ps[i] as Packet).ToStr().ChangeType<TKey>();
+                        var val = (ps[i + 1] as Packet).ToStr().ChangeType<TValue>();
+                        yield return new KeyValuePair<TKey, TValue>(key, val);
+                    }
+                }
 
-            return null;
+                if (position == 0) break;
+            }
         }
         #endregion
     }
