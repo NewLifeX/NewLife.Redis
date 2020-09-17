@@ -570,7 +570,8 @@ namespace XUnitTest
             var v2 = await queue.TakeOneAsync(3);
             sw.Stop();
             Assert.Equal("1234", v2);
-            Assert.True(sw.ElapsedMilliseconds <= 2000);
+            // 延迟队列没有阻塞方法，需要等1秒
+            Assert.True(sw.ElapsedMilliseconds <= 2000 + 1000);
             queue.Acknowledge(v2);
         }
     }
