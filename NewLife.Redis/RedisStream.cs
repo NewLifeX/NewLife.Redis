@@ -35,6 +35,9 @@ namespace NewLife.Caching
         /// <summary>最大队列长度。默认10万</summary>
         public Int32 MaxLenngth { get; set; } = 100_000;
 
+        /// <summary>最大重试次数。超过该次数后，消息将被抛弃，默认10次</summary>
+        public Int32 MaxRetry { get; set; } = 10;
+
         /// <summary>开始编号。独立消费时使用，消费组消费时不使用，默认0-0</summary>
         public String StartId { get; set; } = "0-0";
 
@@ -234,8 +237,16 @@ namespace NewLife.Caching
                 {
                     if (item.Idle > retry)
                     {
-                        Claim(Group, "", item.Id, retry);
-                        XTrace.WriteLine("定时回滚死信：{0}", item.ToJson());
+                        if (item.Delivery >= MaxRetry)
+                        {
+                            Delete(item.Id);
+                            XTrace.WriteLine("删除多次失败死信：{0}", item.ToJson());
+                        }
+                        else
+                        {
+                            Claim(Group, "", item.Id, retry);
+                            XTrace.WriteLine("定时回滚：{0}", item.ToJson());
+                        }
                     }
                 }
             }
