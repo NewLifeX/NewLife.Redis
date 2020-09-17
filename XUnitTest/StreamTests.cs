@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -268,9 +269,11 @@ namespace XUnitTest
             queue.Group = "mygroup";
 
             // 添加基础类型
+            var ids = new List<String>();
             for (var i = 0; i < 7; i++)
             {
-                queue.Add(Rand.NextString(8));
+                var msgId = queue.Add(Rand.NextString(8));
+                ids.Add(msgId);
             }
 
             // 创建
@@ -290,6 +293,21 @@ namespace XUnitTest
             sw.Stop();
             Assert.Equal("xxyy", rs3);
             Assert.True(sw.ElapsedMilliseconds >= 2000);
+
+            // 等待队列
+            var pi = queue.GetPending(null);
+            Assert.NotNull(pi);
+            Assert.Equal(7 + 1, pi.Count);
+            Assert.Equal(ids[0], pi.StartId);
+            //Assert.Equal(ids[0], pi.EndId);
+            Assert.Equal(1, pi.Consumers.Count);
+            var kv = pi.Consumers.First();
+            Assert.Equal(7 + 1, kv.Value);
+            Assert.Equal($"{Environment.MachineName}@{Process.GetCurrentProcess().Id}", kv.Key);
+
+            var ps = queue.Pending(null, null, null, 5);
+            Assert.NotNull(ps);
+            Assert.Equal(5, ps.Length);
 
             // 确认消费
             Assert.False(true, "Acknowledge");

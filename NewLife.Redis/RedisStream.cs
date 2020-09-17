@@ -323,6 +323,51 @@ XREAD count 3 streams stream_key 0-0
         }
         #endregion
 
+        #region 等待列表
+        /// <summary>获取等待列表信息</summary>
+        /// <param name="group">消费组名称</param>
+        /// <returns></returns>
+        public PendingInfo GetPending(String group)
+        {
+            if (group.IsNullOrEmpty()) group = Group;
+
+            var rs = Execute(rc => rc.Execute<Object[]>("XPENDING", Key, group), false);
+            if (rs == null) return null;
+
+            var pi = new PendingInfo();
+            pi.Parse(rs);
+
+            return pi;
+        }
+
+        /// <summary>获取等待列表消息</summary>
+        /// <param name="group">消费组名称</param>
+        /// <param name="startId"></param>
+        /// <param name="endId"></param>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public PendingItem[] Pending(String group, String startId, String endId, Int32 count = -1)
+        {
+            if (group.IsNullOrEmpty()) group = Group;
+            if (startId.IsNullOrEmpty()) startId = "-";
+            if (endId.IsNullOrEmpty()) endId = "+";
+
+            var rs = count > 0 ?
+                Execute(rc => rc.Execute<Object[]>("XPENDING", Key, group, startId, endId, count), false) :
+                Execute(rc => rc.Execute<Object[]>("XPENDING", Key, group, startId, endId), false);
+
+            var list = new List<PendingItem>();
+            foreach (Object[] item in rs)
+            {
+                var pi = new PendingItem();
+                pi.Parse(item);
+                list.Add(pi);
+            }
+
+            return list.ToArray();
+        }
+        #endregion
+
         #region 消费组
         /// <summary>创建消费组</summary>
         /// <param name="group">消费组名称</param>
