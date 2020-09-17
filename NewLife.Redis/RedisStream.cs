@@ -181,7 +181,7 @@ namespace NewLife.Caching
             var rs = 0;
             foreach (var item in keys)
             {
-                rs += Ack(null, item);
+                rs += Ack(Group, item);
             }
             return rs;
         }
