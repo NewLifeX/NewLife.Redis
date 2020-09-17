@@ -294,7 +294,7 @@ namespace XUnitTest
             Assert.True(sw.ElapsedMilliseconds >= 2000);
 
             // 等待队列
-            var pi = queue.GetPending(null);
+            var pi = queue.GetPending(queue.Group);
             Assert.NotNull(pi);
             Assert.Equal(7 + 1, pi.Count);
             Assert.Equal(ids[0], pi.StartId);
@@ -304,7 +304,7 @@ namespace XUnitTest
             Assert.Equal(7 + 1, kv.Value);
             Assert.Equal($"{Environment.MachineName}@{Process.GetCurrentProcess().Id}", kv.Key);
 
-            var ps = queue.Pending(null, null, null, 5);
+            var ps = queue.Pending(queue.Group, null, null, 5);
             Assert.NotNull(ps);
             Assert.Equal(5, ps.Length);
 
@@ -313,11 +313,11 @@ namespace XUnitTest
             queue.Acknowledge(msg.Id);
 
             // 等待队列
-            pi = queue.GetPending(null);
+            pi = queue.GetPending(queue.Group);
             Assert.NotNull(pi);
             Assert.Equal(7, pi.Count);
 
-            ps = queue.Pending(null, null, null, 8);
+            ps = queue.Pending(queue.Group, null, null, 8);
             Assert.NotNull(ps);
             Assert.Equal(7, ps.Length);
         }

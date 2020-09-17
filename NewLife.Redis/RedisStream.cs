@@ -46,15 +46,16 @@ namespace NewLife.Caching
 
         /// <summary>消费者</summary>
         public String Consumer { get; set; }
-
-        private IDictionary<String, PropertyInfo> _properties;
         #endregion
 
         #region 构造
         /// <summary>实例化队列</summary>
         /// <param name="redis"></param>
         /// <param name="key"></param>
-        public RedisStream(Redis redis, String key) : base(redis, key) { }
+        public RedisStream(Redis redis, String key) : base(redis, key)
+        {
+            Consumer = $"{Environment.MachineName}@{Process.GetCurrentProcess().Id}";
+        }
         #endregion
 
         #region 核心生产消费
@@ -123,38 +124,20 @@ namespace NewLife.Caching
         /// <returns></returns>
         public IEnumerable<T> Take(Int32 count = 1)
         {
-            RetryAck();
+            var group = Group;
+            if (!group.IsNullOrEmpty()) RetryAck();
 
-            var rs = !Group.IsNullOrEmpty() ?
-                ReadGroup(Group, null, count) :
+            var rs = !group.IsNullOrEmpty() ?
+                ReadGroup(group, Consumer, count) :
                 Read(StartId, count);
             if (rs == null || rs.Count == 0) yield break;
 
             foreach (var item in rs)
             {
-                if (Group.IsNullOrEmpty()) SetNextId(item.Id);
+                if (group.IsNullOrEmpty()) SetNextId(item.Id);
 
                 yield return item.GetBody<T>();
             }
-        }
-
-        private T Convert(String[] vs)
-        {
-            if (vs.Length == 2 && vs[0] == PrimitiveKey)
-                return vs[1].ChangeType<T>();
-
-            if (_properties == null) _properties = typeof(T).GetProperties(true).ToDictionary(e => e.Name, e => e);
-
-            // 字节数组转实体对象
-            var entry = Activator.CreateInstance<T>();
-            for (var i = 0; i < vs.Length - 1; i += 2)
-            {
-                if (_properties.TryGetValue(vs[i], out var pi))
-                {
-                    pi.SetValue(entry, vs[i + 1].ChangeType(pi.PropertyType), null);
-                }
-            }
-            return entry;
         }
 
         private void SetNextId(String key)
@@ -174,17 +157,18 @@ namespace NewLife.Caching
         /// <returns></returns>
         public async Task<T> TakeOneAsync(Int32 timeout = 0)
         {
-            RetryAck();
+            var group = Group;
+            if (!group.IsNullOrEmpty()) RetryAck();
 
-            var rs = !Group.IsNullOrEmpty() ?
-                await ReadGroupAsync(Group, null, 1, timeout * 1000) :
+            var rs = !group.IsNullOrEmpty() ?
+                await ReadGroupAsync(group, Consumer, 1, timeout * 1000) :
                 await ReadAsync(StartId, 1, timeout * 1000);
             if (rs == null || rs.Count == 0) return default;
 
             // 全局消费（非消费组）时，更新编号
-            if (Group.IsNullOrEmpty()) SetNextId(rs[0].Id);
+            if (group.IsNullOrEmpty()) SetNextId(rs[0].Id);
 
-            return rs[1].GetBody<T>();
+            return rs[0].GetBody<T>();
         }
 
         /// <summary>异步消费获取一个</summary>
@@ -192,15 +176,16 @@ namespace NewLife.Caching
         /// <returns></returns>
         public async Task<Message> TakeMessageAsync(Int32 timeout = 0)
         {
-            RetryAck();
+            var group = Group;
+            if (!group.IsNullOrEmpty()) RetryAck();
 
-            var rs = !Group.IsNullOrEmpty() ?
-                await ReadGroupAsync(Group, null, 1, timeout * 1000) :
+            var rs = !group.IsNullOrEmpty() ?
+                await ReadGroupAsync(group, Consumer, 1, timeout * 1000) :
                 await ReadAsync(StartId, 1, timeout * 1000);
             if (rs == null || rs.Count == 0) return default;
 
             // 全局消费（非消费组）时，更新编号
-            if (Group.IsNullOrEmpty()) SetNextId(rs[0].Id);
+            if (group.IsNullOrEmpty()) SetNextId(rs[0].Id);
 
             return rs[0];
         }
@@ -244,7 +229,7 @@ namespace NewLife.Caching
                         }
                         else
                         {
-                            Claim(Group, "", item.Id, retry);
+                            Claim(Group, Consumer, item.Id, retry);
                             XTrace.WriteLine("定时回滚：{0}", item.ToJson());
                         }
                     }
@@ -404,7 +389,7 @@ XREAD count 3 streams stream_key 0-0
         /// <returns></returns>
         public PendingInfo GetPending(String group)
         {
-            if (group.IsNullOrEmpty()) group = Group;
+            if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
 
             var rs = Execute(rc => rc.Execute<Object[]>("XPENDING", Key, group), false);
             if (rs == null) return null;
@@ -423,7 +408,7 @@ XREAD count 3 streams stream_key 0-0
         /// <returns></returns>
         public PendingItem[] Pending(String group, String startId, String endId, Int32 count = -1)
         {
-            if (group.IsNullOrEmpty()) group = Group;
+            if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
             if (startId.IsNullOrEmpty()) startId = "-";
             if (endId.IsNullOrEmpty()) endId = "+";
 
@@ -450,6 +435,7 @@ XREAD count 3 streams stream_key 0-0
         /// <returns></returns>
         public Boolean GroupCreate(String group, String startId = null)
         {
+            if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
             if (startId.IsNullOrEmpty()) startId = "0";
 
             return Execute(rc => rc.Execute<Boolean>("XGROUP", "CREATE", Key, group, startId), true);
@@ -458,13 +444,23 @@ XREAD count 3 streams stream_key 0-0
         /// <summary>销毁消费组</summary>
         /// <param name="group">消费组名称</param>
         /// <returns></returns>
-        public Boolean GroupDestroy(String group) => Execute(rc => rc.Execute<Boolean>("XGROUP", "DESTROY", Key, group), true);
+        public Boolean GroupDestroy(String group)
+        {
+            if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
+
+            return Execute(rc => rc.Execute<Boolean>("XGROUP", "DESTROY", Key, group), true);
+        }
 
         /// <summary>销毁消费组</summary>
         /// <param name="group">消费组名称</param>
         /// <param name="consumer">消费者</param>
         /// <returns>返回消费者在被删除之前所拥有的待处理消息数量</returns>
-        public Int32 GroupDeleteConsumer(String group, String consumer) => Execute(rc => rc.Execute<Int32>("XGROUP", "DELCONSUMER", Key, group, consumer), true);
+        public Int32 GroupDeleteConsumer(String group, String consumer)
+        {
+            if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
+
+            return Execute(rc => rc.Execute<Int32>("XGROUP", "DELCONSUMER", Key, group, consumer), true);
+        }
 
         /// <summary>设置消费组Id</summary>
         /// <param name="group">消费组名称</param>
@@ -472,6 +468,7 @@ XREAD count 3 streams stream_key 0-0
         /// <returns></returns>
         public Boolean GroupSetId(String group, String startId)
         {
+            if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
             if (startId.IsNullOrEmpty()) startId = "$";
 
             return Execute(rc => rc.Execute<Boolean>("XGROUP", "SETID", Key, group, startId), true);
@@ -484,7 +481,7 @@ XREAD count 3 streams stream_key 0-0
         /// <returns></returns>
         public IList<Message> ReadGroup(String group, String consumer, Int32 count)
         {
-            if (consumer.IsNullOrEmpty()) consumer = $"{Environment.MachineName}@{Process.GetCurrentProcess().Id}";
+            if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
 
             var rs = count > 0 ?
                 Execute(rc => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "COUNT", count, "STREAMS", Key, ">"), true) :
@@ -505,7 +502,7 @@ XREAD count 3 streams stream_key 0-0
         /// <returns></returns>
         public async Task<IList<Message>> ReadGroupAsync(String group, String consumer, Int32 count, Int32 block = -1)
         {
-            if (consumer.IsNullOrEmpty()) consumer = $"{Environment.MachineName}@{Process.GetCurrentProcess().Id}";
+            if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
 
             var rs = count > 0 ?
                 await ExecuteAsync(rc => rc.ExecuteAsync<Object[]>("XREADGROUP", new Object[] { "GROUP", group, consumer, "BLOCK", block, "COUNT", count, "STREAMS", Key, ">" }), true) :
