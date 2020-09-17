@@ -70,14 +70,13 @@ namespace XUnitTest
             Assert.NotNull(vs1);
             Assert.Single(vs1);
 
-            var kv = vs1.FirstOrDefault();
-            Assert.Equal(id, kv.Key);
+            var message = vs1[0];
+            Assert.Equal(id, message.Id);
 
-            var vs2 = kv.Value;
-            Assert.NotNull(vs2);
-            Assert.Equal(2, vs2.Length);
-            Assert.Equal(s.PrimitiveKey, vs2[0]);
-            Assert.Equal(1234, vs2[1].ToInt());
+            Assert.NotNull(message.Body);
+            Assert.Equal(2, message.Body.Length);
+            Assert.Equal(s.PrimitiveKey, message.Body[0]);
+            Assert.Equal(1234, message.Body[1].ToInt());
 
             // 智能读取
             var vs3 = s.Take(5).ToList();
@@ -89,7 +88,7 @@ namespace XUnitTest
             Assert.Equal($"{ss[0]}-{ss[1].ToInt() + 1}", s.StartId);
 
             // 删除
-            var rs2 = s.Delete(rs.First().Key);
+            var rs2 = s.Delete(rs[0].Id);
             Assert.Equal(1, rs2);
             Assert.Equal(count + 1, s.Count + 1);
         }
@@ -141,7 +140,7 @@ namespace XUnitTest
 
             vs1 = s.Read("0-0", 3);
             Assert.Equal(3, vs1.Count);
-            Assert.Equal(id, vs1.FirstOrDefault().Key);
+            Assert.Equal(id, vs1[0].Id);
 
             // 取出来
             var vs2 = s.Take(2).ToList();
@@ -289,9 +288,9 @@ namespace XUnitTest
             // 延迟2秒生产消息
             ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); queue.Add("xxyy"); });
             var sw = Stopwatch.StartNew();
-            var rs3 = await queue.TakeOneAsync(3);
+            var msg = await queue.TakeMessageAsync(3);
             sw.Stop();
-            Assert.Equal("xxyy", rs3);
+            Assert.Equal("xxyy", msg.GetBody<String>());
             Assert.True(sw.ElapsedMilliseconds >= 2000);
 
             // 等待队列
@@ -310,8 +309,17 @@ namespace XUnitTest
             Assert.Equal(5, ps.Length);
 
             // 确认消费
-            Assert.False(true, "Acknowledge");
-            queue.Acknowledge(null);
+            //Assert.False(true, "Acknowledge");
+            queue.Acknowledge(msg.Id);
+
+            // 等待队列
+            pi = queue.GetPending(null);
+            Assert.NotNull(pi);
+            Assert.Equal(7, pi.Count);
+
+            ps = queue.Pending(null, null, null, 8);
+            Assert.NotNull(ps);
+            Assert.Equal(7, ps.Length);
         }
     }
 }

@@ -112,15 +112,16 @@ namespace NewLife.Caching
         /// <returns></returns>
         public IEnumerable<T> Take(Int32 count = 1)
         {
-            var rs = !Group.IsNullOrEmpty() ? ReadGroup(Group, null, count) : Read(StartId, count);
+            var rs = !Group.IsNullOrEmpty() ?
+                ReadGroup(Group, null, count) :
+                Read(StartId, count);
             if (rs == null || rs.Count == 0) yield break;
 
             foreach (var item in rs)
             {
-                if (Group.IsNullOrEmpty()) SetNextId(item.Key);
+                if (Group.IsNullOrEmpty()) SetNextId(item.Id);
 
-                var vs = item.Value;
-                if (vs != null) yield return Convert(vs);
+                yield return item.GetBody<T>();
             }
         }
 
@@ -165,12 +166,26 @@ namespace NewLife.Caching
                 await ReadAsync(StartId, 1, timeout * 1000);
             if (rs == null || rs.Count == 0) return default;
 
-            var kv = rs.First();
+            // 全局消费（非消费组）时，更新编号
+            if (Group.IsNullOrEmpty()) SetNextId(rs[0].Id);
+
+            return rs[1].GetBody<T>();
+        }
+
+        /// <summary>异步消费获取一个</summary>
+        /// <param name="timeout"></param>
+        /// <returns></returns>
+        public async Task<Message> TakeMessageAsync(Int32 timeout = 0)
+        {
+            var rs = !Group.IsNullOrEmpty() ?
+                await ReadGroupAsync(Group, null, 1, timeout * 1000) :
+                await ReadAsync(StartId, 1, timeout * 1000);
+            if (rs == null || rs.Count == 0) return default;
 
             // 全局消费（非消费组）时，更新编号
-            if (Group.IsNullOrEmpty()) SetNextId(kv.Key);
+            if (Group.IsNullOrEmpty()) SetNextId(rs[0].Id);
 
-            return Convert(kv.Value);
+            return rs[0];
         }
 
         /// <summary>消费确认</summary>
@@ -204,7 +219,7 @@ namespace NewLife.Caching
         /// <param name="endId"></param>
         /// <param name="count"></param>
         /// <returns></returns>
-        public IDictionary<String, String[]> Range(String startId, String endId, Int32 count = -1)
+        public IList<Message> Range(String startId, String endId, Int32 count = -1)
         {
             if (startId.IsNullOrEmpty()) startId = "-";
             if (endId.IsNullOrEmpty()) endId = "+";
@@ -212,6 +227,7 @@ namespace NewLife.Caching
             var rs = count > 0 ?
                 Execute(rc => rc.Execute<Object[]>("XRANGE", Key, startId, endId, "COUNT", count), false) :
                 Execute(rc => rc.Execute<Object[]>("XRANGE", Key, startId, endId), false);
+            if (rs == null) return null;
 
             return Parse(rs);
         }
@@ -221,13 +237,13 @@ namespace NewLife.Caching
         /// <param name="end"></param>
         /// <param name="count"></param>
         /// <returns></returns>
-        public IDictionary<String, String[]> Range(DateTime start, DateTime end, Int32 count = -1) => Range(start.ToLong() + "-0", end.ToLong() + "-0", count);
+        public IList<Message> Range(DateTime start, DateTime end, Int32 count = -1) => Range(start.ToLong() + "-0", end.ToLong() + "-0", count);
 
         /// <summary>原始独立消费</summary>
         /// <param name="startId">开始编号</param>
         /// <param name="count">消息个数</param>
         /// <returns></returns>
-        public IDictionary<String, String[]> Read(String startId, Int32 count)
+        public IList<Message> Read(String startId, Int32 count)
         {
             if (startId.IsNullOrEmpty()) startId = "$";
 
@@ -266,9 +282,6 @@ XREAD count 3 streams stream_key 0-0
                 3)      "age"
                 4)      "36"
                  */
-#if DEBUG
-                System.Diagnostics.Debug.Assert(vs[0] is Packet pk && pk.ToStr() == Key);
-#endif
                 if (vs[1] is Object[] vs2) return Parse(vs2);
             }
 
@@ -280,7 +293,7 @@ XREAD count 3 streams stream_key 0-0
         /// <param name="count">消息个数</param>
         /// <param name="block">阻塞毫秒数，0表示永远</param>
         /// <returns></returns>
-        public async Task<IDictionary<String, String[]>> ReadAsync(String startId, Int32 count, Int32 block = -1)
+        public async Task<IList<Message>> ReadAsync(String startId, Int32 count, Int32 block = -1)
         {
             if (startId.IsNullOrEmpty()) startId = "$";
 
@@ -308,18 +321,21 @@ XREAD count 3 streams stream_key 0-0
             return null;
         }
 
-        private IDictionary<String, String[]> Parse(Object[] vs2)
+        private IList<Message> Parse(Object[] vs)
         {
-            var dic = new Dictionary<String, String[]>();
-            foreach (var item in vs2)
+            var list = new List<Message>();
+            foreach (var item in vs)
             {
                 if (item is Object[] vs3 && vs3.Length == 2 && vs3[0] is Packet pkId && vs3[1] is Object[] vs4)
                 {
-                    var id = pkId.ToStr();
-                    dic[id] = vs4.Select(e => (e as Packet).ToStr()).ToArray();
+                    list.Add(new Message
+                    {
+                        Id = pkId.ToStr(),
+                        Body = vs4.Select(e => (e as Packet).ToStr()).ToArray(),
+                    });
                 }
             }
-            return dic;
+            return list;
         }
         #endregion
 
@@ -407,7 +423,7 @@ XREAD count 3 streams stream_key 0-0
         /// <param name="consumer"></param>
         /// <param name="count"></param>
         /// <returns></returns>
-        public IDictionary<String, String[]> ReadGroup(String group, String consumer, Int32 count)
+        public IList<Message> ReadGroup(String group, String consumer, Int32 count)
         {
             if (consumer.IsNullOrEmpty()) consumer = $"{Environment.MachineName}@{Process.GetCurrentProcess().Id}";
 
@@ -428,7 +444,7 @@ XREAD count 3 streams stream_key 0-0
         /// <param name="count"></param>
         /// <param name="block">阻塞毫秒数，0表示永远</param>
         /// <returns></returns>
-        public async Task<IDictionary<String, String[]>> ReadGroupAsync(String group, String consumer, Int32 count, Int32 block = -1)
+        public async Task<IList<Message>> ReadGroupAsync(String group, String consumer, Int32 count, Int32 block = -1)
         {
             if (consumer.IsNullOrEmpty()) consumer = $"{Environment.MachineName}@{Process.GetCurrentProcess().Id}";
 
