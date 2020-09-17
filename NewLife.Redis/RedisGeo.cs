@@ -125,7 +125,7 @@ namespace NewLife.Caching
         /// <param name="unit"></param>
         /// <param name="count"></param>
         /// <returns></returns>
-        public GeoInfo[] GetRadius(string member, Double radius, String unit = null, Int32 count = 0)
+        public GeoInfo[] GetRadius(String member, Double radius, String unit = null, Int32 count = 0)
         {
             var rs = count > 0 ?
                 Execute(rc => rc.Execute<Object[]>("GEORADIUSBYMEMBER", Key, member, radius, unit, "WITHDIST", "WITHCOORD", "COUNT", count), false) :

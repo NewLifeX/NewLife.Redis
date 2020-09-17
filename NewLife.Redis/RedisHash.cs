@@ -85,10 +85,10 @@ namespace NewLife.Caching
         /// <summary>迭代</summary>
         public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
         {
-            var count = Count;
-            if (count > 1000) throw new NotSupportedException($"[{Key}]的元素个数过多，不支持遍历！");
-
-            return GetAll().GetEnumerator();
+            foreach (var item in Search("*", 10000))
+            {
+                yield return item;
+            }
         }
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
