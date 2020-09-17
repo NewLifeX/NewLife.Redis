@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Caching.Models;
 using NewLife.Data;
@@ -46,6 +47,8 @@ namespace NewLife.Caching
 
         /// <summary>消费者</summary>
         public String Consumer { get; set; }
+
+        private Int32 _count;
         #endregion
 
         #region 构造
@@ -67,13 +70,23 @@ namespace NewLife.Caching
         {
             if (value == null) throw new ArgumentNullException(nameof(value));
 
-            var args = new List<Object> { Key };
-            if (MaxLenngth > 0)
+            // 自动修剪超长部分
+            if (_count <= 0) _count = Count;
+            if (_count > MaxLenngth * 1.2 && MaxLenngth > 0)
             {
-                args.Add("maxlen");
-                args.Add("~");
-                args.Add(MaxLenngth);
+                Trim(MaxLenngth);
+                _count = Count;
             }
+
+            Interlocked.Increment(ref _count);
+
+            var args = new List<Object> { Key };
+            //if (MaxLenngth > 0)
+            //{
+            //    args.Add("maxlen");
+            //    args.Add("~");
+            //    args.Add(MaxLenngth);
+            //}
 
             // *号表示服务器自动生成ID
             args.Add(msgId.IsNullOrEmpty() ? "*" : msgId);
@@ -243,6 +256,11 @@ namespace NewLife.Caching
         /// <param name="id">消息Id</param>
         /// <returns></returns>
         public Int32 Delete(String id) => Execute(rc => rc.Execute<Int32>("XDEL", Key, id), true);
+
+        /// <summary>裁剪队列到指定大小</summary>
+        /// <param name="maxLen">最大长度。为了提高效率，最大长度并没有那么精准</param>
+        /// <returns></returns>
+        public Int32 Trim(Int32 maxLen) => Execute(rc => rc.Execute<Int32>("XTRIM", Key, "MAXLEN", "~", maxLen), true);
 
         /// <summary>确认消息</summary>
         /// <param name="group">消费组名称</param>
