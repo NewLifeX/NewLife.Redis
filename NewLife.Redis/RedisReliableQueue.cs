@@ -7,9 +7,6 @@ using System.Threading.Tasks;
 using NewLife.Log;
 using NewLife.Security;
 using NewLife.Serialization;
-#if !NET40
-using TaskEx = System.Threading.Tasks.Task;
-#endif
 
 namespace NewLife.Caching
 {
@@ -231,7 +228,7 @@ namespace NewLife.Caching
                     {
                         _delay = new RedisDelayQueue<T>(Redis, $"{Key}:Delay", false);
                         _source = new CancellationTokenSource();
-                        _delayTask = TaskEx.Run(() => _delay.TransferAsync(this, null, _source.Token));
+                        _delayTask = Task.Factory.StartNew(() => _delay.TransferAsync(this, null, _source.Token), TaskCreationOptions.LongRunning);
                     }
                 }
             }
