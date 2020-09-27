@@ -84,6 +84,33 @@ namespace NewLife.Caching
             return list.ToArray();
         }
 
+        /// <summary>获取一批点的GeoHash一维编码</summary>
+        /// <remarks>
+        /// 一维编码表示一个矩形区域，前缀表示更大区域，例如北京wx4fbzdvs80包含在wx4fbzdvs里面。
+        /// 这个特性可以用于附近地点搜索。
+        /// GeoHash编码位数及距离关系：
+        /// 1位，+-2500km；
+        /// 2位，+-630km；
+        /// 3位，+-78km；
+        /// 4位，+-20km；
+        /// 5位，+-2.4km；
+        /// 6位，+-610m；
+        /// 7位，+-76m；
+        /// 8位，+-19m；
+        /// </remarks>
+        /// <param name="members"></param>
+        /// <returns></returns>
+        public String[] GetHash(params String[] members)
+        {
+            var args = new List<Object> { Key };
+            foreach (var item in members)
+            {
+                args.Add(item);
+            }
+
+            return Execute(rc => rc.Execute<String[]>("GEOHASH", args.ToArray()), false);
+        }
+
         /// <summary>以给定的经纬度为中心， 返回键包含的位置元素当中， 与中心的距离不超过给定最大距离的所有位置元素</summary>
         /// <param name="longitude"></param>
         /// <param name="latitude"></param>

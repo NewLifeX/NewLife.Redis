@@ -78,6 +78,27 @@ namespace XUnitTest
         }
 
         [Fact]
+        public void GetHash()
+        {
+            var key = "geo_hash";
+
+            // 删除已有
+            _redis.Remove(key);
+
+            var geo = new RedisGeo(_redis, key);
+
+            // 普通添加
+            geo.Add("北京", 116.404125, 39.900545);
+            geo.Add("上海", 121.48789949, 31.24916171);
+
+            // 计算两点距离
+            var hs = geo.GetHash("北京", "上海");
+            Assert.Equal(2, hs.Length);
+            Assert.Equal("wx4fbzdvs80", hs[0]);
+            Assert.Equal("wtw3u88z910", hs[1]);
+        }
+
+        [Fact]
         public void GetRadiusByXY()
         {
             var key = "geo_radius_xy";
