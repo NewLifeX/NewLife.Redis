@@ -93,9 +93,11 @@ namespace NewLife.Caching
         /// <returns></returns>
         public GeoInfo[] GetRadius(Double longitude, Double latitude, Double radius, String unit = null, Int32 count = 0)
         {
+            if (unit.IsNullOrEmpty()) unit = "m";
+
             var rs = count > 0 ?
-                Execute(rc => rc.Execute<Object[]>("GEORADIUS", Key, longitude, latitude, radius, unit, "WITHDIST", "WITHCOORD", "COUNT", count), false) :
-                Execute(rc => rc.Execute<Object[]>("GEORADIUS", Key, longitude, latitude, radius, unit, "WITHDIST", "WITHCOORD"), false);
+               Execute(rc => rc.Execute<Object[]>("GEORADIUS", Key, longitude, latitude, radius, unit, "WITHDIST", "WITHCOORD", "COUNT", count), false) :
+               Execute(rc => rc.Execute<Object[]>("GEORADIUS", Key, longitude, latitude, radius, unit, "WITHDIST", "WITHCOORD"), false);
             if (rs == null || rs.Length == 0) return null;
 
             var list = new List<GeoInfo>();
@@ -127,6 +129,8 @@ namespace NewLife.Caching
         /// <returns></returns>
         public GeoInfo[] GetRadius(String member, Double radius, String unit = null, Int32 count = 0)
         {
+            if (unit.IsNullOrEmpty()) unit = "m";
+
             var rs = count > 0 ?
                 Execute(rc => rc.Execute<Object[]>("GEORADIUSBYMEMBER", Key, member, radius, unit, "WITHDIST", "WITHCOORD", "COUNT", count), false) :
                 Execute(rc => rc.Execute<Object[]>("GEORADIUSBYMEMBER", Key, member, radius, unit, "WITHDIST", "WITHCOORD"), false);
