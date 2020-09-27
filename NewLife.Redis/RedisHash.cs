@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
+using NewLife.Caching.Models;
 using NewLife.Data;
 using NewLife.Reflection;
 
@@ -188,18 +188,18 @@ namespace NewLife.Caching
         public Int32 HStrLen(TKey field) => Execute(r => r.Execute<Int32>("HSTRLEN", Key, field));
 
         /// <summary>模糊搜索，支持?和*</summary>
-        /// <param name="pattern"></param>
-        /// <param name="count"></param>
-        /// <param name="position"></param>
+        /// <param name="model">搜索模型</param>
         /// <returns></returns>
-        public virtual IEnumerable<KeyValuePair<TKey, TValue>> Search(String pattern, Int32 count, Int32 position = 0)
+        public virtual IEnumerable<KeyValuePair<TKey, TValue>> Search(SearchModel model)
         {
+            var count = model.Count;
             while (count > 0)
             {
-                var rs = Execute(r => r.Execute<Object[]>("HSCAN", Key, position, "MATCH", pattern + "", "COUNT", count));
+                var p = model.Position;
+                var rs = Execute(r => r.Execute<Object[]>("HSCAN", Key, p, "MATCH", model.Pattern + "", "COUNT", count));
                 if (rs == null || rs.Length != 2) break;
 
-                position = (rs[0] as Packet).ToStr().ToInt();
+                model.Position = (rs[0] as Packet).ToStr().ToInt();
 
                 var ps = rs[1] as Object[];
                 for (var i = 0; i < ps.Length - 1; i += 2)
@@ -212,9 +212,15 @@ namespace NewLife.Caching
                     }
                 }
 
-                if (position == 0) break;
+                if (model.Position == 0) break;
             }
         }
+
+        /// <summary>模糊搜索，支持?和*</summary>
+        /// <param name="pattern">匹配表达式</param>
+        /// <param name="count">返回个数</param>
+        /// <returns></returns>
+        public virtual IEnumerable<KeyValuePair<TKey, TValue>> Search(String pattern, Int32 count) => Search(new SearchModel { Pattern = pattern, Count = count });
         #endregion
     }
 }

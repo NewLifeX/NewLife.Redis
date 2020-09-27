@@ -38,10 +38,12 @@ namespace XUnitTest
             set.Add("stone4");
             Assert.Equal(4, set.Count);
 
-            var dic = set2.Search("*one?", 3, 2).ToList();
-            Assert.Equal(2, dic.Count);
-            Assert.Equal("stone4", dic[0]);
-            Assert.Equal("stone3", dic[1]);
+            // 搜索。这里为了Assert每一项，要排序，因为输出顺序可能不确定
+            var dic = set2.Search("*one?", 3).OrderBy(e => e).ToList();
+            Assert.Equal(3, dic.Count);
+            Assert.Equal("stone1", dic[0]);
+            Assert.Equal("stone2", dic[1]);
+            Assert.Equal("stone4", dic[2]);
         }
     }
 }

@@ -59,7 +59,7 @@ namespace XUnitTest
             hash.Add("stone4", 15.34);
             Assert.Equal(4, hash.Count);
 
-            var dic = hash2.Search("*one?", 3, 2).ToDictionary(e => e.Key, e => e.Value);
+            var dic = hash2.Search("*one?", 3).ToDictionary(e => e.Key, e => e.Value);
             Assert.Equal(3, dic.Count);
             Assert.Equal("stone1", dic.Skip(0).First().Key);
             Assert.Equal("stone2", dic.Skip(1).First().Key);

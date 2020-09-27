@@ -65,8 +65,7 @@ namespace XUnitTest
             //var ss = ic.Search("*");
             //Assert.True(ss.Length > 0);
 
-            var n = 0;
-            var ss2 = ic.Search("Name*", 10, n).ToArray();
+            var ss2 = ic.Search("Name*", 10).ToArray();
             Assert.True(ss2.Length > 0);
 
             //var ss3 = ic.Search("ReliableQueue:Status:*", 100).ToArray();

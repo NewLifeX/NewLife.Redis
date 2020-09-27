@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using NewLife.Caching.Models;
 using NewLife.Data;
 
 namespace NewLife.Caching
@@ -117,18 +118,18 @@ namespace NewLife.Caching
         public T[] Pop(Int32 count) => Execute(r => r.Execute<T[]>("SPOP", Key, count), true);
 
         /// <summary>模糊搜索，支持?和*</summary>
-        /// <param name="pattern"></param>
-        /// <param name="count"></param>
-        /// <param name="position"></param>
+        /// <param name="model">搜索模型</param>
         /// <returns></returns>
-        public virtual IEnumerable<String> Search(String pattern, Int32 count, Int32 position = 0)
+        public virtual IEnumerable<String> Search(SearchModel model)
         {
+            var count = model.Count;
             while (count > 0)
             {
-                var rs = Execute(r => r.Execute<Object[]>("SSCAN", Key, position, "MATCH", pattern + "", "COUNT", count));
+                var p = model.Position;
+                var rs = Execute(r => r.Execute<Object[]>("SSCAN", Key, p, "MATCH", model.Pattern + "", "COUNT", count));
                 if (rs == null || rs.Length != 2) break;
 
-                position = (rs[0] as Packet).ToStr().ToInt();
+                model.Position = (rs[0] as Packet).ToStr().ToInt();
 
                 var ps = rs[1] as Object[];
                 foreach (Packet item in ps)
@@ -136,9 +137,15 @@ namespace NewLife.Caching
                     if (count-- > 0) yield return item.ToStr();
                 }
 
-                if (position == 0) break;
+                if (model.Position == 0) break;
             }
         }
+
+        /// <summary>模糊搜索，支持?和*</summary>
+        /// <param name="pattern">匹配表达式</param>
+        /// <param name="count">返回个数</param>
+        /// <returns></returns>
+        public virtual IEnumerable<String> Search(String pattern, Int32 count) => Search(new SearchModel { Pattern = pattern, Count = count });
         #endregion
     }
 }
