@@ -39,11 +39,11 @@ namespace XUnitTest
             Assert.Equal(4, set.Count);
 
             // 搜索。这里为了Assert每一项，要排序，因为输出顺序可能不确定
-            var dic = set2.Search("*one?", 3).OrderBy(e => e).ToList();
-            Assert.Equal(3, dic.Count);
+            var dic = set2.Search("*one?", 4).OrderBy(e => e).ToList();
+            Assert.Equal(4, dic.Count);
             Assert.Equal("stone1", dic[0]);
             Assert.Equal("stone2", dic[1]);
-            Assert.Equal("stone4", dic[2]);
+            Assert.Equal("stone3", dic[2]);
         }
     }
 }

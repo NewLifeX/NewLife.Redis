@@ -289,7 +289,7 @@ namespace NewLife.Caching
             // 取出消息。如果重复消费，或者业务层已经删除消息，此时将拿不到
             //var message = Redis.Get<T>(msgId);
             //if (Equals(message, default)) return 0;
-            if (!Redis.TryGet(msgId, out T messge))
+            if (!Redis.TryGetValue(msgId, out T messge))
             {
                 // 拿不到消息体，直接确认消息键
                 Acknowledge(msgId);
