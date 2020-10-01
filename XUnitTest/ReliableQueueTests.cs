@@ -8,6 +8,7 @@ using NewLife;
 using NewLife.Caching;
 using NewLife.Log;
 using NewLife.Security;
+using NewLife.Serialization;
 using Xunit;
 
 namespace XUnitTest
@@ -522,6 +523,70 @@ namespace XUnitTest
         {
             public Int32 Id { get; set; }
             public String Name { get; set; }
+        }
+
+        [Fact]
+        public void AttachTraceId()
+        {
+            var key = "ReliableQueue_AttachTraceId";
+
+            _redis.Remove(key);
+            var queue = _redis.GetReliableQueue<MyModel>(key);
+            _redis.Tracer = new DefaultTracer { MaxSamples = 100 };
+            var queue2 = _redis.GetReliableQueue<String>(key);
+
+            // 清空
+            queue.ClearAllAck();
+
+            // 生产对象消息
+            var traceId = "";
+            {
+                using var span = _redis.Tracer.NewSpan("test");
+                traceId = span.ToString();
+
+                var model = new MyModel { Id = 1234, Name = "Stone" };
+                queue.Add(model);
+            }
+
+            {
+                var json = queue2.TakeOne();
+                Assert.NotNull(json);
+
+                var dic = JsonParser.Decode(json);
+                Assert.Equal(traceId, dic["traceparent"]);
+            }
+
+            // 生产json消息
+            traceId = "";
+            {
+                using var span = _redis.Tracer.NewSpan("test");
+                traceId = span.ToString();
+
+                var model = new MyModel { Id = 1234, Name = "Stone" };
+                queue2.Add(model.ToJson());
+            }
+
+            {
+                var json = queue2.TakeOne();
+                Assert.NotNull(json);
+
+                var dic = JsonParser.Decode(json);
+                Assert.Equal(traceId, dic["traceparent"]);
+            }
+
+            // 生产普通字符串消息
+            traceId = "";
+            {
+                using var span = _redis.Tracer.NewSpan("test");
+                traceId = span.ToString();
+
+                queue2.Add("Stone");
+            }
+
+            {
+                var msg = queue2.TakeOne();
+                Assert.Equal("Stone", msg);
+            }
         }
 
         [Fact]
