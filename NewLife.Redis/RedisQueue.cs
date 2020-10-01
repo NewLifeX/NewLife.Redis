@@ -19,6 +19,9 @@ namespace NewLife.Caching
         /// <summary>最小管道阈值，达到该值时使用管道，默认3</summary>
         public Int32 MinPipeline { get; set; } = 3;
 
+        /// <summary>是否在消息报文中自动注入TraceId。TraceId用于跨应用在生产者和消费者之间建立调用链，默认true</summary>
+        public Boolean AttachTraceId { get; set; } = true;
+
         /// <summary>个数</summary>
         public Int32 Count => Execute(r => r.Execute<Int32>("LLEN", Key));
 
@@ -33,10 +36,15 @@ namespace NewLife.Caching
         public RedisQueue(Redis redis, String key) : base(redis, key) { }
         #endregion
 
+        #region 核心方法
         /// <summary>生产添加</summary>
         /// <param name="value">消息</param>
         /// <returns></returns>
-        public Int32 Add(T value) => Execute(rc => rc.Execute<Int32>("LPUSH", Key, value), true);
+        public Int32 Add(T value)
+        {
+            var val = AttachTraceId ? Redis.AttachTraceId(value) : value;
+            return Execute(rc => rc.Execute<Int32>("LPUSH", Key, val), true);
+        }
 
         /// <summary>批量生产添加</summary>
         /// <param name="values">消息集合</param>
@@ -46,7 +54,10 @@ namespace NewLife.Caching
             var args = new List<Object> { Key };
             foreach (var item in values)
             {
-                args.Add(item);
+                if (AttachTraceId)
+                    args.Add(Redis.AttachTraceId(item));
+                else
+                    args.Add(item);
             }
             return Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
         }
@@ -123,5 +134,6 @@ namespace NewLife.Caching
         /// <param name="keys"></param>
         /// <returns></returns>
         Int32 IProducerConsumer<T>.Acknowledge(params String[] keys) => -1;
+        #endregion
     }
 }

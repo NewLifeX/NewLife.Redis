@@ -48,6 +48,9 @@ namespace NewLife.Caching
         /// <summary>消费者</summary>
         public String Consumer { get; set; }
 
+        /// <summary>是否在消息报文中自动注入TraceId。TraceId用于跨应用在生产者和消费者之间建立调用链，默认true</summary>
+        public Boolean AttachTraceId { get; set; } = true;
+
         private Int32 _count;
         #endregion
 
@@ -103,7 +106,9 @@ namespace NewLife.Caching
             }
             else
             {
-                foreach (var item in value.ToDictionary())
+                // 在消息体内注入TraceId，用于构建调用链
+                var val = AttachTraceId ? Redis.AttachTraceId(value) : value;
+                foreach (var item in val.ToDictionary())
                 {
                     args.Add(item.Key);
                     args.Add(item.Value);

@@ -7,6 +7,9 @@ using System.Threading.Tasks;
 using NewLife.Log;
 using NewLife.Security;
 using NewLife.Serialization;
+#if !NET40
+using TaskEx = System.Threading.Tasks.Task;
+#endif
 
 namespace NewLife.Caching
 {
@@ -52,6 +55,9 @@ namespace NewLife.Caching
 
         /// <summary>消息体过期时间，仅用于高级消息生产和消费，默认10*24*3600</summary>
         public Int32 BodyExpire { get; set; } = 10 * 24 * 3600;
+
+        /// <summary>是否在消息报文中自动注入TraceId。TraceId用于跨应用在生产者和消费者之间建立调用链，默认true</summary>
+        public Boolean AttachTraceId { get; set; } = true;
 
         /// <summary>个数</summary>
         public Int32 Count => Execute(r => r.Execute<Int32>("LLEN", Key));
@@ -108,7 +114,10 @@ namespace NewLife.Caching
             var args = new List<Object> { Key };
             foreach (var item in values)
             {
-                args.Add(item);
+                if (AttachTraceId)
+                    args.Add(Redis.AttachTraceId(item));
+                else
+                    args.Add(item);
             }
             return Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
         }
@@ -234,7 +243,7 @@ namespace NewLife.Caching
                     {
                         _delay = new RedisDelayQueue<T>(Redis, $"{Key}:Delay", false);
                         _source = new CancellationTokenSource();
-                        _delayTask = Task.Factory.StartNew(() => _delay.TransferAsync(this, null, _source.Token), TaskCreationOptions.LongRunning);
+                        _delayTask = TaskEx.Run(() => _delay.TransferAsync(this, null, _source.Token));
                     }
                 }
             }

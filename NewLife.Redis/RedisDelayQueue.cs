@@ -253,7 +253,7 @@ namespace NewLife.Caching
                 {
                     // 异步阻塞消费
                     var score = DateTime.Now.ToInt();
-                    var msgs = await _sort.RangeByScoreAsync(0, score, 0, 10);
+                    var msgs = await _sort.RangeByScoreAsync(0, score, 0, 10, cancellationToken);
                     if (msgs != null && msgs.Length > 0)
                     {
                         // 删除消息后直接进入目标队列，无需进入Ack
