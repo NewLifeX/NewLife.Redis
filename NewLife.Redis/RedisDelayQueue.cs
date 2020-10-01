@@ -33,8 +33,8 @@ namespace NewLife.Caching
         /// <summary>默认延迟时间。单位，秒</summary>
         public Int32 Delay { get; set; }
 
-        private RedisSortedSet<T> _sort;
-        private RedisSortedSet<T> _ack;
+        private readonly RedisSortedSet<T> _sort;
+        private readonly RedisSortedSet<T> _ack;
         #endregion
 
         #region 实例化
@@ -99,8 +99,9 @@ namespace NewLife.Caching
 
         /// <summary>异步获取一个</summary>
         /// <param name="timeout">超时时间，默认0秒永远阻塞；负数表示直接返回，不阻塞。</param>
+        /// <param name="cancellationToken">取消令牌</param>
         /// <returns></returns>
-        public async Task<T> TakeOneAsync(Int32 timeout = 0)
+        public async Task<T> TakeOneAsync(Int32 timeout = 0, CancellationToken cancellationToken = default)
         {
             RetryAck();
 
@@ -110,7 +111,7 @@ namespace NewLife.Caching
             while (true)
             {
                 var score = DateTime.Now.ToInt();
-                var rs = await _sort.RangeByScoreAsync(0, score, 0, 1);
+                var rs = await _sort.RangeByScoreAsync(0, score, 0, 1, cancellationToken);
                 if (rs != null && rs.Length > 0 && TryPop(rs[0])) return rs[0];
 
                 // 是否需要等待
@@ -122,6 +123,11 @@ namespace NewLife.Caching
 
             return default;
         }
+
+        /// <summary>异步消费获取</summary>
+        /// <param name="timeout">超时时间，默认0秒永远阻塞；负数表示直接返回，不阻塞。</param>
+        /// <returns></returns>
+        Task<T> IProducerConsumer<T>.TakeOneAsync(Int32 timeout) => TakeOneAsync(timeout, default);
 
         /// <summary>获取一批</summary>
         /// <param name="count"></param>

@@ -162,16 +162,17 @@ namespace NewLife.Caching
         public T TakeOne(Int32 timeout = 0) => Take(1).FirstOrDefault();
 
         /// <summary>异步消费获取一个</summary>
-        /// <param name="timeout"></param>
+        /// <param name="timeout">超时时间，默认0秒永远阻塞</param>
+        /// <param name="cancellationToken">取消令牌</param>
         /// <returns></returns>
-        public async Task<T> TakeOneAsync(Int32 timeout = 0)
+        public async Task<T> TakeOneAsync(Int32 timeout = 0, CancellationToken cancellationToken = default)
         {
             var group = Group;
             if (!group.IsNullOrEmpty()) RetryAck();
 
             var rs = !group.IsNullOrEmpty() ?
-                await ReadGroupAsync(group, Consumer, 1, timeout * 1000) :
-                await ReadAsync(StartId, 1, timeout * 1000);
+                await ReadGroupAsync(group, Consumer, 1, timeout * 1000, cancellationToken) :
+                await ReadAsync(StartId, 1, timeout * 1000, cancellationToken);
             if (rs == null || rs.Count == 0) return default;
 
             // 全局消费（非消费组）时，更新编号
@@ -179,6 +180,11 @@ namespace NewLife.Caching
 
             return rs[0].GetBody<T>();
         }
+
+        /// <summary>异步消费获取</summary>
+        /// <param name="timeout">超时时间，默认0秒永远阻塞；负数表示直接返回，不阻塞。</param>
+        /// <returns></returns>
+        Task<T> IProducerConsumer<T>.TakeOneAsync(Int32 timeout) => TakeOneAsync(timeout, default);
 
         /// <summary>异步消费获取一个</summary>
         /// <param name="timeout"></param>
@@ -350,8 +356,9 @@ XREAD count 3 streams stream_key 0-0
         /// <param name="startId">开始编号</param>
         /// <param name="count">消息个数</param>
         /// <param name="block">阻塞毫秒数，0表示永远</param>
+        /// <param name="cancellationToken">取消令牌</param>
         /// <returns></returns>
-        public async Task<IList<Message>> ReadAsync(String startId, Int32 count, Int32 block = -1)
+        public async Task<IList<Message>> ReadAsync(String startId, Int32 count, Int32 block = -1, CancellationToken cancellationToken = default)
         {
             if (startId.IsNullOrEmpty()) startId = "$";
 
@@ -370,7 +377,7 @@ XREAD count 3 streams stream_key 0-0
             args.Add(Key);
             args.Add(startId);
 
-            var rs = await ExecuteAsync(rc => rc.ExecuteAsync<Object[]>("XREAD", args.ToArray()), true);
+            var rs = await ExecuteAsync(rc => rc.ExecuteAsync<Object[]>("XREAD", args.ToArray(), cancellationToken), true);
             if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
             {
                 if (vs[1] is Object[] vs2) return Parse(vs2);
@@ -513,14 +520,15 @@ XREAD count 3 streams stream_key 0-0
         /// <param name="consumer"></param>
         /// <param name="count"></param>
         /// <param name="block">阻塞毫秒数，0表示永远</param>
+        /// <param name="cancellationToken">取消令牌</param>
         /// <returns></returns>
-        public async Task<IList<Message>> ReadGroupAsync(String group, String consumer, Int32 count, Int32 block = -1)
+        public async Task<IList<Message>> ReadGroupAsync(String group, String consumer, Int32 count, Int32 block = -1, CancellationToken cancellationToken = default)
         {
             if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
 
             var rs = count > 0 ?
-                await ExecuteAsync(rc => rc.ExecuteAsync<Object[]>("XREADGROUP", new Object[] { "GROUP", group, consumer, "BLOCK", block, "COUNT", count, "STREAMS", Key, ">" }), true) :
-                await ExecuteAsync(rc => rc.ExecuteAsync<Object[]>("XREADGROUP", new Object[] { "GROUP", group, consumer, "BLOCK", block, "STREAMS", Key, ">" }), true);
+                await ExecuteAsync(rc => rc.ExecuteAsync<Object[]>("XREADGROUP", new Object[] { "GROUP", group, consumer, "BLOCK", block, "COUNT", count, "STREAMS", Key, ">" }, cancellationToken), true) :
+                await ExecuteAsync(rc => rc.ExecuteAsync<Object[]>("XREADGROUP", new Object[] { "GROUP", group, consumer, "BLOCK", block, "STREAMS", Key, ">" }, cancellationToken), true);
             if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
             {
                 if (vs[1] is Object[] vs2) return Parse(vs2);

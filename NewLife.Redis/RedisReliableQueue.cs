@@ -128,8 +128,9 @@ namespace NewLife.Caching
 
         /// <summary>异步消费获取</summary>
         /// <param name="timeout">超时时间，默认0秒永远阻塞；负数表示直接返回，不阻塞。</param>
+        /// <param name="cancellationToken">取消令牌</param>
         /// <returns></returns>
-        public async Task<T> TakeOneAsync(Int32 timeout = 0)
+        public async Task<T> TakeOneAsync(Int32 timeout = 0, CancellationToken cancellationToken = default)
         {
 #if NET4
             throw new NotSupportedException();
@@ -137,10 +138,15 @@ namespace NewLife.Caching
             RetryAck();
 
             return (timeout < 0) ?
-                await ExecuteAsync(rc => rc.ExecuteAsync<T>("RPOPLPUSH", Key, AckKey), true) :
-                await ExecuteAsync(rc => rc.ExecuteAsync<T>("BRPOPLPUSH", Key, AckKey, timeout), true);
+                await ExecuteAsync(rc => rc.ExecuteAsync<T>("RPOPLPUSH", new Object[] { Key, AckKey }, cancellationToken), true) :
+                await ExecuteAsync(rc => rc.ExecuteAsync<T>("BRPOPLPUSH", new Object[] { Key, AckKey, timeout }, cancellationToken), true);
 #endif
         }
+
+        /// <summary>异步消费获取</summary>
+        /// <param name="timeout">超时时间，默认0秒永远阻塞；负数表示直接返回，不阻塞。</param>
+        /// <returns></returns>
+        Task<T> IProducerConsumer<T>.TakeOneAsync(Int32 timeout) => TakeOneAsync(timeout, default);
 
         /// <summary>批量消费获取，从Key弹出并备份到AckKey</summary>
         /// <remarks>假定前面获取的消息已经确认，因该方法内部可能回滚确认队列，避免误杀</remarks>

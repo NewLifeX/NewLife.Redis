@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Data;
 using NewLife.Reflection;
@@ -189,8 +190,9 @@ namespace NewLife.Caching
         /// <param name="max">高分，包含</param>
         /// <param name="offset">偏移</param>
         /// <param name="count">个数</param>
+        /// <param name="cancellationToken">取消令牌</param>
         /// <returns></returns>
-        public async Task<T[]> RangeByScoreAsync(Double min, Double max, Int32 offset, Int32 count) => await ExecuteAsync(r => r.ExecuteAsync<T[]>("ZRANGEBYSCORE", new Object[] { Key, min, max, "LIMIT", offset, count }));
+        public async Task<T[]> RangeByScoreAsync(Double min, Double max, Int32 offset, Int32 count, CancellationToken cancellationToken = default) => await ExecuteAsync(r => r.ExecuteAsync<T[]>("ZRANGEBYSCORE", new Object[] { Key, min, max, "LIMIT", offset, count }, cancellationToken));
 
         /// <summary>返回指定分数区间的成员分数对，低分到高分排序</summary>
         /// <param name="min">低分，包含</param>
