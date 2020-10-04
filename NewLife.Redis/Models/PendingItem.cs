@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using NewLife.Data;
 
 namespace NewLife.Caching.Models

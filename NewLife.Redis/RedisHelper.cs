@@ -36,7 +36,10 @@ namespace NewLife.Caching
             {
                 if (str[0] == '{' && str[str.Length - 1] == '}')
                 {
-                    return str.Substring(0, str.Length - 1) + $",\"{name}\":\"{span}\"}}";
+                    if (str.IndexOf($"\"{name}\":", StringComparison.OrdinalIgnoreCase) < 0)
+                        return str.Substring(0, str.Length - 1) + $",\"{name}\":\"{span}\"}}";
+                    else if (str.EndsWithIgnoreCase($",\"{name}\":null}}"))
+                        return str.Substring(0, str.Length - $",\"{name}\":null}}".Length) + $",\"{name}\":\"{span}\"}}";
                 }
 
                 return msg;
@@ -44,14 +47,14 @@ namespace NewLife.Caching
             // 注入字典
             else if (msg is IDictionary<String, Object> dic)
             {
-                if (!dic.ContainsKey(name)) dic.Add(name, span.ToString());
+                if (!dic.TryGetValue(name, out var val) || val == null) dic[name] = span.ToString();
                 return dic;
             }
             // 注入复合对象
             else if (code == TypeCode.Object)
             {
                 dic = msg.ToDictionary();
-                if (!dic.ContainsKey(name)) dic.Add(name, span.ToString());
+                if (!dic.TryGetValue(name, out var val) || val == null) dic[name] = span.ToString();
                 return dic;
             }
 

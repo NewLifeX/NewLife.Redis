@@ -16,7 +16,7 @@ using TaskEx = System.Threading.Tasks.Task;
 
 namespace NewLife.Caching
 {
-    /// <summary>Redis5.0的Stream数据结果，完整态消息队列，支持多消费组</summary>
+    /// <summary>Redis5.0的Stream数据结构，完整态消息队列，支持多消费组</summary>
     /// <typeparam name="T"></typeparam>
     public class RedisStream<T> : RedisBase, IProducerConsumer<T>
     {
