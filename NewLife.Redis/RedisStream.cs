@@ -73,6 +73,8 @@ namespace NewLife.Caching
         {
             if (value == null) throw new ArgumentNullException(nameof(value));
 
+            using var span = Redis.Tracer?.NewSpan($"redismq:AddStream:{Key}", value);
+
             // 自动修剪超长部分，每1000次生产，修剪一次
             if (_count <= 0) _count = Count;
             Interlocked.Increment(ref _count);

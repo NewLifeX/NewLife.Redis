@@ -42,7 +42,7 @@ namespace NewLife.Caching
                     {
                         // 反序列化消息
                         var message = msg.ToJsonEntity<T>();
-                        span = tracer?.NewSpan($"mq:{topic}", msg);
+                        span = tracer?.NewSpan($"redismq:{topic}", msg);
 
                         // 处理消息
                         await onMessage(message);

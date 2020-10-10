@@ -59,12 +59,22 @@ namespace NewLife.Caching
         /// <param name="value"></param>
         /// <param name="delay"></param>
         /// <returns></returns>
-        public Int32 Add(T value, Int32 delay) => _sort.Add(value, DateTime.Now.ToInt() + delay);
+        public Int32 Add(T value, Int32 delay)
+        {
+            using var span = Redis.Tracer?.NewSpan($"redismq:AddDelay:{Key}", value);
+
+            return _sort.Add(value, DateTime.Now.ToInt() + delay);
+        }
 
         /// <summary>批量生产</summary>
         /// <param name="values"></param>
         /// <returns></returns>
-        public Int32 Add(params T[] values) => _sort.Add(values, DateTime.Now.ToInt() + Delay);
+        public Int32 Add(params T[] values)
+        {
+            using var span = Redis.Tracer?.NewSpan($"redismq:AddDelay:{Key}", values);
+
+            return _sort.Add(values, DateTime.Now.ToInt() + Delay);
+        }
 
         /// <summary>删除项</summary>
         /// <param name="value"></param>
@@ -257,7 +267,7 @@ namespace NewLife.Caching
                     if (msgs != null && msgs.Length > 0)
                     {
                         // 删除消息后直接进入目标队列，无需进入Ack
-                        span = tracer?.NewSpan($"mq:{topic}:Transfer");
+                        span = tracer?.NewSpan($"redismq:Transfer:{topic}", msgs);
 
                         // 逐个删除，多线程争夺可能失败
                         var list = new List<T>();
