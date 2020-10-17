@@ -245,6 +245,15 @@ namespace NewLife.Caching
                     if (_delay == null)
                     {
                         _delay = new RedisDelayQueue<T>(Redis, $"{Key}:Delay", false);
+                    }
+                }
+            }
+            if (_delayTask == null || _delayTask.IsCompleted)
+            {
+                lock (this)
+                {
+                    if (_delayTask == null || _delayTask.IsCompleted)
+                    {
                         _source = new CancellationTokenSource();
                         _delayTask = TaskEx.Run(() => _delay.TransferAsync(this, null, _source.Token));
                     }
