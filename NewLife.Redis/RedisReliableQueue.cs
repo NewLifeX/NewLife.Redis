@@ -236,7 +236,7 @@ namespace NewLife.Caching
 
         #region 高级队列
         /// <summary>初始化延迟队列功能。该功能是附加功能，需要生产者或消费者主动初始化</summary>
-        public void InitDelay()
+        public RedisDelayQueue<T> InitDelay()
         {
             if (_delay == null)
             {
@@ -259,6 +259,8 @@ namespace NewLife.Caching
                     }
                 }
             }
+
+            return _delay;
         }
 
         /// <summary>添加延迟消息</summary>
@@ -477,9 +479,9 @@ namespace NewLife.Caching
 
         private void UpdateStatus()
         {
-            // 更新状态，永不过期
+            // 更新状态，7天过期
             _Status.LastActive = DateTime.Now;
-            Redis.Set(_StatusKey, _Status);
+            Redis.Set(_StatusKey, _Status, 7 * 24 * 3600);
         }
 
         private class Status

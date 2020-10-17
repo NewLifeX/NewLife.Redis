@@ -105,6 +105,7 @@ namespace XUnitTest
             _redis.Remove(key);
             var queue = _redis.GetDelayQueue<String>(key);
             _redis.SetExpire(key, TimeSpan.FromMinutes(60));
+            queue.Delay = 1;
 
             // 回滚死信，然后清空
             var dead = queue.RollbackAllAck();
@@ -150,35 +151,36 @@ namespace XUnitTest
 
             // 删除已有
             _redis.Remove(key);
-            var q = _redis.GetDelayQueue<String>(key);
+            var queue = _redis.GetDelayQueue<String>(key);
             _redis.SetExpire(key, TimeSpan.FromMinutes(60));
+            queue.Delay = 2;
 
             // 取出个数
-            var count = q.Count;
-            Assert.True(q.IsEmpty);
+            var count = queue.Count;
+            Assert.True(queue.IsEmpty);
             Assert.Equal(0, count);
 
             // 添加
             var vs = new[] { "1234", "abcd" };
-            q.Add(vs);
+            queue.Add(vs);
 
             // 取出来
-            var vs2 = q.Take(3).ToArray();
+            var vs2 = queue.Take(3).ToArray();
             Assert.Equal(2, vs2.Length);
             Assert.Equal("1234", vs2[0]);
             Assert.Equal("abcd", vs2[1]);
 
             // 再取，这个时候已经没有元素
-            var vs4 = q.Take(3).ToArray();
+            var vs4 = queue.Take(3).ToArray();
             Assert.Empty(vs4);
 
             // 管道批量获取
-            var vs3 = q.Take(5).ToArray();
+            var vs3 = queue.Take(5).ToArray();
             Assert.Empty(vs3);
 
             // 对比个数
-            var count3 = q.Count;
-            Assert.True(q.IsEmpty);
+            var count3 = queue.Count;
+            Assert.True(queue.IsEmpty);
             Assert.Equal(count, count3);
         }
 
@@ -189,6 +191,7 @@ namespace XUnitTest
             _redis.Remove(key);
 
             var queue = _redis.GetDelayQueue<String>(key);
+            queue.Delay = 2;
 
             // 回滚死信，然后清空
             var dead = queue.RollbackAllAck();
@@ -205,6 +208,7 @@ namespace XUnitTest
             }
 
             Assert.Equal(1_000 * 20, queue.Count);
+            Thread.Sleep(queue.Delay * 1000);
 
             var count = 0;
             while (true)
@@ -229,6 +233,7 @@ namespace XUnitTest
             _redis.Remove(key);
 
             var queue = _redis.GetDelayQueue<String>(key);
+            queue.Delay = 2;
 
             // 回滚死信，然后清空
             var dead = queue.RollbackAllAck();
@@ -245,6 +250,7 @@ namespace XUnitTest
             }
 
             Assert.Equal(1_000 * 20, queue.Count);
+            Thread.Sleep(queue.Delay * 1000);
 
             var count = 0;
             var ths = new List<Task>();
@@ -280,6 +286,7 @@ namespace XUnitTest
             // 删除已有
             _redis.Remove(key);
             var queue = _redis.GetDelayQueue<String>(key);
+            queue.Delay = 1;
 
             // 发现回滚
             var rcount = queue.RollbackAllAck();
@@ -326,6 +333,7 @@ namespace XUnitTest
             // 删除已有
             _redis.Remove(key);
             var queue = new RedisDelayQueue<String>(_redis, key, false);
+            queue.Delay = 2;
 
             // 添加
             var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
@@ -354,6 +362,7 @@ namespace XUnitTest
             // 添加
             var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
             queue.Delay = 2;
+            queue.TransferInterval = 2;
             queue.Add(vs);
 
             // 开始转移

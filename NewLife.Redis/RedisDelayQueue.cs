@@ -24,14 +24,17 @@ namespace NewLife.Caching
         /// <summary>重新处理确认队列中死信的间隔。默认60s</summary>
         public Int32 RetryInterval { get; set; } = 60;
 
+        /// <summary>转移延迟消息到主队列的间隔。默认10s</summary>
+        public Int32 TransferInterval { get; set; } = 10;
+
         /// <summary>个数</summary>
         public Int32 Count => _sort?.Count ?? 0;
 
         /// <summary>是否为空</summary>
         public Boolean IsEmpty => Count == 0;
 
-        /// <summary>默认延迟时间。单位，秒</summary>
-        public Int32 Delay { get; set; }
+        /// <summary>默认延迟时间。默认60秒</summary>
+        public Int32 Delay { get; set; } = 60;
 
         private readonly RedisSortedSet<T> _sort;
         private readonly RedisSortedSet<T> _ack;
@@ -252,7 +255,7 @@ namespace NewLife.Caching
         public async Task TransferAsync(IProducerConsumer<T> queue, Action<Exception> onException = null, CancellationToken cancellationToken = default)
         {
             // 超时时间，用于阻塞等待
-            var timeout = Redis.Timeout / 1000 - 1;
+            //var timeout = Redis.Timeout / 1000 - 1;
             var topic = Key;
             var tracer = Redis.Tracer;
 
@@ -282,7 +285,7 @@ namespace NewLife.Caching
                     else
                     {
                         // 没有消息，歇一会
-                        await TaskEx.Delay(1000);
+                        await TaskEx.Delay(TransferInterval * 1000);
                     }
                 }
                 catch (ThreadAbortException) { break; }

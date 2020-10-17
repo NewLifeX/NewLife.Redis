@@ -619,7 +619,8 @@ namespace XUnitTest
             Assert.Equal(0, count);
 
             // 初始化延迟
-            queue.InitDelay();
+            var dq = queue.InitDelay();
+            dq.TransferInterval = 2;
 
             // 添加延迟消息
             var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
