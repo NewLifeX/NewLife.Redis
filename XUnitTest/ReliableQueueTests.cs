@@ -541,10 +541,10 @@ namespace XUnitTest
             queue.ClearAllAck();
 
             // 生产对象消息
-            var traceId = "";
+            var traceParent = "";
             {
                 using var span = _redis.Tracer.NewSpan("test");
-                traceId = span.ToString();
+                traceParent = span.ToString();
 
                 var model = new MyModel { Id = 1234, Name = "Stone" };
                 queue.Add(model);
@@ -555,14 +555,15 @@ namespace XUnitTest
                 Assert.NotNull(json);
 
                 var dic = JsonParser.Decode(json);
-                Assert.Equal(traceId, dic["traceparent"]);
+                Assert.NotNull(dic["traceparent"]);
+                Assert.NotEqual(traceParent, dic["traceparent"]);
             }
 
             // 生产json消息
-            traceId = "";
+            traceParent = "";
             {
                 using var span = _redis.Tracer.NewSpan("test");
-                traceId = span.ToString();
+                traceParent = span.ToString();
 
                 var model = new MyModel { Id = 1234, Name = "Stone" };
                 queue2.Add(model.ToJson());
@@ -573,14 +574,14 @@ namespace XUnitTest
                 Assert.NotNull(json);
 
                 var dic = JsonParser.Decode(json);
-                Assert.Equal(traceId, dic["traceparent"]);
+                Assert.NotEqual(traceParent, dic["traceparent"]);
             }
 
             // 生产普通字符串消息
-            traceId = "";
+            traceParent = "";
             {
                 using var span = _redis.Tracer.NewSpan("test");
-                traceId = span.ToString();
+                traceParent = span.ToString();
 
                 queue2.Add("Stone");
             }
