@@ -625,7 +625,7 @@ namespace XUnitTest
             var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
             foreach (var item in vs)
             {
-                queue.Add(item, 2);
+                queue.AddDelay(item, 2);
             }
 
             // 可信队列消费

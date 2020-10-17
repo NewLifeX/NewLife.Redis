@@ -256,12 +256,19 @@ namespace NewLife.Caching
         /// <param name="value"></param>
         /// <param name="delay"></param>
         /// <returns></returns>
-        public Int32 Add(T value, Int32 delay)
+        public Int32 AddDelay(T value, Int32 delay)
         {
             InitDelay();
 
             return _delay.Add(value, delay);
         }
+
+        /// <summary>添加延迟消息</summary>
+        /// <param name="value"></param>
+        /// <param name="delay"></param>
+        /// <returns></returns>
+        [Obsolete("=>AddDelay")]
+        public Int32 Add(T value, Int32 delay) => AddDelay(value, delay);
 
         /// <summary>高级生产消息。消息体和消息键分离，业务层指定消息键，可随时查看或删除，同时避免重复生产</summary>
         /// <remarks>
