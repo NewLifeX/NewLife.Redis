@@ -2,13 +2,11 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Caching.Models;
 using NewLife.Data;
 using NewLife.Log;
-using NewLife.Reflection;
 using NewLife.Serialization;
 #if !NET4
 using TaskEx = System.Threading.Tasks.Task;
@@ -174,18 +172,10 @@ namespace NewLife.Caching
         /// <returns></returns>
         public async Task<T> TakeOneAsync(Int32 timeout = 0, CancellationToken cancellationToken = default)
         {
-            var group = Group;
-            if (!group.IsNullOrEmpty()) RetryAck();
+            var msg = await TakeMessageAsync(timeout, cancellationToken);
+            if (msg == null) return default;
 
-            var rs = !group.IsNullOrEmpty() ?
-                await ReadGroupAsync(group, Consumer, 1, timeout * 1000, cancellationToken) :
-                await ReadAsync(StartId, 1, timeout * 1000, cancellationToken);
-            if (rs == null || rs.Count == 0) return default;
-
-            // 全局消费（非消费组）时，更新编号
-            if (group.IsNullOrEmpty()) SetNextId(rs[0].Id);
-
-            return rs[0].GetBody<T>();
+            return msg.GetBody<T>();
         }
 
         /// <summary>异步消费获取</summary>
@@ -194,17 +184,18 @@ namespace NewLife.Caching
         Task<T> IProducerConsumer<T>.TakeOneAsync(Int32 timeout) => TakeOneAsync(timeout, default);
 
         /// <summary>异步消费获取一个</summary>
-        /// <param name="timeout"></param>
+        /// <param name="timeout">超时时间，默认0秒永远阻塞</param>
+        /// <param name="cancellationToken">取消令牌</param>
         /// <returns></returns>
-        public async Task<Message> TakeMessageAsync(Int32 timeout = 0)
+        public async Task<Message> TakeMessageAsync(Int32 timeout = 0, CancellationToken cancellationToken = default)
         {
             var group = Group;
             if (!group.IsNullOrEmpty()) RetryAck();
 
             var rs = !group.IsNullOrEmpty() ?
-                await ReadGroupAsync(group, Consumer, 1, timeout * 1000) :
-                await ReadAsync(StartId, 1, timeout * 1000);
-            if (rs == null || rs.Count == 0) return default;
+                await ReadGroupAsync(group, Consumer, 1, timeout * 1000, cancellationToken) :
+                await ReadAsync(StartId, 1, timeout * 1000, cancellationToken);
+            if (rs == null || rs.Count == 0) return null;
 
             // 全局消费（非消费组）时，更新编号
             if (group.IsNullOrEmpty()) SetNextId(rs[0].Id);
@@ -503,9 +494,9 @@ XREAD count 3 streams stream_key 0-0
         }
 
         /// <summary>消费组消费</summary>
-        /// <param name="group"></param>
-        /// <param name="consumer"></param>
-        /// <param name="count"></param>
+        /// <param name="group">消费组</param>
+        /// <param name="consumer">消费组</param>
+        /// <param name="count">消息个数</param>
         /// <returns></returns>
         public IList<Message> ReadGroup(String group, String consumer, Int32 count)
         {
@@ -523,9 +514,9 @@ XREAD count 3 streams stream_key 0-0
         }
 
         /// <summary>异步消费组消费</summary>
-        /// <param name="group"></param>
-        /// <param name="consumer"></param>
-        /// <param name="count"></param>
+        /// <param name="group">消费组</param>
+        /// <param name="consumer">消费组</param>
+        /// <param name="count">消息个数</param>
         /// <param name="block">阻塞毫秒数，0表示永远</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns></returns>
