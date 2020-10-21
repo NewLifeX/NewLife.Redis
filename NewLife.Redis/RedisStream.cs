@@ -268,7 +268,7 @@ namespace NewLife.Caching
         /// <returns></returns>
         public Int32 Ack(String group, String id) => Execute(rc => rc.Execute<Int32>("XACK", Key, group, id), true);
 
-        /// <summary>确认消息</summary>
+        /// <summary>改变待处理消息的所有权，抢夺他人未确认消息</summary>
         /// <param name="group">消费组名称</param>
         /// <param name="consumer">目标消费者</param>
         /// <param name="id">消息Id</param>
