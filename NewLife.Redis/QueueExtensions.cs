@@ -1,13 +1,11 @@
-﻿using System;
+﻿#if !NET40
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Caching.Models;
 using NewLife.Log;
 using NewLife.Serialization;
-#if !NET40
-using TaskEx = System.Threading.Tasks.Task;
-#endif
 
 namespace NewLife.Caching
 {
@@ -79,7 +77,7 @@ namespace NewLife.Caching
                     else
                     {
                         // 没有消息，歇一会
-                        await TaskEx.Delay(1000, cancellationToken);
+                        await Task.Delay(1000, cancellationToken);
                     }
                 }
                 catch (ThreadAbortException) { break; }
@@ -177,7 +175,7 @@ namespace NewLife.Caching
                     else
                     {
                         // 没有消息，歇一会
-                        await TaskEx.Delay(1000, cancellationToken);
+                        await Task.Delay(1000, cancellationToken);
                     }
                 }
                 catch (ThreadAbortException) { break; }
@@ -263,7 +261,7 @@ namespace NewLife.Caching
                     else
                     {
                         // 没有消息，歇一会
-                        await TaskEx.Delay(1000, cancellationToken);
+                        await Task.Delay(1000, cancellationToken);
                     }
                 }
                 catch (ThreadAbortException) { break; }
@@ -271,23 +269,7 @@ namespace NewLife.Caching
                 catch (Exception ex)
                 {
                     span?.SetError(ex, null);
-
-                    // 消息处理错误超过10次则抛弃
-                    if (mqMsg != null)
-                    {
-                        errLog?.Error("[{0}/{1}]消息处理异常：{2} {3}", topic, mqMsg.Id, mqMsg.ToJson(), ex);
-                        var key = $"{topic}:Error:{mqMsg.Id}";
-
-                        var rs = rds.Increment(key, 1);
-                        if (rs < 10)
-                            rds.SetExpire(key, TimeSpan.FromHours(24));
-                        else
-                        {
-                            queue.Acknowledge(mqMsg.Id);
-
-                            errLog?.Error("[{0}/{1}]错误过多，删除消息", topic, mqMsg.Id);
-                        }
-                    }
+                    errLog?.Error("[{0}/{1}]消息处理异常：{2} {3}", topic, mqMsg?.Id, mqMsg?.ToJson(), ex);
                 }
                 finally
                 {
@@ -298,3 +280,4 @@ namespace NewLife.Caching
         #endregion
     }
 }
+#endif
