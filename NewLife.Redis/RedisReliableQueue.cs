@@ -133,9 +133,13 @@ namespace NewLife.Caching
         {
             RetryAck();
 
-            return timeout >= 0 ?
+            var rs = timeout >= 0 ?
                 Execute(rc => rc.Execute<T>("BRPOPLPUSH", Key, AckKey, timeout), true) :
                 Execute(rc => rc.Execute<T>("RPOPLPUSH", Key, AckKey), true);
+
+            if (rs != null) _Status.Consumes++;
+
+            return rs;
         }
 
         /// <summary>异步消费获取</summary>
@@ -149,9 +153,13 @@ namespace NewLife.Caching
 #else
             RetryAck();
 
-            return (timeout < 0) ?
+            var rs = (timeout < 0) ?
                 await ExecuteAsync(rc => rc.ExecuteAsync<T>("RPOPLPUSH", new Object[] { Key, AckKey }, cancellationToken), true) :
                 await ExecuteAsync(rc => rc.ExecuteAsync<T>("BRPOPLPUSH", new Object[] { Key, AckKey, timeout }, cancellationToken), true);
+
+            if (rs != null) _Status.Consumes++;
+
+            return rs;
 #endif
         }
 
@@ -184,7 +192,11 @@ namespace NewLife.Caching
                 var rs = rds.StopPipeline(true);
                 foreach (var item in rs)
                 {
-                    if (!Equals(item, default(T))) yield return (T)item;
+                    if (!Equals(item, default(T)))
+                    {
+                        _Status.Consumes++;
+                        yield return (T)item;
+                    }
                 }
             }
             else
@@ -194,6 +206,7 @@ namespace NewLife.Caching
                     var value = Execute(rc => rc.Execute<T>("RPOPLPUSH", Key, AckKey), true);
                     if (Equals(value, default(T))) break;
 
+                    _Status.Consumes++;
                     yield return value;
                 }
             }
@@ -204,6 +217,8 @@ namespace NewLife.Caching
         public Int32 Acknowledge(params String[] keys)
         {
             var rs = 0;
+
+            _Status.Acks += keys.Length;
 
             // 管道支持
             if (keys.Count() >= MinPipeline)
@@ -321,6 +336,9 @@ namespace NewLife.Caching
             var msgId = (timeout < 0) ?
                 await ExecuteAsync(rc => rc.ExecuteAsync<String>("RPOPLPUSH", Key, AckKey), true) :
                 await ExecuteAsync(rc => rc.ExecuteAsync<String>("BRPOPLPUSH", Key, AckKey, timeout), true);
+            if (msgId.IsNullOrEmpty()) return default;
+
+            _Status.Consumes++;
 
             // 取出消息。如果重复消费，或者业务层已经删除消息，此时将拿不到
             //var message = Redis.Get<T>(msgId);
@@ -507,11 +525,11 @@ namespace NewLife.Caching
             /// <summary>最后活跃时间</summary>
             public DateTime LastActive { get; set; }
 
-            ///// <summary>消费消息数</summary>
-            //public Int64 Consumes { get; set; }
+            /// <summary>消费消息数</summary>
+            public Int64 Consumes { get; set; }
 
-            ///// <summary>确认消息数</summary>
-            //public Int64 Acks { get; set; }
+            /// <summary>确认消息数</summary>
+            public Int64 Acks { get; set; }
         }
         #endregion
     }
