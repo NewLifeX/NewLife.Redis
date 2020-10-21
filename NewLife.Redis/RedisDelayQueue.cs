@@ -74,6 +74,8 @@ namespace NewLife.Caching
         /// <returns></returns>
         public Int32 Add(params T[] values)
         {
+            if (values == null || values.Length == 0) return 0;
+
             using var span = Redis.Tracer?.NewSpan($"redismq:AddDelay:{Key}", values);
 
             return _sort.Add(values, DateTime.Now.ToInt() + Delay);
@@ -130,7 +132,7 @@ namespace NewLife.Caching
                 // 是否需要等待
                 if (timeout <= 0) break;
 
-                await TaskEx.Delay(1000);
+                await TaskEx.Delay(1000, cancellationToken);
                 timeout--;
             }
 
@@ -280,12 +282,12 @@ namespace NewLife.Caching
                         }
 
                         // 转移消息
-                        queue.Add(list.ToArray());
+                        if (list.Count > 0) queue.Add(list.ToArray());
                     }
                     else
                     {
                         // 没有消息，歇一会
-                        await TaskEx.Delay(TransferInterval * 1000);
+                        await TaskEx.Delay(TransferInterval * 1000, cancellationToken);
                     }
                 }
                 catch (ThreadAbortException) { break; }

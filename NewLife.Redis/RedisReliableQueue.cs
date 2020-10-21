@@ -112,6 +112,8 @@ namespace NewLife.Caching
         /// <returns></returns>
         public Int32 Add(params T[] values)
         {
+            if (values == null || values.Length == 0) return 0;
+
             using var span = Redis.Tracer?.NewSpan($"redismq:ReliableAdd:{Key}", values);
 
             var args = new List<Object> { Key };
