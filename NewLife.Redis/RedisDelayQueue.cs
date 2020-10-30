@@ -256,6 +256,9 @@ namespace NewLife.Caching
         /// <returns></returns>
         public async Task TransferAsync(IProducerConsumer<T> queue, Action<Exception> onException = null, CancellationToken cancellationToken = default)
         {
+            // 大循环之前，打断性能追踪调用链
+            DefaultSpan.Current = null;
+
             // 超时时间，用于阻塞等待
             //var timeout = Redis.Timeout / 1000 - 1;
             var topic = Key;

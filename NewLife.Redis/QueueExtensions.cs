@@ -23,6 +23,9 @@ namespace NewLife.Caching
         /// <returns></returns>
         public static async Task ConsumeAsync<T>(this IProducerConsumer<String> queue, Func<T, String, CancellationToken, Task> onMessage, CancellationToken cancellationToken = default, ILog log = null, String idField = null)
         {
+            // 大循环之前，打断性能追踪调用链
+            DefaultSpan.Current = null;
+
             // 主题
             var topic = (queue as RedisBase).Key;
             if (topic.IsNullOrEmpty()) topic = queue.GetType().Name;
@@ -121,6 +124,9 @@ namespace NewLife.Caching
         /// <returns></returns>
         public static async Task ConsumeAsync<T>(this RedisReliableQueue<String> queue, Func<T, String, CancellationToken, Task> onMessage, CancellationToken cancellationToken = default, ILog log = null, String idField = null)
         {
+            // 大循环之前，打断性能追踪调用链
+            DefaultSpan.Current = null;
+
             // 主题
             var topic = queue.Key;
             if (topic.IsNullOrEmpty()) topic = queue.GetType().Name;
@@ -218,6 +224,9 @@ namespace NewLife.Caching
         /// <returns></returns>
         public static async Task ConsumeAsync<T>(this RedisStream<String> queue, Func<T, Message, CancellationToken, Task> onMessage, CancellationToken cancellationToken = default, ILog log = null)
         {
+            // 大循环之前，打断性能追踪调用链
+            DefaultSpan.Current = null;
+
             // 主题
             var topic = queue.Key;
             if (topic.IsNullOrEmpty()) topic = queue.GetType().Name;
