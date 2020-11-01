@@ -122,6 +122,19 @@ namespace NewLife.Caching
         /// <param name="log">日志对象</param>
         /// <param name="idField">消息标识字段名，用于处理错误重试</param>
         /// <returns></returns>
+        public static async Task ConsumeAsync<T>(this IProducerConsumer<String> queue, Action<T> onMessage, CancellationToken cancellationToken = default, ILog log = null, String idField = null)
+        {
+            await ConsumeAsync<T>(queue, (m, k, t) => { onMessage(m); return Task.FromResult(0); }, cancellationToken, log, idField);
+        }
+
+        /// <summary>队列消费大循环，处理消息后自动确认</summary>
+        /// <typeparam name="T">消息类型</typeparam>
+        /// <param name="queue">队列</param>
+        /// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <param name="log">日志对象</param>
+        /// <param name="idField">消息标识字段名，用于处理错误重试</param>
+        /// <returns></returns>
         public static async Task ConsumeAsync<T>(this RedisReliableQueue<String> queue, Func<T, String, CancellationToken, Task> onMessage, CancellationToken cancellationToken = default, ILog log = null, String idField = null)
         {
             // 大循环之前，打断性能追踪调用链
@@ -221,6 +234,19 @@ namespace NewLife.Caching
         /// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <param name="log">日志对象</param>
+        /// <param name="idField">消息标识字段名，用于处理错误重试</param>
+        /// <returns></returns>
+        public static async Task ConsumeAsync<T>(this RedisReliableQueue<String> queue, Action<T> onMessage, CancellationToken cancellationToken = default, ILog log = null, String idField = null)
+        {
+            await ConsumeAsync<T>(queue, (m, k, t) => { onMessage(m); return Task.FromResult(0); }, cancellationToken, log, idField);
+        }
+
+        /// <summary>队列消费大循环，处理消息后自动确认</summary>
+        /// <typeparam name="T">消息类型</typeparam>
+        /// <param name="queue">队列</param>
+        /// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <param name="log">日志对象</param>
         /// <returns></returns>
         public static async Task ConsumeAsync<T>(this RedisStream<String> queue, Func<T, Message, CancellationToken, Task> onMessage, CancellationToken cancellationToken = default, ILog log = null)
         {
@@ -285,6 +311,18 @@ namespace NewLife.Caching
                     span?.Dispose();
                 }
             }
+        }
+
+        /// <summary>队列消费大循环，处理消息后自动确认</summary>
+        /// <typeparam name="T">消息类型</typeparam>
+        /// <param name="queue">队列</param>
+        /// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <param name="log">日志对象</param>
+        /// <returns></returns>
+        public static async Task ConsumeAsync<T>(this RedisStream<String> queue, Action<T> onMessage, CancellationToken cancellationToken = default, ILog log = null)
+        {
+            await ConsumeAsync<T>(queue, (m, k, t) => { onMessage(m); return Task.FromResult(0); }, cancellationToken, log);
         }
         #endregion
     }
