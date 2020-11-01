@@ -114,7 +114,7 @@ namespace NewLife.Caching
         {
             if (values == null || values.Length == 0) return 0;
 
-            using var span = Redis.Tracer?.NewSpan($"redismq:ReliableAdd:{Key}", values);
+            using var span = Redis.Tracer?.NewSpan($"redismq:AddReliable:{Key}", values);
 
             var args = new List<Object> { Key };
             foreach (var item in values)
