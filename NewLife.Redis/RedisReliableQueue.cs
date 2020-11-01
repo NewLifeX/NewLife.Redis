@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using NewLife.Caching.Models;
 using NewLife.Log;
 using NewLife.Security;
 using NewLife.Serialization;
@@ -66,9 +67,12 @@ namespace NewLife.Caching
         /// <summary>是否为空</summary>
         public Boolean IsEmpty => Count == 0;
 
+        /// <summary>消费状态</summary>
+        public RedisQueueStatus Status => _Status;
+
         private readonly String _Key;
         private readonly String _StatusKey;
-        private readonly Status _Status;
+        private readonly RedisQueueStatus _Status;
 
         private RedisDelayQueue<T> _delay;
         private CancellationTokenSource _source;
@@ -83,8 +87,8 @@ namespace NewLife.Caching
         {
             _Key = key;
             _Status = CreateStatus();
-            AckKey = $"{key}:Ack:{_Status.UKey}";
-            _StatusKey = $"{key}:Status:{_Status.UKey}";
+            AckKey = $"{key}:Ack:{_Status.Key}";
+            _StatusKey = $"{key}:Status:{_Status.Key}";
         }
 
         /// <summary>析构</summary>
@@ -423,10 +427,10 @@ namespace NewLife.Caching
             var count = 0;
             foreach (var key in rds.Search($"{_Key}:Status:*", 100))
             {
-                var st = rds.Get<Status>(key);
+                var st = rds.Get<RedisQueueStatus>(key);
                 if (st != null && st.LastActive.AddSeconds(RetryInterval * 10) < DateTime.Now)
                 {
-                    var ackKey = $"{_Key}:Ack:{st.UKey}";
+                    var ackKey = $"{_Key}:Ack:{st.Key}";
                     if (rds.ContainsKey(ackKey))
                     {
                         XTrace.WriteLine("发现死信队列：{0}", ackKey);
@@ -476,18 +480,18 @@ namespace NewLife.Caching
         #endregion
 
         #region 状态
-        private static readonly Status _def = new Status
+        private static readonly RedisQueueStatus _def = new RedisQueueStatus
         {
             MachineName = Environment.MachineName,
             UserName = Environment.UserName,
             ProcessId = Process.GetCurrentProcess().Id,
             Ip = NetHelper.MyIP() + "",
         };
-        private Status CreateStatus()
+        private RedisQueueStatus CreateStatus()
         {
-            return new Status
+            return new RedisQueueStatus
             {
-                UKey = Rand.NextString(8),
+                Key = Rand.NextString(8),
                 MachineName = _def.MachineName,
                 UserName = _def.UserName,
                 ProcessId = _def.ProcessId,
@@ -502,36 +506,6 @@ namespace NewLife.Caching
             // 更新状态，7天过期
             _Status.LastActive = DateTime.Now;
             Redis.Set(_StatusKey, _Status, 7 * 24 * 3600);
-        }
-
-        private class Status
-        {
-            /// <summary>标识消费者的唯一Key</summary>
-            public String UKey { get; set; }
-
-            /// <summary>机器名</summary>
-            public String MachineName { get; set; }
-
-            /// <summary>用户名</summary>
-            public String UserName { get; set; }
-
-            /// <summary>进程</summary>
-            public Int32 ProcessId { get; set; }
-
-            /// <summary>IP地址</summary>
-            public String Ip { get; set; }
-
-            /// <summary>开始时间</summary>
-            public DateTime CreateTime { get; set; }
-
-            /// <summary>最后活跃时间</summary>
-            public DateTime LastActive { get; set; }
-
-            /// <summary>消费消息数</summary>
-            public Int64 Consumes { get; set; }
-
-            /// <summary>确认消息数</summary>
-            public Int64 Acks { get; set; }
         }
         #endregion
     }
