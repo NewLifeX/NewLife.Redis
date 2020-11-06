@@ -425,7 +425,7 @@ namespace NewLife.Caching
 
             // 先找到所有Key
             var count = 0;
-            foreach (var key in rds.Search($"{_Key}:Status:*", 100))
+            foreach (var key in rds.Search($"{_Key}:Status:*", 1000))
             {
                 var st = rds.Get<RedisQueueStatus>(key);
                 if (st != null && st.LastActive.AddSeconds(RetryInterval * 10) < DateTime.Now)
@@ -473,8 +473,8 @@ namespace NewLife.Caching
                 // 更新状态
                 UpdateStatus();
 
-                // 处理其它消费者遗留下来的死信
-                RollbackAllAck();
+                // 处理其它消费者遗留下来的死信，需要抢夺全局清理权，减少全局扫描次数
+                if (Redis.Add($"{_Key}:AllStatus", _Status, RetryInterval)) RollbackAllAck();
             }
         }
         #endregion
