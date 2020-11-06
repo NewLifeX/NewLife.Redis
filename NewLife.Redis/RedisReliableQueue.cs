@@ -425,12 +425,15 @@ namespace NewLife.Caching
 
             // 先找到所有Key
             var count = 0;
+            var acks = new List<String>();
             foreach (var key in rds.Search($"{_Key}:Status:*", 1000))
             {
+                var ackKey = $"{_Key}:Ack:{key.TrimStart($"{_Key}:Status:")}";
+                acks.Add(ackKey);
+
                 var st = rds.Get<RedisQueueStatus>(key);
                 if (st != null && st.LastActive.AddSeconds(RetryInterval * 10) < DateTime.Now)
                 {
-                    var ackKey = $"{_Key}:Ack:{st.Key}";
                     if (rds.ContainsKey(ackKey))
                     {
                         XTrace.WriteLine("发现死信队列：{0}", ackKey);
@@ -447,6 +450,18 @@ namespace NewLife.Caching
                     // 删除状态
                     rds.Remove(key);
                     XTrace.WriteLine("删除队列状态：{0} {1}", key, st.ToJson());
+                }
+            }
+
+            // 清理已经失去Status的Ack
+            foreach (var key in rds.Search($"{_Key}:Ack:*", 1000))
+            {
+                if (!acks.Contains(key))
+                {
+                    var queue = rds.GetList<String>(key) as RedisList<String>;
+                    var msgs = queue.GetAll();
+                    XTrace.WriteLine("全局清理死信：{0} {1}", key, msgs.ToJson());
+                    rds.Remove(key);
                 }
             }
 
