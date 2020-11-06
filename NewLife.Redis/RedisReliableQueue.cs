@@ -58,6 +58,9 @@ namespace NewLife.Caching
         /// <summary>消息体过期时间，仅用于高级消息生产和消费，默认10*24*3600</summary>
         public Int32 BodyExpire { get; set; } = 10 * 24 * 3600;
 
+        /// <summary>消息去重的时间。该时间内不处理相同msgId的消息，默认0s不启用</summary>
+        public Int32 DuplicateExpire { get; set; }
+
         /// <summary>是否在消息报文中自动注入TraceId。TraceId用于跨应用在生产者和消费者之间建立调用链，默认true</summary>
         public Boolean AttachTraceId { get; set; } = true;
 

@@ -148,6 +148,10 @@ namespace NewLife.Caching
             var tracer = rds.Tracer;
             var errLog = log ?? XTrace.Log;
 
+            // 消息去重
+            if (queue.DuplicateExpire > 0 && idField.IsNullOrEmpty())
+                throw new ArgumentNullException(nameof(idField), $"队列[{topic}]消息[{queue.DuplicateExpire}]秒去重，需要指定消息唯一标识idField");
+
             var ids = new List<String> { "Id", "guid", "OrderId", "Code" };
             if (!idField.IsNullOrEmpty() && !ids.Contains(idField)) ids.Insert(0, idField);
 
@@ -185,8 +189,23 @@ namespace NewLife.Caching
                             }
                         }
 
-                        // 处理消息
-                        await onMessage(msg, mqMsg, cancellationToken);
+                        // 消息去重
+                        if (queue.DuplicateExpire > 0)
+                        {
+                            var dkey = $"{topic}:Duplicate:{msgId}";
+                            if (!rds.ContainsKey(dkey))
+                            {
+                                // 处理消息
+                                await onMessage(msg, mqMsg, cancellationToken);
+
+                                rds.Set(dkey, queue.Status, queue.DuplicateExpire);
+                            }
+                        }
+                        else
+                        {
+                            // 处理消息
+                            await onMessage(msg, mqMsg, cancellationToken);
+                        }
 
                         // 确认消息
                         queue.Acknowledge(mqMsg);
