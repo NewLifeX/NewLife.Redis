@@ -193,7 +193,11 @@ namespace NewLife.Caching
                         if (queue.DuplicateExpire > 0)
                         {
                             var dkey = $"{topic}:Duplicate:{msgId}";
-                            if (!rds.ContainsKey(dkey))
+                            if (rds.ContainsKey(dkey))
+                            {
+                                log?.Info("队列[{0}]遇到重复消息[{1}]，自动跳过", topic, msgId);
+                            }
+                            else
                             {
                                 // 处理消息
                                 await onMessage(msg, mqMsg, cancellationToken);
