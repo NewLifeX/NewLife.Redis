@@ -259,7 +259,11 @@ namespace NewLife.Caching
         #endregion
 
         #region 高级队列
-        /// <summary>初始化延迟队列功能。该功能是附加功能，需要生产者或消费者主动初始化</summary>
+        /// <summary>初始化延迟队列功能。生产者自动初始化，消费者最好能够按队列初始化一次</summary>
+        /// <remarks>
+        /// 该功能是附加功能，需要消费者主动调用，每个队列的多消费者开一个即可。
+        /// 核心工作是启动延迟队列的TransferAsync大循环，每个进程内按队列开一个最合适，多了没有用反而形成争夺。
+        /// </remarks>
         public RedisDelayQueue<T> InitDelay()
         {
             if (_delay == null)
@@ -298,12 +302,12 @@ namespace NewLife.Caching
             return _delay.Add(value, delay);
         }
 
-        /// <summary>添加延迟消息</summary>
-        /// <param name="value"></param>
-        /// <param name="delay"></param>
-        /// <returns></returns>
-        [Obsolete("=>AddDelay")]
-        public Int32 Add(T value, Int32 delay) => AddDelay(value, delay);
+        ///// <summary>添加延迟消息</summary>
+        ///// <param name="value"></param>
+        ///// <param name="delay"></param>
+        ///// <returns></returns>
+        //[Obsolete("=>AddDelay")]
+        //public Int32 Add(T value, Int32 delay) => AddDelay(value, delay);
 
         /// <summary>高级生产消息。消息体和消息键分离，业务层指定消息键，可随时查看或删除，同时避免重复生产</summary>
         /// <remarks>
