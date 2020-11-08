@@ -148,6 +148,17 @@ namespace NewLife.Caching
             var tracer = rds.Tracer;
             var errLog = log ?? XTrace.Log;
 
+            // 备用redis，容错、去重
+            var rds2 = new FullRedis
+            {
+                Name = rds.Name + "Bak",
+                Server = rds.Server,
+                UserName = rds.UserName,
+                Password = rds.Password,
+                Db = rds.Db == 15 ? 0 : (rds.Db + 1),
+                Tracer = rds.Tracer,
+            };
+
             // 消息去重
             if (queue.DuplicateExpire > 0 && idField.IsNullOrEmpty())
                 throw new ArgumentNullException(nameof(idField), $"队列[{topic}]消息[{queue.DuplicateExpire}]秒去重，需要指定消息唯一标识idField");
@@ -192,17 +203,23 @@ namespace NewLife.Caching
                         // 消息去重
                         if (queue.DuplicateExpire > 0)
                         {
+                            // 抢占msgId，处理异常时退出抢占
                             var dkey = $"{topic}:Duplicate:{msgId}";
-                            if (rds.ContainsKey(dkey))
+                            if (!rds2.Add(dkey, queue.Status.Key, queue.DuplicateExpire))
                             {
                                 log?.Info("队列[{0}]遇到重复消息[{1}]，自动跳过", topic, msgId);
                             }
                             else
                             {
-                                // 处理消息
-                                await onMessage(msg, mqMsg, cancellationToken);
-
-                                rds.Set(dkey, queue.Status, queue.DuplicateExpire);
+                                try
+                                {
+                                    await onMessage(msg, mqMsg, cancellationToken);
+                                }
+                                catch
+                                {
+                                    rds2.Remove(dkey);
+                                    throw;
+                                }
                             }
                         }
                         else
@@ -233,9 +250,9 @@ namespace NewLife.Caching
                         errLog?.Error("[{0}/{1}]消息处理异常：{2} {3}", topic, msgId, mqMsg, ex);
                         var key = $"{topic}:Error:{msgId}";
 
-                        var rs = rds.Increment(key, 1);
+                        var rs = rds2.Increment(key, 1);
                         if (rs < 10)
-                            rds.SetExpire(key, TimeSpan.FromHours(24));
+                            rds2.SetExpire(key, TimeSpan.FromHours(24));
                         else
                         {
                             queue.Acknowledge(mqMsg);
