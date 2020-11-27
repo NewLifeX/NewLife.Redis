@@ -73,6 +73,9 @@ namespace NewLife.Caching
         /// <summary>消费状态</summary>
         public RedisQueueStatus Status => _Status;
 
+        /// <summary>消息队列主题</summary>
+        public String Topic => Key;
+
         private readonly String _Key;
         private readonly String _StatusKey;
         private readonly RedisQueueStatus _Status;

@@ -27,6 +27,9 @@ namespace NewLife.Caching
 
         /// <summary>是否为空</summary>
         public Boolean IsEmpty => Count == 0;
+
+        /// <summary>消息队列主题</summary>
+        public String Topic => Key;
         #endregion
 
         #region 构造

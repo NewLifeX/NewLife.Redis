@@ -36,6 +36,9 @@ namespace NewLife.Caching
         /// <summary>默认延迟时间。默认60秒</summary>
         public Int32 Delay { get; set; } = 60;
 
+        /// <summary>消息队列主题</summary>
+        public String Topic => Key;
+
         private readonly RedisSortedSet<T> _sort;
         private readonly RedisSortedSet<T> _ack;
         #endregion

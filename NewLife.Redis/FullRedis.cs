@@ -152,21 +152,21 @@ namespace NewLife.Caching
 
         /// <summary>获取队列，快速LIST结构，无需确认</summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="key"></param>
+        /// <param name="topic">消息队列主题</param>
         /// <returns></returns>
-        public override IProducerConsumer<T> GetQueue<T>(String key) => new RedisQueue<T>(this, key);
+        public override IProducerConsumer<T> GetQueue<T>(String topic) => new RedisQueue<T>(this, topic);
 
         /// <summary>获取可靠队列，消息需要确认</summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="key"></param>
+        /// <param name="topic">消息队列主题</param>
         /// <returns></returns>
-        public RedisReliableQueue<T> GetReliableQueue<T>(String key) => new RedisReliableQueue<T>(this, key);
+        public RedisReliableQueue<T> GetReliableQueue<T>(String topic) => new RedisReliableQueue<T>(this, topic);
 
         /// <summary>获取延迟队列</summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="key"></param>
+        /// <param name="topic">消息队列主题</param>
         /// <returns></returns>
-        public RedisDelayQueue<T> GetDelayQueue<T>(String key) => new RedisDelayQueue<T>(this, key);
+        public RedisDelayQueue<T> GetDelayQueue<T>(String topic) => new RedisDelayQueue<T>(this, topic);
 
         /// <summary>获取栈</summary>
         /// <typeparam name="T"></typeparam>
@@ -182,9 +182,9 @@ namespace NewLife.Caching
 
         /// <summary>获取消息流</summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="key"></param>
+        /// <param name="topic">消息队列主题</param>
         /// <returns></returns>
-        public RedisStream<T> GetStream<T>(String key) => new RedisStream<T>(this, key);
+        public RedisStream<T> GetStream<T>(String topic) => new RedisStream<T>(this, topic);
 
         /// <summary>获取有序集合</summary>
         /// <typeparam name="T"></typeparam>
