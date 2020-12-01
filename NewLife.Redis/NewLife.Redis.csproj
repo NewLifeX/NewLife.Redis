@@ -1,14 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net45;netstandard2.0;net40</TargetFrameworks>
+    <TargetFrameworks>net45;netstandard2.0;net40;net5.0</TargetFrameworks>
     <AssemblyName>NewLife.Redis</AssemblyName>
     <RootNamespace>NewLife.Caching</RootNamespace>
     <AssemblyTitle>新生命Redis缓存组件</AssemblyTitle>
     <Description>Redis基础操作、列表结构、哈希结构、Set结构，经过日均100亿次调用量的项目验证</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2020 新生命开发团队</Copyright>
-    <Version>3.8.2020.1101</Version>
-    <FileVersion>3.8.2020.1101</FileVersion>
+    <Version>3.8.2020.1201</Version>
+    <FileVersion>3.8.2020.1201</FileVersion>
     <AssemblyVersion>3.8.*</AssemblyVersion>
     <Deterministic>false</Deterministic>
     <OutputPath>..\..\Bin</OutputPath>
@@ -27,7 +27,7 @@
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Redis</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>Stream消息队列</PackageReleaseNotes>
+    <PackageReleaseNotes>支持.NET5.0；消息队列支持去重</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -51,7 +51,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="8.10.2020.1101" />
+    <PackageReference Include="NewLife.Core" Version="8.10.2020.1201" />
   </ItemGroup>
 
   <ItemGroup>
