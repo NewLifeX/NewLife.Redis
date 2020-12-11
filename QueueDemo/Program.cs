@@ -24,6 +24,10 @@ namespace QueueDemo
             Console.Clear();
             EasyQueue.Start(redis);
 
+            // 需要确认的可信队列
+            Console.Clear();
+            AckQueue.Start(redis);
+
             Console.WriteLine("Hello World!");
         }
     }
