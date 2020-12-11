@@ -16,7 +16,12 @@ namespace QueueDemo
 
             XTrace.WriteLine("Redis Queue Demo! Keys= {0}", redis.Count);
 
+            // 内存队列
+            Console.Clear();
+            MemoryQueue.Start();
+
             // 普通队列
+            Console.Clear();
             EasyQueue.Start(redis);
 
             Console.WriteLine("Hello World!");
