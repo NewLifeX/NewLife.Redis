@@ -277,7 +277,7 @@ namespace NewLife.Caching
         /// <param name="id">消息Id</param>
         /// <param name="msIdle">空闲时间。默认3600_000</param>
         /// <returns></returns>
-        public Int32 Claim(String group, String consumer, String id, Int32 msIdle = 3_600_000) => Execute(rc => rc.Execute<Int32>("XCLAIM", Key, group, consumer, msIdle, id), true);
+        public Object[] Claim(String group, String consumer, String id, Int32 msIdle = 3_600_000) => Execute(rc => rc.Execute<Object[]>("XCLAIM", Key, group, consumer, msIdle, id), true);
 
         /// <summary>获取区间消息</summary>
         /// <param name="startId"></param>
@@ -473,7 +473,7 @@ XREAD count 3 streams stream_key 0-0
             return Execute(rc => rc.Execute<Boolean>("XGROUP", "DESTROY", Key, group), true);
         }
 
-        /// <summary>销毁消费组</summary>
+        /// <summary>销毁消费者</summary>
         /// <param name="group">消费组名称</param>
         /// <param name="consumer">消费者</param>
         /// <returns>返回消费者在被删除之前所拥有的待处理消息数量</returns>

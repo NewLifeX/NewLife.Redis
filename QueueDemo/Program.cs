@@ -32,6 +32,15 @@ namespace QueueDemo
             Console.Clear();
             DelayQueue.Start(redis);
 
+            var redis2 = new FullRedis { Timeout = 15_000, Log = XTrace.Log };
+            redis2.Init("server=centos.newlifex.com:6000;password=Pass@word;db=7");
+
+            XTrace.WriteLine("Redis 5.0! Keys= {0}", redis2.Count);
+
+            // 完整队列
+            Console.Clear();
+            FullQueue.Start(redis2);
+
             Console.ReadLine();
         }
     }
