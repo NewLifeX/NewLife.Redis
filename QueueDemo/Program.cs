@@ -28,7 +28,11 @@ namespace QueueDemo
             Console.Clear();
             AckQueue.Start(redis);
 
-            Console.WriteLine("Hello World!");
+            // 延迟队列
+            Console.Clear();
+            DelayQueue.Start(redis);
+
+            Console.ReadLine();
         }
     }
 }

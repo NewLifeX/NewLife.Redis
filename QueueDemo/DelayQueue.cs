@@ -7,11 +7,11 @@ using NewLife.Serialization;
 
 namespace QueueDemo
 {
-    class AckQueue
+    class DelayQueue
     {
         public static void Start(FullRedis redis)
         {
-            var topic = "AckQueue";
+            var topic = "DelayQueue";
 
             // 独立线程消费
             var source = new CancellationTokenSource();
@@ -25,19 +25,19 @@ namespace QueueDemo
 
         private static void Public(FullRedis redis, String topic)
         {
-            var queue = redis.GetReliableQueue<Area>(topic);
+            var queue = redis.GetDelayQueue<Area>(topic);
 
-            queue.Add(new Area { Code = 110000, Name = "北京市" });
+            queue.Add(new Area { Code = 110000, Name = "北京市" }, 2);
             Thread.Sleep(1000);
-            queue.Add(new Area { Code = 310000, Name = "上海市" });
+            queue.Add(new Area { Code = 310000, Name = "上海市" }, 2);
             Thread.Sleep(1000);
-            queue.Add(new Area { Code = 440100, Name = "广州市" });
+            queue.Add(new Area { Code = 440100, Name = "广州市" }, 2);
             Thread.Sleep(1000);
         }
 
         private static async Task ConsumeAsync(FullRedis redis, String topic, CancellationToken token)
         {
-            var queue = redis.GetReliableQueue<String>(topic);
+            var queue = redis.GetDelayQueue<String>(topic);
 
             while (!token.IsCancellationRequested)
             {
