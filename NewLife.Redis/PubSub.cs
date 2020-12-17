@@ -1,4 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using NewLife.Data;
+using NewLife.Reflection;
 
 namespace NewLife.Caching
 {
@@ -22,8 +29,7 @@ namespace NewLife.Caching
         /// </remarks>
         /// <param name="patterns"></param>
         /// <returns></returns>
-        public Int32 PSubscribe(params String[] patterns)
-        {
+        public Int32 PSubscribe(params String[] patterns) =>
             //var args = new List<Object>
             //{
             //    Key
@@ -33,8 +39,7 @@ namespace NewLife.Caching
             //    args.Add(item);
             //}
             //return Execute(rc => rc.Execute<Int32>("PSUBSCRIBE", args.ToArray()), true);
-            return Execute(rc => rc.Execute<Int32>("PSUBSCRIBE", patterns), true);
-        }
+            Execute(rc => rc.Execute<Int32>("PSUBSCRIBE", patterns), true);
 
         /// <summary>指示客户端退订指定模式，若果没有提供模式则退出所有模式</summary>
         /// <returns></returns>
@@ -49,9 +54,25 @@ namespace NewLife.Caching
         /// <summary>订阅给指定频道的信息</summary>
         /// <param name="channels"></param>
         /// <returns></returns>
-        public Int32 Subscribe(params String[] channels)
+        public Int32 Subscribe(params String[] channels) => Execute(rc => rc.Execute<Int32>("SUBSCRIBE", channels), true);
+
+        public async Task SubscribeAsync(Action<String, String, String> onMessage, CancellationToken cancellationToken)
         {
-            return Execute(rc => rc.Execute<Int32>("SUBSCRIBE", channels), true);
+            var client = Redis.Pool.Get();
+            client.Reset();
+
+            await client.ExecuteAsync<String[]>("SUBSCRIBE", new Object[] { Key });
+
+            var ns = client.Invoke("GetStream", false) as Stream;
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var rs = client.Invoke("GetResponse", new Object[] { ns, 1 }) as IList<Object>;
+                var pks = (rs[0] as Object[]).Cast<Packet>().ToArray();
+                if (pks.Length == 3) onMessage(pks[0].ToStr(), pks[1].ToStr(), pks[2].ToStr());
+            }
+
+            Redis.Pool.Put(client);
         }
 
         /// <summary>退订给定的频道</summary>
@@ -67,16 +88,10 @@ namespace NewLife.Caching
         /// <summary>发布</summary>
         /// <param name="message"></param>
         /// <returns></returns>
-        public Int32 Publish(String message)
-        {
-            return 0;
-        }
+        public Int32 Publish(String message) => Execute(rc => rc.Execute<Int32>("PUBLISH", Key, message), true);
 
         /// <summary>自省</summary>
         /// <returns></returns>
-        public Int32 Pubsub()
-        {
-            return 0;
-        }
+        public Int32 Pubsub() => 0;
     }
 }
