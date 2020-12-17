@@ -25,16 +25,25 @@ namespace XUnitTest
         [Fact]
         public void Subscribe()
         {
-            var pb = new PubSub(_redis, "pb_test1");
+            var pb = new PubSub(_redis, "pb_test");
 
-            var source = new CancellationTokenSource();
+            var source = new CancellationTokenSource(2_000);
 
-            Task.Run(() => pb.SubscribeAsync((m, t, s) => XTrace.WriteLine("Consume: {0}[{1}] {2}", m, t, s), source.Token));
+            Task.Run(() => pb.SubscribeAsync((m, t, s) =>
+            {
+                XTrace.WriteLine("Consume: {0}[{1}] {2}", m, t, s);
+            }, source.Token));
 
             Thread.Sleep(100);
 
             var rs = pb.Publish("test");
             Assert.Equal(1, rs);
+
+            Thread.Sleep(100);
+            pb.Publish("test2");
+
+            Thread.Sleep(100);
+            pb.Publish("test3");
 
             Thread.Sleep(100);
         }

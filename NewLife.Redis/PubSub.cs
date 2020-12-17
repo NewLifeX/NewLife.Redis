@@ -56,6 +56,11 @@ namespace NewLife.Caching
         /// <returns></returns>
         public Int32 Subscribe(params String[] channels) => Execute(rc => rc.Execute<Int32>("SUBSCRIBE", channels), true);
 
+#if !NET40
+        /// <summary>订阅大循环</summary>
+        /// <param name="onMessage"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task SubscribeAsync(Action<String, String, String> onMessage, CancellationToken cancellationToken)
         {
             var client = Redis.Pool.Get();
@@ -63,17 +68,19 @@ namespace NewLife.Caching
 
             await client.ExecuteAsync<String[]>("SUBSCRIBE", new Object[] { Key });
 
-            var ns = client.Invoke("GetStream", false) as Stream;
-
             while (!cancellationToken.IsCancellationRequested)
             {
-                var rs = client.Invoke("GetResponse", new Object[] { ns, 1 }) as IList<Object>;
-                var pks = (rs[0] as Object[]).Cast<Packet>().ToArray();
-                if (pks.Length == 3) onMessage(pks[0].ToStr(), pks[1].ToStr(), pks[2].ToStr());
+                var source = new CancellationTokenSource(Redis.Timeout);
+                var source2 = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, source.Token);
+
+                //var rs = await client.ExecuteAsync<String[]>(null, new Object[] { new Object() }, source2.Token);
+                var rs = await client.ReadMoreAsync<String[]>(source2.Token);
+                if (rs.Length == 3) onMessage(rs[0], rs[1], rs[2]);
             }
 
             Redis.Pool.Put(client);
         }
+#endif
 
         /// <summary>退订给定的频道</summary>
         /// <returns></returns>
