@@ -76,6 +76,8 @@ namespace NewLife.Caching
         {
             if (timeout < 0) return Execute(rc => rc.Execute<T>("RPOP", Key), true);
 
+            if (timeout > 0 && Redis.Timeout < timeout * 1000) Redis.Timeout = (timeout + 1) * 1000;
+
             var rs = Execute(rc => rc.Execute<Packet[]>("BRPOP", Key, timeout), true);
             return rs == null || rs.Length < 2 ? default : (T)Redis.Encoder.Decode(rs[1], typeof(T));
         }
@@ -90,6 +92,8 @@ namespace NewLife.Caching
             throw new NotSupportedException();
 #else
             if (timeout < 0) return await ExecuteAsync(rc => rc.ExecuteAsync<T>("RPOP", Key), true);
+
+            if (timeout > 0 && Redis.Timeout < timeout * 1000) Redis.Timeout = (timeout + 1) * 1000;
 
             var rs = await ExecuteAsync(rc => rc.ExecuteAsync<Packet[]>("BRPOP", new Object[] { Key, timeout }, cancellationToken), true);
             return rs == null || rs.Length < 2 ? default : (T)Redis.Encoder.Decode(rs[1], typeof(T));

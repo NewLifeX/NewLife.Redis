@@ -145,6 +145,8 @@ namespace NewLife.Caching
         {
             RetryAck();
 
+            if (timeout > 0 && Redis.Timeout < timeout * 1000) Redis.Timeout = (timeout + 1) * 1000;
+
             var rs = timeout >= 0 ?
                 Execute(rc => rc.Execute<T>("BRPOPLPUSH", Key, AckKey, timeout), true) :
                 Execute(rc => rc.Execute<T>("RPOPLPUSH", Key, AckKey), true);
@@ -164,6 +166,8 @@ namespace NewLife.Caching
             throw new NotSupportedException();
 #else
             RetryAck();
+
+            if (timeout > 0 && Redis.Timeout < timeout * 1000) Redis.Timeout = (timeout + 1) * 1000;
 
             var rs = (timeout < 0) ?
                 await ExecuteAsync(rc => rc.ExecuteAsync<T>("RPOPLPUSH", new Object[] { Key, AckKey }, cancellationToken), true) :

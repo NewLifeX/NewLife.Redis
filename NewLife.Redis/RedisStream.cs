@@ -195,6 +195,8 @@ namespace NewLife.Caching
             var group = Group;
             if (!group.IsNullOrEmpty()) RetryAck();
 
+            if (timeout > 0 && Redis.Timeout < timeout * 1000) Redis.Timeout = (timeout + 1) * 1000;
+
             var rs = !group.IsNullOrEmpty() ?
                 await ReadGroupAsync(group, Consumer, 1, timeout * 1000, cancellationToken) :
                 await ReadAsync(StartId, 1, timeout * 1000, cancellationToken);
