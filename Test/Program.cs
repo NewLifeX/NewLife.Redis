@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using NewLife;
 using NewLife.Caching;
 using NewLife.Log;
@@ -17,13 +19,10 @@ namespace Test
         {
             XTrace.UseConsole();
 
-            // 激活FullRedis，否则new FullRedis会得到默认的Redis对象
-            FullRedis.Register();
-
             try
             {
                 //TestHyperLogLog();
-                Test3();
+                Test1();
             }
             catch (Exception ex)
             {
@@ -36,7 +35,14 @@ namespace Test
 
         static void Test1()
         {
-            var ic = new FullRedis("127.0.0.1:6379", null, 3);
+            var services = new ServiceCollection();
+            services.AddRedis("test1", "server=centos.newlifex.com:6000;password=Pass@word;db=9");
+            services.AddRedis("test2", "server=centos.newlifex.com:6000;password=Pass@word;db=9");
+            var provider = services.BuildServiceProvider();
+
+            //var ic = provider.GetRequiredService<Redis>();
+            var ic = provider.GetServices<Redis>().FirstOrDefault(e => e.Name == "test1");
+            //var ic = new FullRedis("127.0.0.1:6379", null, 3);
             //var ic = new FullRedis();
             //ic.Server = "127.0.0.1:6379";
             //ic.Db = 3;
