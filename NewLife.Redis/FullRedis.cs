@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 using NewLife.Caching.Models;
 using NewLife.Data;
@@ -14,12 +13,8 @@ namespace NewLife.Caching
     public class FullRedis : Redis
     {
         #region 静态
-        //static FullRedis()
-        //{
-        //    ObjectContainer.Current.AutoRegister<Redis, FullRedis>();
-        //}
-
         /// <summary>注册</summary>
+        [Obsolete("=>new FullRedis", true)]
         public static void Register() { }
 
         /// <summary>根据连接字符串创建</summary>

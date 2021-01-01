@@ -1,37 +1,56 @@
 ﻿#if NETSTANDARD || NETCOREAPP
 using System;
-using Microsoft.Extensions.DependencyInjection;
+using NewLife;
 using NewLife.Caching;
-using NewLife.Log;
 
 namespace Microsoft.Extensions.DependencyInjection
-{ 
+{
     /// <summary>
     /// DependencyInjectionExtensions
     /// </summary>
     public static class DependencyInjectionExtensions
-    { 
+    {
         /// <summary>
         /// Adds services for FullRedis to the specified Microsoft.Extensions.DependencyInjection.IServiceCollection.
         /// </summary>
         /// <param name="services"></param>
         /// <param name="config"></param>
-        /// <param name="timeout"></param>
         /// <returns></returns>
-        public static IServiceCollection AddFullRedis(this IServiceCollection services,string config,int timeout = 15_000)
+        public static IServiceCollection AddRedis(this IServiceCollection services, String config)
         {
-            if (string.IsNullOrEmpty(config)) throw new ArgumentNullException(nameof(config)); 
+            if (String.IsNullOrEmpty(config)) throw new ArgumentNullException(nameof(config));
 
-            FullRedis.Register();
-
-            var redis = new FullRedis { Timeout = 15_000, Log = XTrace.Log };
+            var redis = new FullRedis();
             redis.Init(config);
 
+            services.AddSingleton<Redis>(redis);
             services.AddSingleton<FullRedis>(redis);
 
-            return services; 
+            return services;
         }
 
+        /// <summary>
+        /// Adds services for FullRedis to the specified Microsoft.Extensions.DependencyInjection.IServiceCollection.
+        /// </summary>
+        /// <param name="services"></param>
+        /// <param name="name"></param>
+        /// <param name="config"></param>
+        /// <param name="timeout"></param>
+        /// <returns></returns>
+        public static IServiceCollection AddRedis(this IServiceCollection services, String name, String config, Int32 timeout = 0)
+        {
+            if (String.IsNullOrEmpty(config)) throw new ArgumentNullException(nameof(config));
+
+            var redis = new FullRedis();
+            if (!name.IsNullOrEmpty()) redis.Name = name;
+            redis.Init(config);
+            if (timeout > 0) redis.Timeout = timeout;
+
+            services.AddSingleton<Redis>(redis);
+            services.AddSingleton<FullRedis>(redis);
+
+            return services;
+        }
 
         /// <summary>
         /// Adds services for FullRedis to the specified Microsoft.Extensions.DependencyInjection.IServiceCollection.
@@ -42,21 +61,18 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="db"></param>
         /// <param name="timeout"></param>
         /// <returns></returns>
-        public static IServiceCollection AddFullRedis(this IServiceCollection services, string server,string psssword, int db, int timeout = 15_000)
+        public static IServiceCollection AddRedis(this IServiceCollection services, String server, String psssword, Int32 db, Int32 timeout = 0)
         {
-            if (string.IsNullOrEmpty(server)) throw new ArgumentNullException(nameof(server));
+            if (String.IsNullOrEmpty(server)) throw new ArgumentNullException(nameof(server));
 
-            FullRedis.Register();
+            var redis = new FullRedis(server, psssword, db);
+            if (timeout > 0) redis.Timeout = timeout;
 
-            var redis = new FullRedis(server,psssword,db);
-
+            services.AddSingleton<Redis>(redis);
             services.AddSingleton<FullRedis>(redis);
 
             return services;
         }
-
-
-    } 
-
+    }
 }
-# endif
+#endif
