@@ -1,6 +1,7 @@
 ﻿#if !NET40
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Caching.Models;
@@ -292,6 +293,10 @@ namespace NewLife.Caching
         {
             // 大循环之前，打断性能追踪调用链
             DefaultSpan.Current = null;
+
+            // 自动创建消费组
+            var gis = queue.GetGroups();
+            if (gis == null || !queue.Group.IsNullOrEmpty() && !gis.Any(e => e.Name.EqualIgnoreCase(queue.Group))) queue.GroupCreate(queue.Group);
 
             // 主题
             var topic = queue.Key;
