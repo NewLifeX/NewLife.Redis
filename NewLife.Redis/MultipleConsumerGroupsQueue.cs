@@ -24,20 +24,12 @@ namespace NewLife.Caching
         /// <summary>
         /// 读写超时(默认15000ms)
         /// </summary>
-        public Int32 TimeOut
-        {
-            set;
-            get;
-        } = 15_000;
+        public Int32 TimeOut { set; get; } = 15_000;
 
         /// <summary>
         /// 消费者组名已经存在的Redis错误消息关键词
         /// </summary>
-        public String ConsumeGroupExistErrMsgKeyWord
-        {
-            set;
-            get;
-        } = "exists";
+        public String ConsumeGroupExistErrMsgKeyWord { set; get; } = "exists";
 
         /// <summary>
         /// 列队长度
@@ -54,7 +46,7 @@ namespace NewLife.Caching
         /// <param name="db">连接Redis数据库</param>
         public void Connect(String host, String queueName, Int32 port = 6379, String password = "", Int32 db = 0)
         {
-            _Redis = new FullRedis($"{host}:{port}", password, db) { Timeout = TimeOut, Log = XTrace.Log };
+            _Redis = new FullRedis($"{host}:{port}", password, db) { Timeout = TimeOut };
             if (_Redis != null)
             {
                 _Queue = _Redis.GetStream<T>(queueName);
