@@ -27,8 +27,8 @@ namespace NewLife.Caching.Models
         {
             if (vs == null || vs.Length < 4) return;
 
-            Id = (vs[0] as Packet).ToStr();
-            Consumer = (vs[1] as Packet).ToStr();
+            Id = (vs[0] as Packet)?.ToStr();
+            Consumer = (vs[1] as Packet)?.ToStr();
             Idle = vs[2].ToInt();
             Delivery = vs[3].ToInt();
         }
