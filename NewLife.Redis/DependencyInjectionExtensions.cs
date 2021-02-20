@@ -23,8 +23,8 @@ namespace Microsoft.Extensions.DependencyInjection
             var redis = new FullRedis();
             redis.Init(config);
 
-            services.AddSingleton<Redis>(redis);
-            services.AddSingleton<FullRedis>(redis);
+            services.AddSingleton<ICache>(redis);
+            services.AddSingleton(redis);
 
             return services;
         }
@@ -46,8 +46,8 @@ namespace Microsoft.Extensions.DependencyInjection
             redis.Init(config);
             if (timeout > 0) redis.Timeout = timeout;
 
-            services.AddSingleton<Redis>(redis);
-            services.AddSingleton<FullRedis>(redis);
+            services.AddSingleton<ICache>(redis);
+            services.AddSingleton(redis);
 
             return services;
         }
@@ -68,8 +68,8 @@ namespace Microsoft.Extensions.DependencyInjection
             var redis = new FullRedis(server, psssword, db);
             if (timeout > 0) redis.Timeout = timeout;
 
-            services.AddSingleton<Redis>(redis);
-            services.AddSingleton<FullRedis>(redis);
+            services.AddSingleton<ICache>(redis);
+            services.AddSingleton(redis);
 
             return services;
         }
