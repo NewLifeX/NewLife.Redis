@@ -49,7 +49,7 @@ namespace NewLife.Caching
         /// <summary>是否在消息报文中自动注入TraceId。TraceId用于跨应用在生产者和消费者之间建立调用链，默认true</summary>
         public Boolean AttachTraceId { get; set; } = true;
 
-        /// <summary>跟踪名。默认Key，主要用于解决动态Topic导致产生大量埋点的问题</summary>
+        /// <summary>追踪名。默认Key，主要用于解决动态Topic导致产生大量埋点的问题</summary>
         public String TraceName { get; set; }
 
         /// <summary>消息队列主题</summary>

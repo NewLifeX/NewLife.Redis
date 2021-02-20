@@ -27,7 +27,7 @@ namespace NewLife.Caching
         /// <summary>转移延迟消息到主队列的间隔。默认10s</summary>
         public Int32 TransferInterval { get; set; } = 10;
 
-        /// <summary>跟踪名。默认Key，主要用于解决动态Topic导致产生大量埋点的问题</summary>
+        /// <summary>追踪名。默认Key，主要用于解决动态Topic导致产生大量埋点的问题</summary>
         public String TraceName { get; set; }
 
         /// <summary>个数</summary>

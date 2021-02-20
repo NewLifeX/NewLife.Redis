@@ -27,7 +27,7 @@ namespace NewLife.Caching
             var name = redis?.Tracer?.AttachParameter;
             if (name.IsNullOrEmpty()) return msg;
 
-            // 当前埋点跟踪片段，正在准备采样
+            // 当前埋点追踪片段，正在准备采样
             var span = DefaultSpan.Current as DefaultSpan;
             if (span == null || span.TraceFlag == 0) return msg;
 
