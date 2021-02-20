@@ -64,6 +64,9 @@ namespace NewLife.Caching
         /// <summary>是否在消息报文中自动注入TraceId。TraceId用于跨应用在生产者和消费者之间建立调用链，默认true</summary>
         public Boolean AttachTraceId { get; set; } = true;
 
+        /// <summary>跟踪名。默认Key，主要用于解决动态Topic导致产生大量埋点的问题</summary>
+        public String TraceName { get; set; }
+
         /// <summary>个数</summary>
         public Int32 Count => Execute(r => r.Execute<Int32>("LLEN", Key));
 
@@ -95,6 +98,7 @@ namespace NewLife.Caching
             _Status = CreateStatus();
             AckKey = $"{key}:Ack:{_Status.Key}";
             _StatusKey = $"{key}:Status:{_Status.Key}";
+            TraceName = key;
         }
 
         /// <summary>析构</summary>
@@ -124,7 +128,7 @@ namespace NewLife.Caching
         {
             if (values == null || values.Length == 0) return 0;
 
-            using var span = Redis.Tracer?.NewSpan($"redismq:AddReliable:{Key}", values);
+            using var span = Redis.Tracer?.NewSpan($"redismq:AddReliable:{TraceName}", values);
 
             var args = new List<Object> { Key };
             foreach (var item in values)

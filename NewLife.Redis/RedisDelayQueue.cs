@@ -27,6 +27,9 @@ namespace NewLife.Caching
         /// <summary>转移延迟消息到主队列的间隔。默认10s</summary>
         public Int32 TransferInterval { get; set; } = 10;
 
+        /// <summary>跟踪名。默认Key，主要用于解决动态Topic导致产生大量埋点的问题</summary>
+        public String TraceName { get; set; }
+
         /// <summary>个数</summary>
         public Int32 Count => _sort?.Count ?? 0;
 
@@ -50,6 +53,7 @@ namespace NewLife.Caching
         /// <param name="useAck"></param>
         public RedisDelayQueue(Redis redis, String key, Boolean useAck = true) : base(redis, key)
         {
+            TraceName = key;
             _sort = new RedisSortedSet<T>(redis, key);
 
             if (useAck)
@@ -67,7 +71,7 @@ namespace NewLife.Caching
         /// <returns></returns>
         public Int32 Add(T value, Int32 delay)
         {
-            using var span = Redis.Tracer?.NewSpan($"redismq:AddDelay:{Key}", value);
+            using var span = Redis.Tracer?.NewSpan($"redismq:AddDelay:{TraceName}", value);
 
             return _sort.Add(value, DateTime.Now.ToInt() + delay);
         }

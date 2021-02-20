@@ -22,6 +22,9 @@ namespace NewLife.Caching
         /// <summary>是否在消息报文中自动注入TraceId。TraceId用于跨应用在生产者和消费者之间建立调用链，默认true</summary>
         public Boolean AttachTraceId { get; set; } = true;
 
+        /// <summary>跟踪名。默认Key，主要用于解决动态Topic导致产生大量埋点的问题</summary>
+        public String TraceName { get; set; }
+
         /// <summary>个数</summary>
         public Int32 Count => Execute(r => r.Execute<Int32>("LLEN", Key));
 
@@ -36,7 +39,7 @@ namespace NewLife.Caching
         /// <summary>实例化队列</summary>
         /// <param name="redis"></param>
         /// <param name="key"></param>
-        public RedisQueue(Redis redis, String key) : base(redis, key) { }
+        public RedisQueue(Redis redis, String key) : base(redis, key) { TraceName = key; }
         #endregion
 
         #region 核心方法
@@ -45,7 +48,7 @@ namespace NewLife.Caching
         /// <returns></returns>
         public Int32 Add(T value)
         {
-            using var span = Redis.Tracer?.NewSpan($"redismq:Add:{Key}", value);
+            using var span = Redis.Tracer?.NewSpan($"redismq:Add:{TraceName}", value);
 
             var val = AttachTraceId ? Redis.AttachTraceId(value) : value;
             return Execute(rc => rc.Execute<Int32>("LPUSH", Key, val), true);
@@ -56,7 +59,7 @@ namespace NewLife.Caching
         /// <returns></returns>
         public Int32 Add(params T[] values)
         {
-            using var span = Redis.Tracer?.NewSpan($"redismq:Add:{Key}", values);
+            using var span = Redis.Tracer?.NewSpan($"redismq:Add:{TraceName}", values);
 
             var args = new List<Object> { Key };
             foreach (var item in values)
