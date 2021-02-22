@@ -459,14 +459,14 @@ XREAD count 3 streams stream_key 0-0
         #region 消费组
         /// <summary>创建消费组</summary>
         /// <param name="group">消费组名称</param>
-        /// <param name="startId">开始编号。0表示从开头，$表示从末尾，收到下一条生产消息才开始消费</param>
+        /// <param name="startId">开始编号。0表示从开头，$表示从末尾，收到下一条生产消息才开始消费 stream不存在，则会报错，所以在后面 加上 mkstream</param>
         /// <returns></returns>
         public Boolean GroupCreate(String group, String startId = null)
         {
             if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
             if (startId.IsNullOrEmpty()) startId = "0";
 
-            return Execute(rc => rc.Execute<Boolean>("XGROUP", "CREATE", Key, group, startId), true);
+            return Execute(rc => rc.Execute<Boolean>("XGROUP", "CREATE", Key, group, startId, "MKSTREAM"), true);
         }
 
         /// <summary>销毁消费组</summary>
