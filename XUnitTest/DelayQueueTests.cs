@@ -166,6 +166,10 @@ namespace XUnitTest
 
             // 取出来
             var vs2 = queue.Take(3).ToArray();
+            Assert.Empty(vs2);
+
+            Thread.Sleep(2000);
+            vs2 = queue.Take(3).ToArray();
             Assert.Equal(2, vs2.Length);
             Assert.Equal("1234", vs2[0]);
             Assert.Equal("abcd", vs2[1]);
@@ -332,8 +336,10 @@ namespace XUnitTest
 
             // 删除已有
             _redis.Remove(key);
-            var queue = new RedisDelayQueue<String>(_redis, key, false);
-            queue.Delay = 2;
+            var queue = new RedisDelayQueue<String>(_redis, key, false)
+            {
+                Delay = 2
+            };
 
             // 添加
             var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };

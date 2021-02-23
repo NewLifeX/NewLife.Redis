@@ -89,7 +89,7 @@ namespace XUnitTest
         {
             var pb = new PubSub(_redis, "pb_test1");
             var rs = pb.Publish("test");
-            Assert.Equal(1, rs);
+            Assert.Equal(0, rs);
         }
     }
 }
