@@ -46,7 +46,7 @@ namespace QueueDemo
             var consumerName = "Consumer1";
             var mq = new MultipleConsumerGroupsQueue<string>();
             mq.ConsumeGroupExistErrMsgKeyWord = "exist"; //不同版本的redis错误消息关键词可能不一样，这里注意设置合适的关键词
-            mq.Connect("centos.newlifex.com", "MultipleConsumerGroupsQueue", 6000, "Pass@word", 1);
+            mq.Connect("centos.newlifex.com", "MultipleConsumerGroupsQueue", 6000, "Pass@word", 7);
             mq.Received += (data) => { XTrace.WriteLine($"[Redis多消费组可重复消费的队列]收到列队消息：{data}"); };
             mq.StopSubscribe += (msg) =>
             {
@@ -56,6 +56,12 @@ namespace QueueDemo
                 XTrace.WriteLine("5秒后重新自动订阅……");
                 Thread.Sleep(5000);
                 mq.Subscribe(consumerName);
+            };
+            mq.Disconnected += (msg) =>
+            {
+                //一般不会进入这里。（可能这个事件还可以再优化一下）
+                XTrace.WriteLine($"因“{msg}”断开连接，进入重连模式。");
+                mq.Connect("centos.newlifex.com", "MultipleConsumerGroupsQueue", 6000, "Pass@word", 7);
             };
             mq.Subscribe(consumerName); //开始订阅消息
 
