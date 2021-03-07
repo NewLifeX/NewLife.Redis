@@ -455,7 +455,8 @@ namespace XUnitTest
             var q = _redis.GetReliableQueue<MyModel>(key);
 
             // 改变有效期
-            q.BodyExpire = 5 * 60;
+            //q.BodyExpire = 5 * 60;
+            var expire = 5 * 60;
 
             var dic = new Dictionary<String, MyModel>
             {
@@ -465,7 +466,7 @@ namespace XUnitTest
             };
 
             // 生产
-            var rs = q.Publish(dic);
+            var rs = q.Publish(dic, expire);
             Assert.Equal(dic.Count, rs);
 
             // 查看并干掉第二项
@@ -475,8 +476,8 @@ namespace XUnitTest
             Assert.Equal("b456", v2.Name);
 
             var ttl = _redis.GetExpire("bbb");
-            Assert.True(ttl.TotalSeconds <= q.BodyExpire);
-            Assert.True(ttl.TotalSeconds >= q.BodyExpire - 2);
+            Assert.True(ttl.TotalSeconds <= expire);
+            Assert.True(ttl.TotalSeconds >= expire - 2);
 
             rs = _redis.Remove("bbb");
 

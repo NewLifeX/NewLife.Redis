@@ -160,10 +160,6 @@ namespace NewLife.Caching
                 Tracer = rds.Tracer,
             };
 
-            // 消息去重
-            if (queue.DuplicateExpire > 0 && idField.IsNullOrEmpty())
-                throw new ArgumentNullException(nameof(idField), $"队列[{topic}]消息[{queue.DuplicateExpire}]秒去重，需要指定消息唯一标识idField");
-
             var ids = new List<String> { "Id", "guid", "OrderId", "Code" };
             if (!idField.IsNullOrEmpty() && !ids.Contains(idField)) ids.Insert(0, idField);
 
@@ -201,33 +197,8 @@ namespace NewLife.Caching
                             }
                         }
 
-                        // 消息去重
-                        if (queue.DuplicateExpire > 0)
-                        {
-                            // 抢占msgId，处理异常时退出抢占
-                            var dkey = $"{topic}:Duplicate:{msgId}";
-                            if (!rds2.Add(dkey, queue.Status.Key, queue.DuplicateExpire))
-                            {
-                                log?.Info("队列[{0}]遇到重复消息[{1}]，自动跳过", topic, msgId);
-                            }
-                            else
-                            {
-                                try
-                                {
-                                    await onMessage(msg, mqMsg, cancellationToken);
-                                }
-                                catch
-                                {
-                                    rds2.Remove(dkey);
-                                    throw;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            // 处理消息
-                            await onMessage(msg, mqMsg, cancellationToken);
-                        }
+                        // 处理消息
+                        await onMessage(msg, mqMsg, cancellationToken);
 
                         // 确认消息
                         queue.Acknowledge(mqMsg);

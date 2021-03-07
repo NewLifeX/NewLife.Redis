@@ -55,12 +55,6 @@ namespace NewLife.Caching
         /// <summary>最小管道阈值，达到该值时使用管道，默认3</summary>
         public Int32 MinPipeline { get; set; } = 3;
 
-        /// <summary>消息体过期时间，仅用于高级消息生产和消费，默认10*24*3600</summary>
-        public Int32 BodyExpire { get; set; } = 10 * 24 * 3600;
-
-        /// <summary>消息去重的时间。该时间内不处理相同msgId的消息，默认0s不启用</summary>
-        public Int32 DuplicateExpire { get; set; }
-
         /// <summary>是否在消息报文中自动注入TraceId。TraceId用于跨应用在生产者和消费者之间建立调用链，默认true</summary>
         public Boolean AttachTraceId { get; set; } = true;
 
@@ -313,23 +307,17 @@ namespace NewLife.Caching
             return _delay.Add(value, delay);
         }
 
-        ///// <summary>添加延迟消息</summary>
-        ///// <param name="value"></param>
-        ///// <param name="delay"></param>
-        ///// <returns></returns>
-        //[Obsolete("=>AddDelay")]
-        //public Int32 Add(T value, Int32 delay) => AddDelay(value, delay);
-
         /// <summary>高级生产消息。消息体和消息键分离，业务层指定消息键，可随时查看或删除，同时避免重复生产</summary>
         /// <remarks>
         /// Publish 必须跟 ConsumeAsync 配对使用。
         /// </remarks>
-        /// <param name="messages"></param>
+        /// <param name="messages">消息字典，id为键，消息体为值</param>
+        /// <param name="expire">消息体过期时间，单位秒</param>
         /// <returns></returns>
-        public Int32 Publish(IDictionary<String, T> messages)
+        public Int32 Publish(IDictionary<String, T> messages, Int32 expire)
         {
             // 消息体写入kv
-            Redis.SetAll(messages, BodyExpire);
+            Redis.SetAll(messages, expire);
 
             // 消息键写入队列
             var args = new List<Object> { Key };
@@ -365,8 +353,6 @@ namespace NewLife.Caching
             _Status.Consumes++;
 
             // 取出消息。如果重复消费，或者业务层已经删除消息，此时将拿不到
-            //var message = Redis.Get<T>(msgId);
-            //if (Equals(message, default)) return 0;
             if (!Redis.TryGetValue(msgId, out T messge))
             {
                 // 拿不到消息体，直接确认消息键
