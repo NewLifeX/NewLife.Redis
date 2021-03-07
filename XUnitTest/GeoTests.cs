@@ -121,12 +121,12 @@ namespace XUnitTest
             Assert.Equal(3, gis.Length);
 
             Assert.Equal("Test3", gis[0].Name);
-            Assert.Equal("Test4", gis[1].Name);
-            Assert.Equal("Test2", gis[2].Name);
+            Assert.Equal("Test2", gis[1].Name);
+            Assert.Equal("Test4", gis[2].Name);
 
             Assert.Equal(2483.2078, gis[0].Distance);
-            Assert.Equal(157907.9298, gis[1].Distance);
-            Assert.Equal(156427.8334, gis[2].Distance);
+            Assert.Equal(156427.8334, gis[1].Distance);
+            Assert.Equal(157907.9298, gis[2].Distance);
 
             // 按半径查找，指定坐标200km以内的2个点
             gis = geo.GetRadius(3.31, 3.45, 200, "km", 2);

@@ -123,8 +123,8 @@ namespace NewLife.Caching
             if (unit.IsNullOrEmpty()) unit = "m";
 
             var rs = count > 0 ?
-               Execute(rc => rc.Execute<Object[]>("GEORADIUS", Key, longitude, latitude, radius, unit, "WITHDIST", "WITHCOORD", "COUNT", count), false) :
-               Execute(rc => rc.Execute<Object[]>("GEORADIUS", Key, longitude, latitude, radius, unit, "WITHDIST", "WITHCOORD"), false);
+               Execute(rc => rc.Execute<Object[]>("GEORADIUS", Key, longitude, latitude, radius, unit, "WITHDIST", "WITHCOORD", "ASC", "COUNT", count), false) :
+               Execute(rc => rc.Execute<Object[]>("GEORADIUS", Key, longitude, latitude, radius, unit, "WITHDIST", "WITHCOORD", "ASC"), false);
             if (rs == null || rs.Length == 0) return null;
 
             var list = new List<GeoInfo>();
@@ -159,8 +159,8 @@ namespace NewLife.Caching
             if (unit.IsNullOrEmpty()) unit = "m";
 
             var rs = count > 0 ?
-                Execute(rc => rc.Execute<Object[]>("GEORADIUSBYMEMBER", Key, member, radius, unit, "WITHDIST", "WITHCOORD", "COUNT", count), false) :
-                Execute(rc => rc.Execute<Object[]>("GEORADIUSBYMEMBER", Key, member, radius, unit, "WITHDIST", "WITHCOORD"), false);
+                Execute(rc => rc.Execute<Object[]>("GEORADIUSBYMEMBER", Key, member, radius, unit, "WITHDIST", "WITHCOORD", "ASC", "COUNT", count), false) :
+                Execute(rc => rc.Execute<Object[]>("GEORADIUSBYMEMBER", Key, member, radius, unit, "WITHDIST", "WITHCOORD", "ASC"), false);
             if (rs == null || rs.Length == 0) return null;
 
             var list = new List<GeoInfo>();
