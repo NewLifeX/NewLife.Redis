@@ -277,7 +277,7 @@ namespace NewLife.Caching
                 {
                     if (_delay == null)
                     {
-                        _delay = new RedisDelayQueue<T>(Redis, $"{Key}:Delay", false);
+                        _delay = new RedisDelayQueue<T>(Redis, $"{Key}:Delay");
                     }
                 }
             }

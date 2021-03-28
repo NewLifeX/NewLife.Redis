@@ -18,12 +18,6 @@ namespace NewLife.Caching
     public class RedisDelayQueue<T> : RedisBase, IProducerConsumer<T>
     {
         #region 属性
-        /// <summary>用于确认的列表</summary>
-        public String AckKey { get; }
-
-        /// <summary>重新处理确认队列中死信的间隔。默认60s</summary>
-        public Int32 RetryInterval { get; set; } = 60;
-
         /// <summary>转移延迟消息到主队列的间隔。默认10s</summary>
         public Int32 TransferInterval { get; set; } = 10;
 
@@ -43,24 +37,16 @@ namespace NewLife.Caching
         public String Topic => Key;
 
         private readonly RedisSortedSet<T> _sort;
-        private readonly RedisSortedSet<T> _ack;
         #endregion
 
         #region 实例化
         /// <summary>实例化延迟队列</summary>
         /// <param name="redis"></param>
         /// <param name="key"></param>
-        /// <param name="useAck"></param>
-        public RedisDelayQueue(Redis redis, String key, Boolean useAck = true) : base(redis, key)
+        public RedisDelayQueue(Redis redis, String key) : base(redis, key)
         {
             TraceName = key;
             _sort = new RedisSortedSet<T>(redis, key);
-
-            if (useAck)
-            {
-                AckKey = $"{key}:Ack";
-                _ack = new RedisSortedSet<T>(redis, AckKey);
-            }
         }
         #endregion
 
@@ -98,7 +84,7 @@ namespace NewLife.Caching
         /// <returns></returns>
         public T TakeOne(Int32 timeout = 0)
         {
-            RetryAck();
+            //RetryAck();
 
             // 最长等待
             if (timeout == 0) timeout = 60;
@@ -125,7 +111,7 @@ namespace NewLife.Caching
         /// <returns></returns>
         public async Task<T> TakeOneAsync(Int32 timeout = 0, CancellationToken cancellationToken = default)
         {
-            RetryAck();
+            //RetryAck();
 
             // 最长等待
             if (timeout == 0) timeout = 60;
@@ -158,7 +144,7 @@ namespace NewLife.Caching
         {
             if (count <= 0) yield break;
 
-            RetryAck();
+            //RetryAck();
 
             var score = DateTime.Now.ToInt();
             var rs = _sort.RangeByScore(0, score, 0, count);
@@ -176,12 +162,12 @@ namespace NewLife.Caching
         /// <returns></returns>
         private Boolean TryPop(T value)
         {
-            if (_ack != null)
-            {
-                // 先备份，再删除。备份到Ack队列
-                var score = DateTime.Now.ToInt() + RetryInterval;
-                _ack.Add(value, score);
-            }
+            //if (_ack != null)
+            //{
+            //    // 先备份，再删除。备份到Ack队列
+            //    var score = DateTime.Now.ToInt() + RetryInterval;
+            //    _ack.Add(value, score);
+            //}
 
             // 删除作为抢夺
             return _sort.Remove(value) > 0;
@@ -190,69 +176,12 @@ namespace NewLife.Caching
         /// <summary>确认删除</summary>
         /// <param name="keys"></param>
         /// <returns></returns>
-        public Int32 Acknowledge(params T[] keys) => _ack?.Remove(keys) ?? -1;
+        public Int32 Acknowledge(params T[] keys) => -1;
 
         /// <summary>确认删除</summary>
         /// <param name="keys"></param>
         /// <returns></returns>
-        Int32 IProducerConsumer<T>.Acknowledge(params String[] keys) => _ack?.Remove(keys.Select(e => e.ChangeType<T>()).ToArray()) ?? -1;
-        #endregion
-
-        #region 死信处理
-        /// <summary>回滚指定AckKey内的消息到Key</summary>
-        /// <param name="time"></param>
-        /// <returns></returns>
-        private List<T> RollbackAck(DateTime time)
-        {
-            if (_ack == null) return null;
-
-            // 消费所有数据
-            var score = time.ToInt();
-            var list = new List<T>();
-            while (true)
-            {
-                var rs = _ack.RangeByScore(0, score, 0, 100);
-                if (rs == null || rs.Length == 0) break;
-
-                // 加入原始队列
-                _sort.Add(rs, score);
-                _ack.Remove(rs);
-
-                list.AddRange(rs);
-
-                if (rs.Length < 100) break;
-            }
-
-            return list;
-        }
-
-        private DateTime _nextRetry;
-        /// <summary>处理未确认的死信，重新放入队列</summary>
-        private Int32 RetryAck()
-        {
-            if (_ack == null) return 0;
-
-            var now = DateTime.Now;
-            // 一定间隔处理死信
-            if (_nextRetry < now)
-            {
-                _nextRetry = now.AddSeconds(RetryInterval);
-
-                // 拿到死信，重新放入队列
-                var list = RollbackAck(now);
-                foreach (var item in list)
-                {
-                    XTrace.WriteLine("定时回滚死信：{0}", item);
-                }
-                return list.Count;
-            }
-
-            return 0;
-        }
-
-        /// <summary>全局回滚死信，一般由单一线程执行，避免干扰处理中数据</summary>
-        /// <returns></returns>
-        public Int32 RollbackAllAck() => RollbackAck(DateTime.Today.AddDays(1)).Count;
+        Int32 IProducerConsumer<T>.Acknowledge(params String[] keys) => -1;
         #endregion
 
         #region 消息交换
