@@ -260,6 +260,97 @@ namespace NewLife.Caching
         /// <param name="cancellationToken">取消令牌</param>
         /// <param name="log">日志对象</param>
         /// <returns></returns>
+        public static async Task ConsumeAsync<T>(this RedisReliableQueue<String> queue, Action<String> onMessage, CancellationToken cancellationToken = default, ILog log = null)
+        {
+            // 大循环之前，打断性能追踪调用链
+            DefaultSpan.Current = null;
+
+            // 主题
+            var topic = queue.Key;
+            if (topic.IsNullOrEmpty()) topic = queue.GetType().Name;
+
+            var rds = queue.Redis;
+            var tracer = rds.Tracer;
+            var errLog = log ?? XTrace.Log;
+
+            // 备用redis，容错、去重
+            var rds2 = new FullRedis
+            {
+                Name = rds.Name + "Bak",
+                Server = rds.Server,
+                UserName = rds.UserName,
+                Password = rds.Password,
+                Db = rds.Db == 15 ? 0 : (rds.Db + 1),
+                Tracer = rds.Tracer,
+            };
+
+            // 超时时间，用于阻塞等待
+            var timeout = rds.Timeout / 1000 - 1;
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var mqMsg = "";
+                ISpan span = null;
+                try
+                {
+                    // 异步阻塞消费
+                    mqMsg = await queue.TakeOneAsync(timeout, cancellationToken);
+                    if (mqMsg != null)
+                    {
+                        // 埋点
+                        span = tracer?.NewSpan($"redismq:{topic}", mqMsg);
+                        log?.Info($"[{topic}]消息内容为：{mqMsg}");
+
+                        // 处理消息
+                        onMessage(mqMsg);
+
+                        // 确认消息
+                        queue.Acknowledge(mqMsg);
+                    }
+                    else
+                    {
+                        // 没有消息，歇一会
+                        await Task.Delay(1000, cancellationToken);
+                    }
+                }
+                catch (ThreadAbortException) { break; }
+                catch (ThreadInterruptedException) { break; }
+                catch (Exception ex)
+                {
+                    span?.SetError(ex, null);
+
+                    // 消息处理错误超过10次则抛弃
+                    if (!mqMsg.IsNullOrEmpty())
+                    {
+                        var msgId = mqMsg.MD5();
+                        errLog?.Error("[{0}/{1}]消息处理异常：{2} {3}", topic, msgId, mqMsg, ex);
+                        var key = $"{topic}:Error:{msgId}";
+
+                        var rs = rds2.Increment(key, 1);
+                        if (rs < 10)
+                            rds2.SetExpire(key, TimeSpan.FromHours(24));
+                        else
+                        {
+                            queue.Acknowledge(mqMsg);
+
+                            errLog?.Error("[{0}/{1}]错误过多，删除消息", topic, msgId);
+                        }
+                    }
+                }
+                finally
+                {
+                    span?.Dispose();
+                }
+            }
+        }
+
+        /// <summary>队列消费大循环，处理消息后自动确认</summary>
+        /// <typeparam name="T">消息类型</typeparam>
+        /// <param name="queue">队列</param>
+        /// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <param name="log">日志对象</param>
+        /// <returns></returns>
         public static async Task ConsumeAsync<T>(this RedisStream<String> queue, Func<T, Message, CancellationToken, Task> onMessage, CancellationToken cancellationToken = default, ILog log = null)
         {
             // 大循环之前，打断性能追踪调用链
