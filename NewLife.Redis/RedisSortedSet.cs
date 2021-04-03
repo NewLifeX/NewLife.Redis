@@ -81,8 +81,8 @@ namespace NewLife.Caching
         /// </remarks>
         /// <param name="options">支持参数</param>
         /// <param name="members"></param>
-        /// <returns></returns>
-        public Int32 Add(String options, IDictionary<T, Double> members)
+        /// <returns>添加到有序集合的成员数量，不包括已经存在更新分数的成员</returns>
+        public Double Add(String options, IDictionary<T, Double> members)
         {
             var args = new List<Object> { Key };
 
@@ -94,7 +94,7 @@ namespace NewLife.Caching
                 args.Add(item.Value);
                 args.Add(item.Key);
             }
-            return Execute(rc => rc.Execute<Int32>("ZADD", args.ToArray()), true);
+            return Execute(rc => rc.Execute<Double>("ZADD", args.ToArray()), true);
         }
 
         /// <summary>为有序集key的成员member的score值加上增量increment</summary>

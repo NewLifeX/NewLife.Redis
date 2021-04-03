@@ -471,11 +471,11 @@ XREAD count 3 streams stream_key 0-0
         /// <summary>销毁消费组</summary>
         /// <param name="group">消费组名称</param>
         /// <returns></returns>
-        public Boolean GroupDestroy(String group)
+        public Int32 GroupDestroy(String group)
         {
             if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
 
-            return Execute(rc => rc.Execute<Boolean>("XGROUP", "DESTROY", Key, group), true);
+            return Execute(rc => rc.Execute<Int32>("XGROUP", "DESTROY", Key, group), true);
         }
 
         /// <summary>销毁消费者</summary>
