@@ -13,7 +13,7 @@ namespace NewLife.Caching
         public Boolean AttachTraceId { get; set; } = true;
 
         /// <summary>失败时抛出异常。默认true</summary>
-        public Boolean ThrowOnFailed { get; set; } = true;
+        public Boolean ThrowOnFailure { get; set; } = true;
 
         /// <summary>消息队列主题</summary>
         public String Topic => Key;

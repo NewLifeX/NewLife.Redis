@@ -114,7 +114,7 @@ namespace NewLife.Caching
             }
 
             var rs = Execute(rc => rc.Execute<String>("XADD", args.ToArray()), true);
-            if (rs.IsNullOrEmpty() && ThrowOnFailed)
+            if (rs.IsNullOrEmpty() && ThrowOnFailure)
             {
                 var ex = new RedisException($"发布到队列[{Topic}]失败！");
                 span?.SetError(ex, null);

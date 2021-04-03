@@ -52,7 +52,7 @@ namespace NewLife.Caching
             using var span = Redis.Tracer?.NewSpan($"redismq:AddDelay:{TraceName}", value);
 
             var rs = _sort.Add(value, DateTime.Now.ToInt() + delay);
-            if (rs <= 0 && ThrowOnFailed)
+            if (rs <= 0 && ThrowOnFailure)
             {
                 var ex = new RedisException($"发布到队列[{Topic}]失败！");
                 span?.SetError(ex, null);
@@ -72,7 +72,7 @@ namespace NewLife.Caching
             using var span = Redis.Tracer?.NewSpan($"redismq:AddDelay:{TraceName}", values);
 
             var rs = _sort.Add(values, DateTime.Now.ToInt() + Delay);
-            if (rs <= 0 && ThrowOnFailed)
+            if (rs <= 0 && ThrowOnFailure)
             {
                 var ex = new RedisException($"发布到队列[{Topic}]失败！");
                 span?.SetError(ex, null);

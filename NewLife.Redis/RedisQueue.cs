@@ -46,7 +46,7 @@ namespace NewLife.Caching
 
             // 返回插入后的LIST长度
             var rs = Execute(rc => rc.Execute<Int32>("LPUSH", Key, val), true);
-            if (rs <= 0 && ThrowOnFailed)
+            if (rs <= 0 && ThrowOnFailure)
             {
                 var ex = new RedisException($"发布到队列[{Topic}]失败！");
                 span?.SetError(ex, null);
@@ -74,7 +74,7 @@ namespace NewLife.Caching
 
             // 返回插入后的LIST长度
             var rs = Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
-            if (rs <= 0 && ThrowOnFailed)
+            if (rs <= 0 && ThrowOnFailure)
             {
                 var ex = new RedisException($"发布到队列[{Topic}]失败！");
                 span?.SetError(ex, null);
