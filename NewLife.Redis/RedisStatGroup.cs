@@ -7,11 +7,14 @@ using System.Threading.Tasks;
 
 namespace NewLife.Caching
 {
+    /// <summary>Redis统计组</summary>
     public class RedisStatGroup
     {
         #region 属性
+        /// <summary>实例</summary>
         public FullRedis Redis { get; set; }
 
+        /// <summary>统计集合</summary>
         public IList<RedisStat> Stats { get; set; } = new List<RedisStat>();
         #endregion
 

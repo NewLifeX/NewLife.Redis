@@ -43,7 +43,7 @@ namespace NewLife.Caching
     /// 高级Redis队列，每次生产操作3次Redis，消费操作4次Redis；
     /// </remarks>
     /// <typeparam name="T"></typeparam>
-    public class RedisReliableQueue<T> : RedisBase, IProducerConsumer<T>, IDisposable
+    public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposable
     {
         #region 属性
         /// <summary>用于确认的列表</summary>
@@ -55,12 +55,6 @@ namespace NewLife.Caching
         /// <summary>最小管道阈值，达到该值时使用管道，默认3</summary>
         public Int32 MinPipeline { get; set; } = 3;
 
-        /// <summary>是否在消息报文中自动注入TraceId。TraceId用于跨应用在生产者和消费者之间建立调用链，默认true</summary>
-        public Boolean AttachTraceId { get; set; } = true;
-
-        /// <summary>追踪名。默认Key，主要用于解决动态Topic导致产生大量埋点的问题</summary>
-        public String TraceName { get; set; }
-
         /// <summary>个数</summary>
         public Int32 Count => Execute(r => r.Execute<Int32>("LLEN", Key));
 
@@ -69,9 +63,6 @@ namespace NewLife.Caching
 
         /// <summary>消费状态</summary>
         public RedisQueueStatus Status => _Status;
-
-        /// <summary>消息队列主题</summary>
-        public String Topic => Key;
 
         private readonly String _Key;
         private readonly String _StatusKey;
@@ -92,7 +83,6 @@ namespace NewLife.Caching
             _Status = CreateStatus();
             AckKey = $"{key}:Ack:{_Status.Key}";
             _StatusKey = $"{key}:Status:{_Status.Key}";
-            TraceName = key;
         }
 
         /// <summary>析构</summary>

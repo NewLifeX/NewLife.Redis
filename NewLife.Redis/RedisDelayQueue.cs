@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Log;
-using NewLife.Reflection;
 #if !NET40
 using TaskEx = System.Threading.Tasks.Task;
 #endif
@@ -15,14 +13,11 @@ namespace NewLife.Caching
     /// <remarks>
     /// 延迟Redis队列，每次生产操作1次Redis，消费操作4次Redis。
     /// </remarks>
-    public class RedisDelayQueue<T> : RedisBase, IProducerConsumer<T>
+    public class RedisDelayQueue<T> : QueueBase, IProducerConsumer<T>
     {
         #region 属性
         /// <summary>转移延迟消息到主队列的间隔。默认10s</summary>
         public Int32 TransferInterval { get; set; } = 10;
-
-        /// <summary>追踪名。默认Key，主要用于解决动态Topic导致产生大量埋点的问题</summary>
-        public String TraceName { get; set; }
 
         /// <summary>个数</summary>
         public Int32 Count => _sort?.Count ?? 0;
@@ -33,19 +28,15 @@ namespace NewLife.Caching
         /// <summary>默认延迟时间。默认60秒</summary>
         public Int32 Delay { get; set; } = 60;
 
-        /// <summary>消息队列主题</summary>
-        public String Topic => Key;
-
         private readonly RedisSortedSet<T> _sort;
         #endregion
 
-        #region 实例化
+        #region 构造
         /// <summary>实例化延迟队列</summary>
         /// <param name="redis"></param>
         /// <param name="key"></param>
         public RedisDelayQueue(Redis redis, String key) : base(redis, key)
         {
-            TraceName = key;
             _sort = new RedisSortedSet<T>(redis, key);
         }
         #endregion

@@ -241,9 +241,7 @@ namespace NewLife.Caching
         /// <remarks>可以在这里处理重新订阅的相关业务逻辑</remarks>
         public event StopSubscribeHandler StopSubscribe;
 
-        // <summary>
-        /// 通知订阅者停止订阅
-        /// </summary>
+        /// <summary>通知订阅者停止订阅</summary>
         /// <param name="msg">停止消息</param>
         protected void OnStopSubscribe(string msg)
         {

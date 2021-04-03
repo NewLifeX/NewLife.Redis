@@ -16,7 +16,7 @@ namespace NewLife.Caching
 {
     /// <summary>Redis5.0的Stream数据结构，完整态消息队列，支持多消费组</summary>
     /// <typeparam name="T"></typeparam>
-    public class RedisStream<T> : RedisBase, IProducerConsumer<T>
+    public class RedisStream<T> : QueueBase, IProducerConsumer<T>
     {
         #region 属性
         /// <summary>个数</summary>
@@ -46,15 +46,6 @@ namespace NewLife.Caching
         /// <summary>消费者</summary>
         public String Consumer { get; set; }
 
-        /// <summary>是否在消息报文中自动注入TraceId。TraceId用于跨应用在生产者和消费者之间建立调用链，默认true</summary>
-        public Boolean AttachTraceId { get; set; } = true;
-
-        /// <summary>追踪名。默认Key，主要用于解决动态Topic导致产生大量埋点的问题</summary>
-        public String TraceName { get; set; }
-
-        /// <summary>消息队列主题</summary>
-        public String Topic => Key;
-
         private Int32 _count;
         #endregion
 
@@ -64,7 +55,6 @@ namespace NewLife.Caching
         /// <param name="key"></param>
         public RedisStream(Redis redis, String key) : base(redis, key)
         {
-            TraceName = key;
             Consumer = $"{Environment.MachineName}@{Process.GetCurrentProcess().Id}";
         }
         #endregion
