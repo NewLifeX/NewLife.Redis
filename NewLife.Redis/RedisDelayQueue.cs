@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using NewLife.Caching.Common;
 using NewLife.Log;
 #if !NET40
 using TaskEx = System.Threading.Tasks.Task;
@@ -50,7 +51,15 @@ namespace NewLife.Caching
         {
             using var span = Redis.Tracer?.NewSpan($"redismq:AddDelay:{TraceName}", value);
 
-            return _sort.Add(value, DateTime.Now.ToInt() + delay);
+            var rs = _sort.Add(value, DateTime.Now.ToInt() + delay);
+            if (rs <= 0 && ThrowOnFailed)
+            {
+                var ex = new RedisException($"发布到队列[{Topic}]失败！");
+                span?.SetError(ex, null);
+                throw ex;
+            }
+
+            return rs;
         }
 
         /// <summary>批量生产</summary>
@@ -60,9 +69,17 @@ namespace NewLife.Caching
         {
             if (values == null || values.Length == 0) return 0;
 
-            using var span = Redis.Tracer?.NewSpan($"redismq:AddDelay:{Key}", values);
+            using var span = Redis.Tracer?.NewSpan($"redismq:AddDelay:{TraceName}", values);
 
-            return _sort.Add(values, DateTime.Now.ToInt() + Delay);
+            var rs = _sort.Add(values, DateTime.Now.ToInt() + Delay);
+            if (rs <= 0 && ThrowOnFailed)
+            {
+                var ex = new RedisException($"发布到队列[{Topic}]失败！");
+                span?.SetError(ex, null);
+                throw ex;
+            }
+
+            return rs;
         }
 
         /// <summary>删除项</summary>
@@ -188,7 +205,7 @@ namespace NewLife.Caching
 
             // 超时时间，用于阻塞等待
             //var timeout = Redis.Timeout / 1000 - 1;
-            var topic = Key;
+            //var topic = Key;
             var tracer = Redis.Tracer;
 
             while (!cancellationToken.IsCancellationRequested)
@@ -202,7 +219,7 @@ namespace NewLife.Caching
                     if (msgs != null && msgs.Length > 0)
                     {
                         // 删除消息后直接进入目标队列，无需进入Ack
-                        span = tracer?.NewSpan($"redismq:Transfer:{topic}", msgs);
+                        span = tracer?.NewSpan($"redismq:Transfer:{TraceName}", msgs);
 
                         // 逐个删除，多线程争夺可能失败
                         var list = new List<T>();

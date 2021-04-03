@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using NewLife.Caching.Common;
 using NewLife.Data;
 
 namespace NewLife.Caching
@@ -42,7 +43,17 @@ namespace NewLife.Caching
             using var span = Redis.Tracer?.NewSpan($"redismq:Add:{TraceName}", value);
 
             var val = AttachTraceId ? Redis.AttachTraceId(value) : value;
-            return Execute(rc => rc.Execute<Int32>("LPUSH", Key, val), true);
+
+            // 返回插入后的LIST长度
+            var rs = Execute(rc => rc.Execute<Int32>("LPUSH", Key, val), true);
+            if (rs <= 0 && ThrowOnFailed)
+            {
+                var ex = new RedisException($"发布到队列[{Topic}]失败！");
+                span?.SetError(ex, null);
+                throw ex;
+            }
+
+            return rs;
         }
 
         /// <summary>批量生产添加</summary>
@@ -60,7 +71,17 @@ namespace NewLife.Caching
                 else
                     args.Add(item);
             }
-            return Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
+
+            // 返回插入后的LIST长度
+            var rs = Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
+            if (rs <= 0 && ThrowOnFailed)
+            {
+                var ex = new RedisException($"发布到队列[{Topic}]失败！");
+                span?.SetError(ex, null);
+                throw ex;
+            }
+
+            return rs;
         }
 
         /// <summary>消费获取，支持阻塞</summary>

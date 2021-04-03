@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NewLife.Caching
 {
@@ -16,6 +12,9 @@ namespace NewLife.Caching
         /// <summary>是否在消息报文中自动注入TraceId。TraceId用于跨应用在生产者和消费者之间建立调用链，默认true</summary>
         public Boolean AttachTraceId { get; set; } = true;
 
+        /// <summary>失败时抛出异常。默认true</summary>
+        public Boolean ThrowOnFailed { get; set; } = true;
+
         /// <summary>消息队列主题</summary>
         public String Topic => Key;
         #endregion
@@ -24,10 +23,7 @@ namespace NewLife.Caching
         /// <summary>实例化延迟队列</summary>
         /// <param name="redis"></param>
         /// <param name="key"></param>
-        public QueueBase(Redis redis, String key) : base(redis, key)
-        {
-            TraceName = key;
-        }
+        public QueueBase(Redis redis, String key) : base(redis, key) => TraceName = key;
         #endregion
     }
 }

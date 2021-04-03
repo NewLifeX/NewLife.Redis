@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using NewLife.Caching.Common;
 using NewLife.Caching.Models;
 using NewLife.Log;
 using NewLife.Security;
@@ -107,7 +108,7 @@ namespace NewLife.Caching
         #region 核心方法
         /// <summary>批量生产添加</summary>
         /// <param name="values">消息集合</param>
-        /// <returns></returns>
+        /// <returns>返回插入后的LIST长度</returns>
         public Int32 Add(params T[] values)
         {
             if (values == null || values.Length == 0) return 0;
@@ -122,7 +123,17 @@ namespace NewLife.Caching
                 else
                     args.Add(item);
             }
-            return Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
+
+            // 返回插入后的LIST长度
+            var rs = Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
+            if (rs <= 0 && ThrowOnFailed)
+            {
+                var ex = new RedisException($"发布到队列[{Topic}]失败！");
+                span?.SetError(ex, null);
+                throw ex;
+            }
+
+            return rs;
         }
 
         /// <summary>消费获取，从Key弹出并备份到AckKey，支持阻塞</summary>

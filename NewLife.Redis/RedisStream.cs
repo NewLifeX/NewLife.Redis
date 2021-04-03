@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using NewLife.Caching.Common;
 using NewLife.Caching.Models;
 using NewLife.Data;
 using NewLife.Log;
@@ -112,7 +113,15 @@ namespace NewLife.Caching
                 }
             }
 
-            return Execute(rc => rc.Execute<String>("XADD", args.ToArray()), true);
+            var rs = Execute(rc => rc.Execute<String>("XADD", args.ToArray()), true);
+            if (rs.IsNullOrEmpty() && ThrowOnFailed)
+            {
+                var ex = new RedisException($"发布到队列[{Topic}]失败！");
+                span?.SetError(ex, null);
+                throw ex;
+            }
+
+            return rs;
         }
 
         /// <summary>批量生产添加</summary>
