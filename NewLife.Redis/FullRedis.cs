@@ -47,6 +47,11 @@ namespace NewLife.Caching
         /// <param name="db"></param>
         public FullRedis(String server, String password, Int32 db) : base(server, password, db) { }
 
+        /// <summary>按照配置服务实例化Redis，用于NETCore依赖注入</summary>
+        /// <param name="provider">服务提供者，将要解析IConfigProvider</param>
+        /// <param name="name">缓存名称，也是配置中心key</param>
+        public FullRedis(IServiceProvider provider, String name) : base(provider, name) { }
+
         /// <summary>初始化配置</summary>
         /// <param name="config"></param>
         public override void Init(String config)
