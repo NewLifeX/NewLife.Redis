@@ -41,7 +41,7 @@ namespace NewLife.Caching
         /// <summary>开始编号。独立消费时使用，消费组消费时不使用，默认0-0</summary>
         public String StartId { get; set; } = "0-0";
 
-        /// <summary>消费者组。指定消费组后，不再使用独立消费</summary>
+        /// <summary>消费者组。指定消费组后，不再使用独立消费。通过SetGroup可自动从创建消费组</summary>
         public String Group { get; set; }
 
         /// <summary>消费者</summary>
@@ -61,6 +61,24 @@ namespace NewLife.Caching
         #endregion
 
         #region 核心生产消费
+        /// <summary>设置消费组。如果消费组不存在则创建</summary>
+        /// <param name="group"></param>
+        /// <returns></returns>
+        public Boolean SetGroup(String group)
+        {
+            if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
+
+            Group = group;
+
+            var gs = GetGroups();
+            if (gs == null || !gs.Any(e => e.Name == group))
+            {
+                return GroupCreate(group);
+            }
+
+            return false;
+        }
+
         /// <summary>生产添加</summary>
         /// <param name="value">消息体</param>
         /// <param name="msgId">消息ID</param>
