@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using NewLife.Caching;
 using NewLife.Log;
+using NewLife.Reflection;
 using NewLife.Security;
 using NewLife.Serialization;
 using Xunit;
@@ -25,14 +26,19 @@ namespace XUnitTest
         [Fact]
         public void Test1()
         {
-            var st = new RedisStat(_redis, "Site")
+            using var st = new RedisStat(_redis, "SiteDayStat")
             {
                 OnSave = OnSave
             };
 
+            // 降低延迟队列间隔
+            var q = st.GetValue("_queue") as RedisReliableQueue<String>;
+            var dq = q.InitDelay();
+            dq.TransferInterval = 2;
+
             // 计算key
             var date = DateTime.Today;
-            var key = $"2743-{date:MMdd}";
+            var key = $"SiteDayStat:2743-{date:MMdd}";
 
             // 累加统计
             st.Increment(key, "Total", 1);
@@ -43,7 +49,8 @@ namespace XUnitTest
             // 变动key进入延迟队列
             st.AddDelayQueue(key, 2);
 
-            Thread.Sleep(13_000);
+            Thread.Sleep(4_000);
+            XTrace.WriteLine("Test1 finished");
         }
 
         private void OnSave(String key, IDictionary<String, Int32> data)

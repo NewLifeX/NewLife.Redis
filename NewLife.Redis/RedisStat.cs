@@ -24,7 +24,7 @@ namespace NewLife.Caching
     public class RedisStat : DisposeBase
     {
         #region 属性
-        /// <summary>统计名称。如Station等</summary>
+        /// <summary>统计名称。如StationDayStat等</summary>
         public String Name { get; }
 
         /// <summary>取回统计数据后的委托。一般用于保存到数据库</summary>

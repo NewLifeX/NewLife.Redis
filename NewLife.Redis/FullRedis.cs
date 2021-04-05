@@ -230,7 +230,7 @@ namespace NewLife.Caching
         {
             var cmd = overwrite ? "RENAME" : "RENAMENX";
 
-            return Execute(key, r => r.Execute<Boolean>(cmd, key, newKey), true);
+            return Execute(key, r => r.Execute<Int32>(cmd, key, newKey), true) > 0;
         }
 
         ///// <summary>模糊搜索，支持?和*</summary>
