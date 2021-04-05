@@ -1,6 +1,9 @@
 ﻿using NewLife.Caching;
+using NewLife.Log;
 using System;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace XUnitTest
@@ -176,6 +179,44 @@ namespace XUnitTest
 
             Assert.Equal(vs[3], l2[0]);
             Assert.Equal(1, l2.Count);
+        }
+
+        [Fact]
+        public void BRPOPLPUSH_Test()
+        {
+            // 一个队列多个消费，阻塞是否叠加
+            var key = "lkey_brpoplpush";
+            _redis.Timeout = 15_000;
+
+            XTrace.WriteLine("BRPOPLPUSH_Test");
+            var sw = Stopwatch.StartNew();
+
+            var t1 = Task.Run(() =>
+            {
+                var queue = _redis.GetList<String>(key) as RedisList<String>;
+                queue.BRPOPLPUSH("lkey_ack1", 3);
+                XTrace.WriteLine("lkey_ack1");
+            });
+
+            var t2 = Task.Run(() =>
+            {
+                var queue = _redis.GetList<String>(key) as RedisList<String>;
+                queue.BRPOPLPUSH("lkey_ack2", 3);
+                XTrace.WriteLine("lkey_ack2");
+            });
+
+            var t3 = Task.Run(() =>
+            {
+                var queue = _redis.GetList<String>(key) as RedisList<String>;
+                queue.BRPOPLPUSH("lkey_ack3", 3);
+                XTrace.WriteLine("lkey_ack3");
+            });
+
+            Task.WaitAll(t1, t2, t3);
+
+            sw.Stop();
+            XTrace.WriteLine("BRPOPLPUSH_BlockTest: {0}", sw.Elapsed);
+            Assert.True(sw.ElapsedMilliseconds < 3_000 + 500);
         }
     }
 }

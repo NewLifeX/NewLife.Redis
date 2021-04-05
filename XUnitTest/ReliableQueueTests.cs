@@ -644,5 +644,33 @@ namespace XUnitTest
             Assert.True(sw.ElapsedMilliseconds <= 2000 + 1000);
             queue.Acknowledge(v2);
         }
+
+        [Fact]
+        public void BlockTest()
+        {
+            // 一个队列两个消费，阻塞是否叠加
+            var key = "ReliableQueue_BlockTest";
+            _redis.Timeout = 15_000;
+
+            var sw = Stopwatch.StartNew();
+
+            var t1 = Task.Run(async () =>
+            {
+                var queue = _redis.GetReliableQueue<String>(key);
+                await queue.TakeOneAsync(3);
+            });
+
+            var t2 = Task.Run(async () =>
+            {
+                var queue = _redis.GetReliableQueue<String>(key);
+                await queue.TakeOneAsync(3);
+            });
+
+            Task.WaitAll(t1, t2);
+
+            sw.Stop();
+            XTrace.WriteLine("ReliableQueue_BlockTest: {0}", sw.Elapsed);
+            Assert.True(sw.ElapsedMilliseconds < 3_000 + 500);
+        }
     }
 }
