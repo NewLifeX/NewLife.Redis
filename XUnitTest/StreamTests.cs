@@ -85,7 +85,8 @@ namespace XUnitTest
 
             // 指针已经前移
             var ss = id.Split('-');
-            Assert.Equal($"{ss[0]}-{ss[1].ToInt() + 1}", s.StartId);
+            //Assert.Equal($"{ss[0]}-{ss[1].ToInt() + 1}", s.StartId);
+            Assert.Equal($"{ss[0]}-{ss[1].ToInt()}", s.StartId);
 
             // 删除
             var rs2 = s.Delete(rs[0].Id);

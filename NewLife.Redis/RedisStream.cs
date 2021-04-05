@@ -16,6 +16,9 @@ using TaskEx = System.Threading.Tasks.Task;
 namespace NewLife.Caching
 {
     /// <summary>Redis5.0的Stream数据结构，完整态消息队列，支持多消费组</summary>
+    /// <remarks>
+    /// 特殊的$，表示接收从阻塞那一刻开始添加到流的消息
+    /// </remarks>
     /// <typeparam name="T"></typeparam>
     public class RedisStream<T> : QueueBase, IProducerConsumer<T>
     {
@@ -41,7 +44,7 @@ namespace NewLife.Caching
         /// <summary>开始编号。独立消费时使用，消费组消费时不使用，默认0-0</summary>
         public String StartId { get; set; } = "0-0";
 
-        /// <summary>消费者组。指定消费组后，不再使用独立消费。通过SetGroup可自动从创建消费组</summary>
+        /// <summary>消费者组。指定消费组后，不再使用独立消费。通过SetGroup可自动创建消费组</summary>
         public String Group { get; set; }
 
         /// <summary>消费者</summary>
@@ -180,9 +183,12 @@ namespace NewLife.Caching
 
         private void SetNextId(String key)
         {
-            var lastId = key;
-            var ss = lastId.Split('-');
-            if (ss.Length == 2) StartId = $"{ss[0]}-{ss[1].ToInt() + 1}";
+            //var lastId = key;
+            //var ss = lastId.Split('-');
+            //if (ss.Length == 2) StartId = $"{ss[0]}-{ss[1].ToInt() + 1}";
+
+            // 后面的ID应该使用前一次报告的项目中最后一项的ID，否则将会丢失所有添加到这中间的条目。
+            StartId = key;
         }
 
         /// <summary>消费获取一个</summary>
@@ -328,6 +334,9 @@ namespace NewLife.Caching
         public IList<Message> Range(DateTime start, DateTime end, Int32 count = -1) => Range(start.ToLong() + "-0", end.ToLong() + "-0", count);
 
         /// <summary>原始独立消费</summary>
+        /// <remarks>
+        /// 特殊的$，表示接收从阻塞那一刻开始添加到流的消息
+        /// </remarks>
         /// <param name="startId">开始编号</param>
         /// <param name="count">消息个数</param>
         /// <returns></returns>
@@ -377,6 +386,9 @@ XREAD count 3 streams stream_key 0-0
         }
 
         /// <summary>异步原始独立消费</summary>
+        /// <remarks>
+        /// 特殊的$，表示接收从阻塞那一刻开始添加到流的消息
+        /// </remarks>
         /// <param name="startId">开始编号</param>
         /// <param name="count">消息个数</param>
         /// <param name="block">阻塞毫秒数，0表示永远</param>
