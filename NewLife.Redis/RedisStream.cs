@@ -73,6 +73,9 @@ namespace NewLife.Caching
 
             Group = group;
 
+            // 如果Stream不存在，则直接创建消费组，此时会创建Stream
+            if (!Redis.ContainsKey(Key)) return GroupCreate(group);
+
             var gs = GetGroups();
             if (gs == null || !gs.Any(e => e.Name == group))
             {
