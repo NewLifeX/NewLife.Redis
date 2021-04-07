@@ -7,9 +7,9 @@
     <Description>Redis基础操作、消息队列，经过日均100亿次调用量的项目验证</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2021 新生命开发团队</Copyright>
-    <Version>3.8.2021.0407</Version>
-    <FileVersion>3.8.2021.0407</FileVersion>
-    <AssemblyVersion>3.8.*</AssemblyVersion>
+    <Version>3.9.2021.0407</Version>
+    <FileVersion>3.9.2021.0407</FileVersion>
+    <AssemblyVersion>3.9.*</AssemblyVersion>
     <Deterministic>false</Deterministic>
     <OutputPath>..\..\Bin</OutputPath>
     <DocumentationFile>$(OutputPath)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
@@ -24,7 +24,7 @@
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Redis</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>优化动态Topic</PackageReleaseNotes>
+    <PackageReleaseNotes>加强RedisStream；增加Redis统计试用版</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
