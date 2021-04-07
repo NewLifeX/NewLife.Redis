@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using NewLife.Caching.Models;
 using NewLife.Data;
@@ -62,7 +63,7 @@ namespace NewLife.Caching
             if (Db == 0)
             {
                 // 访问一次info信息，解析工作模式，以判断是否集群
-                var info = GetInfo();
+                var info = Info;
                 if (info != null)
                 {
                     if (info.TryGetValue("redis_mode", out var mode)) Mode = mode;
@@ -70,6 +71,18 @@ namespace NewLife.Caching
                     // 集群模式初始化节点
                     if (mode == "cluster") Cluster = new RedisCluster(this);
                 }
+            }
+          
+            if (config.IsNullOrEmpty()) return;
+
+            var dic =
+                config.Contains(',') && !config.Contains(';') ?
+                config.SplitAsDictionary("=", ",", true) :
+                config.SplitAsDictionary("=", ";", true);
+            if (dic.Count > 0)
+            {
+                if (dic.TryGetValue("ThrowOnFailure", out var str))
+                    ThrowOnFailure = str.ToBoolean();
             }
         }
         #endregion

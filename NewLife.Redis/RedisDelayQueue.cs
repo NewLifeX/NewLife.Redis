@@ -51,6 +51,7 @@ namespace NewLife.Caching
         {
             using var span = Redis.Tracer?.NewSpan($"redismq:AddDelay:{TraceName}", value);
 
+            // 添加到有序集合的成员数量，不包括已经存在更新分数的成员
             var rs = _sort.Add(value, DateTime.Now.ToInt() + delay);
             if (rs <= 0 && ThrowOnFailure)
             {

@@ -23,15 +23,16 @@ namespace NewLife.Caching
         #endregion
 
         #region 方法
-        /// <summary>添加元素并指定分数</summary>
+        /// <summary>添加元素并指定分数，返回添加到集合的成员数量</summary>
         /// <param name="member">元素</param>
         /// <param name="score">分数</param>
+        /// <returns>添加到有序集合的成员数量，不包括已经存在更新分数的成员</returns>
         public Int32 Add(T member, Double score) => Execute(rc => rc.Execute<Int32>("ZADD", Key, score, member), true);
 
-        /// <summary>批量添加</summary>
+        /// <summary>批量添加，返回添加到集合的成员数量</summary>
         /// <param name="members"></param>
         /// <param name="score"></param>
-        /// <returns></returns>
+        /// <returns>添加到有序集合的成员数量，不包括已经存在更新分数的成员</returns>
         public Int32 Add(IEnumerable<T> members, Double score)
         {
             var args = new List<Object> { Key };
