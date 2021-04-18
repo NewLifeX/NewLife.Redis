@@ -137,13 +137,16 @@ namespace NewLife.Caching
                 }
             }
 
-            var rs = Execute(rc => rc.Execute<String>("XADD", args.ToArray()), true);
-            if (rs.IsNullOrEmpty() && ThrowOnFailure)
+            var rs = "";
+            for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
             {
-                var ex = new RedisException($"发布到队列[{Topic}]失败！");
-                span?.SetError(ex, null);
-                throw ex;
+                rs = Execute(rc => rc.Execute<String>("XADD", args.ToArray()), true);
+                if (!rs.IsNullOrEmpty()) return rs;
+           
+                if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryInterval);
             }
+
+            ValidWhenSendFailed(span);
 
             return rs;
         }

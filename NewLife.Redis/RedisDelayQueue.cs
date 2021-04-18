@@ -51,14 +51,17 @@ namespace NewLife.Caching
         {
             using var span = Redis.Tracer?.NewSpan($"redismq:AddDelay:{TraceName}", value);
 
-            // 添加到有序集合的成员数量，不包括已经存在更新分数的成员
-            var rs = _sort.Add(value, DateTime.Now.ToInt() + delay);
-            if (rs <= 0 && ThrowOnFailure)
+            var rs = 0;
+            for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
             {
-                var ex = new RedisException($"发布到队列[{Topic}]失败！");
-                span?.SetError(ex, null);
-                throw ex;
+                // 添加到有序集合的成员数量，不包括已经存在更新分数的成员
+                rs = _sort.Add(value, DateTime.Now.ToInt() + delay);
+                if (rs > 0) return rs;
+
+                if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryInterval);
             }
+
+            ValidWhenSendFailed(span);
 
             return rs;
         }
@@ -72,13 +75,16 @@ namespace NewLife.Caching
 
             using var span = Redis.Tracer?.NewSpan($"redismq:AddDelay:{TraceName}", values);
 
-            var rs = _sort.Add(values, DateTime.Now.ToInt() + Delay);
-            if (rs <= 0 && ThrowOnFailure)
+            var rs = 0;
+            for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
             {
-                var ex = new RedisException($"发布到队列[{Topic}]失败！");
-                span?.SetError(ex, null);
-                throw ex;
+                rs = _sort.Add(values, DateTime.Now.ToInt() + Delay);
+                if (rs > 0) return rs;
+
+                if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryInterval);
             }
+
+            ValidWhenSendFailed(span);
 
             return rs;
         }
