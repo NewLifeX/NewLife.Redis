@@ -173,13 +173,13 @@ namespace NewLife.Caching
         /// <typeparam name="T"></typeparam>
         /// <param name="topic">消息队列主题</param>
         /// <returns></returns>
-        public RedisReliableQueue<T> GetReliableQueue<T>(String topic) => new RedisReliableQueue<T>(this, topic);
+        public RedisReliableQueue<T> GetReliableQueue<T>(String topic) => new(this, topic);
 
         /// <summary>获取延迟队列</summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="topic">消息队列主题</param>
         /// <returns></returns>
-        public RedisDelayQueue<T> GetDelayQueue<T>(String topic) => new RedisDelayQueue<T>(this, topic);
+        public RedisDelayQueue<T> GetDelayQueue<T>(String topic) => new(this, topic);
 
         /// <summary>获取栈</summary>
         /// <typeparam name="T"></typeparam>
@@ -197,13 +197,13 @@ namespace NewLife.Caching
         /// <typeparam name="T"></typeparam>
         /// <param name="topic">消息队列主题</param>
         /// <returns></returns>
-        public RedisStream<T> GetStream<T>(String topic) => new RedisStream<T>(this, topic);
+        public RedisStream<T> GetStream<T>(String topic) => new(this, topic);
 
         /// <summary>获取有序集合</summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="key"></param>
         /// <returns></returns>
-        public RedisSortedSet<T> GetSortedSet<T>(String key) => new RedisSortedSet<T>(this, key);
+        public RedisSortedSet<T> GetSortedSet<T>(String key) => new(this, key);
         #endregion
 
         #region 字符串操作

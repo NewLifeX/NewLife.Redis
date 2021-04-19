@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using NewLife.Caching.Common;
 using NewLife.Data;
 
 namespace NewLife.Caching
@@ -50,7 +49,7 @@ namespace NewLife.Caching
                 rs = Execute(rc => rc.Execute<Int32>("LPUSH", Key, val), true);
                 if (rs > 0) return rs;
 
-                if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryInterval);
+                if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
             }
 
             ValidWhenSendFailed(span);
@@ -81,7 +80,7 @@ namespace NewLife.Caching
                 rs = Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
                 if (rs > 0) return rs;
 
-                if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryInterval);
+                if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
             }
 
             ValidWhenSendFailed(span);

@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using NewLife.Caching.Common;
 using NewLife.Log;
 #if !NET40
 using TaskEx = System.Threading.Tasks.Task;
@@ -58,7 +57,7 @@ namespace NewLife.Caching
                 rs = _sort.Add(value, DateTime.Now.ToInt() + delay);
                 if (rs > 0) return rs;
 
-                if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryInterval);
+                if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
             }
 
             ValidWhenSendFailed(span);
@@ -81,7 +80,7 @@ namespace NewLife.Caching
                 rs = _sort.Add(values, DateTime.Now.ToInt() + Delay);
                 if (rs > 0) return rs;
 
-                if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryInterval);
+                if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
             }
 
             ValidWhenSendFailed(span);

@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using NewLife.Caching.Common;
 using NewLife.Caching.Models;
 using NewLife.Log;
 using NewLife.Security;
@@ -131,7 +130,7 @@ namespace NewLife.Caching
                  rs = Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
                 if (rs > 0) return rs;
 
-                if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryInterval);
+                if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
             }
 
             ValidWhenSendFailed(span);
@@ -503,7 +502,7 @@ namespace NewLife.Caching
         #endregion
 
         #region 状态
-        private static readonly RedisQueueStatus _def = new RedisQueueStatus
+        private static readonly RedisQueueStatus _def = new()
         {
             MachineName = Environment.MachineName,
             UserName = Environment.UserName,

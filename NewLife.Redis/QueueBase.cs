@@ -21,7 +21,7 @@ namespace NewLife.Caching
         public Int32 RetryTimesWhenSendFailed { get; set; } = 3;
 
         /// <summary>重试间隔。默认1000ms</summary>
-        public Int32 RetryInterval { get; set; } = 1000;
+        public Int32 RetryIntervalWhenSendFailed { get; set; } = 1000;
 
         /// <summary>消息队列主题</summary>
         public String Topic => Key;

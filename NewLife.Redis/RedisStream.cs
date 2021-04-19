@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using NewLife.Caching.Common;
 using NewLife.Caching.Models;
 using NewLife.Data;
 using NewLife.Log;
@@ -143,7 +142,7 @@ namespace NewLife.Caching
                 rs = Execute(rc => rc.Execute<String>("XADD", args.ToArray()), true);
                 if (!rs.IsNullOrEmpty()) return rs;
            
-                if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryInterval);
+                if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
             }
 
             ValidWhenSendFailed(span);
