@@ -322,5 +322,43 @@ namespace XUnitTest
             Assert.NotNull(ps);
             Assert.Equal(7, ps.Length);
         }
+
+        [Fact]
+        public void EmptyMessagItem()
+        {
+            var key = "stream_empty_item";
+
+            // 删除已有
+            _redis.Remove(key);
+            var s = _redis.GetStream<UserInfo>(key);
+            _redis.SetExpire(key, TimeSpan.FromMinutes(60));
+
+            // 取出个数
+            var count = s.Count;
+            Assert.True(s.IsEmpty);
+            Assert.Equal(0, count);
+
+            // 添加复杂对象
+            var id = s.Add(new UserInfo { Name = "", Age = 36 });
+
+            // 对比个数
+            var count2 = s.Count;
+            Assert.False(s.IsEmpty);
+            Assert.Equal(1, count2);
+
+            // 独立消费
+            var vs1 = s.Read(null, 3);
+            Assert.Null(vs1);
+
+            vs1 = s.Read("0-0", 3);
+            Assert.Equal(1, vs1.Count);
+            Assert.Equal(id, vs1[0].Id);
+
+            // 取出来
+            var vs2 = s.Take(2).ToList();
+            Assert.Equal(1, vs2.Count);
+            Assert.Null(vs2[0].Name);
+            Assert.Equal(36, vs2[0].Age);
+        }
     }
 }

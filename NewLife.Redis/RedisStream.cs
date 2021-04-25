@@ -437,7 +437,7 @@ XREAD count 3 streams stream_key 0-0
                     list.Add(new Message
                     {
                         Id = pkId.ToStr(),
-                        Body = vs4.Select(e => (e as Packet).ToStr()).ToArray(),
+                        Body = vs4.Select(e => (e as Packet)?.ToStr()).ToArray(),
                     });
                 }
             }

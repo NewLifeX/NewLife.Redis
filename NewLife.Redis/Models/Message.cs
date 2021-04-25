@@ -30,7 +30,7 @@ namespace NewLife.Caching.Models
             var entry = Activator.CreateInstance<T>();
             for (var i = 0; i < vs.Length - 1; i += 2)
             {
-                if (properties.TryGetValue(vs[i], out var pi))
+                if (vs[i] != null && properties.TryGetValue(vs[i], out var pi))
                 {
                     pi.SetValue(entry, vs[i + 1].ChangeType(pi.PropertyType), null);
                 }
