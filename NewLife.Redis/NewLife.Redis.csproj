@@ -7,8 +7,8 @@
     <Description>Redis基础操作、消息队列，经过日均100亿次调用量的项目验证</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2021 新生命开发团队</Copyright>
-    <Version>3.9.2021.0419-beta1</Version>
-    <FileVersion>3.9.2021.0419</FileVersion>
+    <Version>3.9.2021.0427-beta2</Version>
+    <FileVersion>3.9.2021.0427</FileVersion>
     <AssemblyVersion>3.9.*</AssemblyVersion>
     <Deterministic>false</Deterministic>
     <OutputPath>..\..\Bin</OutputPath>
@@ -24,7 +24,7 @@
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Redis</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>加强RedisStream；增加Redis统计试用版</PackageReleaseNotes>
+    <PackageReleaseNotes>修正RedisStream不支持属性成员为空的bug</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -58,7 +58,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="8.10.2021.418-beta1" />
+    <PackageReference Include="NewLife.Core" Version="8.10.2021.427-beta1" />
   </ItemGroup>
 
   <ItemGroup>
