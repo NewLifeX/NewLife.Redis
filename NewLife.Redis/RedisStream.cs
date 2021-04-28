@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using NewLife.Caching.Common;
 using NewLife.Caching.Models;
 using NewLife.Data;
 using NewLife.Log;
@@ -141,7 +142,9 @@ namespace NewLife.Caching
             {
                 rs = Execute(rc => rc.Execute<String>("XADD", args.ToArray()), true);
                 if (!rs.IsNullOrEmpty()) return rs;
-           
+
+                span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
+
                 if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
             }
 

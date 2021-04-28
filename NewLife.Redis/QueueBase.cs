@@ -39,12 +39,10 @@ namespace NewLife.Caching
         /// <param name="span"></param>
         protected void ValidWhenSendFailed(ISpan span)
         {
-            if (ThrowOnFailure)
-            {
-                var ex = new RedisException($"发布到队列[{Topic}]失败！");
-                span?.SetError(ex, null);
-                throw ex;
-            }
+            var ex = new RedisException($"发布到队列[{Topic}]失败！");
+            span?.SetError(ex, null);
+
+            if (ThrowOnFailure) throw ex;
         }
         #endregion
     }

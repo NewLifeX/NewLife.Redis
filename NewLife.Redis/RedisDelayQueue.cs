@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using NewLife.Caching.Common;
 using NewLife.Log;
 #if !NET40
 using TaskEx = System.Threading.Tasks.Task;
@@ -57,6 +58,8 @@ namespace NewLife.Caching
                 rs = _sort.Add(value, DateTime.Now.ToInt() + delay);
                 if (rs > 0) return rs;
 
+                span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
+
                 if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
             }
 
@@ -79,6 +82,8 @@ namespace NewLife.Caching
             {
                 rs = _sort.Add(values, DateTime.Now.ToInt() + Delay);
                 if (rs > 0) return rs;
+
+                span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
 
                 if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
             }

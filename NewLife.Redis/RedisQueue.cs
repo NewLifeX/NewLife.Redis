@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using NewLife.Caching.Common;
 using NewLife.Data;
 
 namespace NewLife.Caching
@@ -49,6 +50,8 @@ namespace NewLife.Caching
                 rs = Execute(rc => rc.Execute<Int32>("LPUSH", Key, val), true);
                 if (rs > 0) return rs;
 
+                span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
+
                 if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
             }
 
@@ -79,6 +82,8 @@ namespace NewLife.Caching
                 // 返回插入后的LIST长度。Redis执行命令不会失败，因此正常插入不应该返回0，如果返回了0或者服务，可能是中间代理出了问题
                 rs = Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
                 if (rs > 0) return rs;
+
+                span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
 
                 if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
             }
