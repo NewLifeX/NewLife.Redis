@@ -43,7 +43,7 @@ namespace NewLife.Caching
         /// <summary>是否包含指定键</summary>
         /// <param name="key"></param>
         /// <returns></returns>
-        public Boolean ContainsKey(TKey key) => Execute(r => r.Execute<Boolean>("HEXISTS", Key, key));
+        public Boolean ContainsKey(TKey key) => Execute(r => r.Execute<Int32>("HEXISTS", Key, key)) > 0;
 
         /// <summary>添加</summary>
         /// <param name="key"></param>

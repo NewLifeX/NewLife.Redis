@@ -39,6 +39,8 @@ namespace XUnitTest
             var rs = hash.HMSet(dic);
             Assert.True(rs);
             Assert.Equal(2, hash.Count);
+
+            Assert.True(hash.ContainsKey("aaa"));
         }
 
         [Fact]

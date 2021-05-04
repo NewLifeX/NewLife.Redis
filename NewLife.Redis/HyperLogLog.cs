@@ -65,7 +65,7 @@ namespace NewLife.Caching
             {
                 args.Add(item);
             }
-            return Execute(rc => rc.Execute<Boolean>("PFMERGE", args.ToArray()), true);
+            return Execute(rc => rc.Execute<String>("PFMERGE", args.ToArray()), true) == "OK";
         }
     }
 }

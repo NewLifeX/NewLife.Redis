@@ -473,7 +473,7 @@ namespace NewLife.Caching
         /// <param name="key"></param>
         /// <param name="member"></param>
         /// <returns></returns>
-        public virtual Boolean SISMEMBER<T>(String key, T member) => Execute(key, rc => rc.Execute<Boolean>("SISMEMBER", key, member));
+        public virtual Int32 SISMEMBER<T>(String key, T member) => Execute(key, rc => rc.Execute<Int32>("SISMEMBER", key, member));
 
         /// <summary>将member从source集合移动到destination集合中</summary>
         /// <param name="key"></param>

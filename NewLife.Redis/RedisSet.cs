@@ -37,7 +37,7 @@ namespace NewLife.Caching
         /// <summary>是否包含指定元素</summary>
         /// <param name="item"></param>
         /// <returns></returns>
-        public Boolean Contains(T item) => Execute(r => r.Execute<Boolean>("SISMEMBER", Key, item));
+        public Boolean Contains(T item) => Execute(r => r.Execute<Int32>("SISMEMBER", Key, item)) > 0;
 
         /// <summary>复制到目标数组</summary>
         /// <param name="array"></param>

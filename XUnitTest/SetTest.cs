@@ -38,6 +38,8 @@ namespace XUnitTest
             set.Add("stone4");
             Assert.Equal(4, set.Count);
 
+            Assert.True(set.Contains("stone4"));
+
             // 搜索。这里为了Assert每一项，要排序，因为输出顺序可能不确定
             var dic = set2.Search("*one?", 4).OrderBy(e => e).ToList();
             Assert.Equal(4, dic.Count);

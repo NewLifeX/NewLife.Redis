@@ -503,7 +503,7 @@ XREAD count 3 streams stream_key 0-0
             if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
             if (startId.IsNullOrEmpty()) startId = "0";
 
-            return Execute(rc => rc.Execute<Boolean>("XGROUP", "CREATE", Key, group, startId, "MKSTREAM"), true);
+            return Execute(rc => rc.Execute<String>("XGROUP", "CREATE", Key, group, startId, "MKSTREAM"), true) == "OK";
         }
 
         /// <summary>销毁消费组</summary>
@@ -536,7 +536,7 @@ XREAD count 3 streams stream_key 0-0
             if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
             if (startId.IsNullOrEmpty()) startId = "$";
 
-            return Execute(rc => rc.Execute<Boolean>("XGROUP", "SETID", Key, group, startId), true);
+            return Execute(rc => rc.Execute<String>("XGROUP", "SETID", Key, group, startId), true) == "OK";
         }
 
         /// <summary>消费组消费</summary>

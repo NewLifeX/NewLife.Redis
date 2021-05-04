@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace NewLife.Caching
 {
-    /// <summary>列表结构</summary>
+    /// <summary>列表结构，右边进入</summary>
     /// <typeparam name="T"></typeparam>
     public class RedisList<T> : RedisBase, IList<T>
     {
@@ -204,10 +204,13 @@ namespace NewLife.Caching
         public T[] GetAll() => LRange(0, -1);
 
         /// <summary>修剪一个已存在的列表</summary>
-        /// <param name="start"></param>
-        /// <param name="stop"></param>
+        /// <remarks>
+        /// LTRIM foobar 0 2 将会对存储在 foobar 的列表进行修剪，只保留列表里的前3个元素。
+        /// </remarks>
+        /// <param name="start">由0开始计数，-1 表示列表里的最后一个元素</param>
+        /// <param name="stop">由0开始计数，-1 表示列表里的最后一个元素</param>
         /// <returns></returns>
-        public Boolean LTrim(Int32 start, Int32 stop) => Execute(r => r.Execute<Boolean>("LTRIM", Key, start, stop), true);
+        public Boolean LTrim(Int32 start, Int32 stop) => Execute(r => r.Execute<String>("LTRIM", Key, start, stop), true) == "OK";
 
         /// <summary>从存于 key 的列表里移除前 count 次出现的值为 value 的元素</summary>
         /// <param name="count"></param>

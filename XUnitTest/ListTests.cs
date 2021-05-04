@@ -109,6 +109,13 @@ namespace XUnitTest
             Assert.Equal("12345", list[1]);
             Assert.Equal("新生命团队", list[2]);
             Assert.Equal(3, list.Count);
+
+            // 修剪
+            var rs = list.LTrim(1, 2);
+            Assert.True(rs);
+            Assert.Equal(2, list.Count);
+            Assert.Equal("12345", list[0]);
+            Assert.Equal("新生命团队", list[1]);
         }
 
         [Fact]
