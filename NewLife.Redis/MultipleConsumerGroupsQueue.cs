@@ -14,30 +14,22 @@ namespace NewLife.Caching
         /// <summary>
         /// Redis客户端
         /// </summary>
-        FullRedis _Redis;
+        private FullRedis _Redis;
 
         /// <summary>
         /// 消息列队
         /// </summary>
-        RedisStream<T> _Queue;
+        private RedisStream<T> _Queue;
 
         /// <summary>
         /// 读写超时(默认15000ms)
         /// </summary>
-        public int TimeOut
-        {
-            set;
-            get;
-        } = 15_000;
+        public Int32 TimeOut { set; get; } = 15_000;
 
         /// <summary>
         /// 订阅者名称
         /// </summary>
-        public string SubscribeAppName
-        {
-            private set;
-            get;
-        }
+        public String SubscribeAppName { private set; get; }
 
         /// <summary>
         /// 消费者组名已经存在的Redis错误消息关键词
@@ -47,7 +39,7 @@ namespace NewLife.Caching
         /// <summary>
         /// 列队长度
         /// </summary>
-        public int QueueLen { set; get; } = 2000;
+        public Int32 QueueLen { set; get; } = 1_000_000;
 
 
         /// <summary>
@@ -73,7 +65,7 @@ namespace NewLife.Caching
         /// <param name="port">端口(默认6379)</param>
         /// <param name="password">密码</param>
         /// <param name="db">连接Redis数据库</param>
-        public void Connect(string host, string queueName, int port = 6379, string password = "", int db = 0)
+        public void Connect(String host, String queueName, Int32 port = 6379, String password = "", Int32 db = 0)
         {
             _Redis = new FullRedis($"{host}:{port}", password, db) { Timeout = TimeOut };
             if (_Redis != null)
@@ -92,22 +84,19 @@ namespace NewLife.Caching
         /// 发送消息
         /// </summary>
         /// <param name="data"></param>
-        public void Publish(T data)
-        {
-            _Queue.Add(data);
-        }
+        public void Publish(T data) => _Queue.Add(data);
 
 
         /// <summary>
         /// 独立线程消费
         /// </summary>
-        CancellationTokenSource _Cts;
+        private CancellationTokenSource _Cts;
 
         /// <summary>
         /// 订阅
         /// </summary>
         /// <param name="subscribeAppName">消费者名称</param>
-        public void Subscribe(string subscribeAppName)
+        public void Subscribe(String subscribeAppName)
         {
             SubscribeAppName = subscribeAppName;
             _Cts = new CancellationTokenSource();
@@ -148,16 +137,13 @@ namespace NewLife.Caching
         /// <summary>
         /// 取消订阅
         /// </summary>
-        public void UnSubscribe()
-        {
-            _Cts.Cancel();
-        }
+        public void UnSubscribe() => _Cts.Cancel();
 
         /// <summary>
         /// 获取消费消息
         /// </summary>
         /// <param name="subscribeAppName">订阅APP名称</param>
-        private async Task getSubscribe(string subscribeAppName)
+        private async Task getSubscribe(String subscribeAppName)
         {
             if (_Queue == null)
             {
@@ -224,16 +210,13 @@ namespace NewLife.Caching
         /// 通知订阅者接收到新消息
         /// </summary>
         /// <param name="data"></param>
-        protected void OnReceived(T data)
-        {
-            Received?.Invoke(data);
-        }
+        protected void OnReceived(T data) => Received?.Invoke(data);
 
         /// <summary>
         /// 通知订阅者停止订阅
         /// </summary>
         /// <param name="msg">停止消息</param>
-        public delegate void StopSubscribeHandler(string msg);
+        public delegate void StopSubscribeHandler(String msg);
 
         /// <summary>
         /// 通知订阅者停止订阅
@@ -243,16 +226,13 @@ namespace NewLife.Caching
 
         /// <summary>通知订阅者停止订阅</summary>
         /// <param name="msg">停止消息</param>
-        protected void OnStopSubscribe(string msg)
-        {
-            StopSubscribe?.Invoke(msg);
-        }
+        protected void OnStopSubscribe(String msg) => StopSubscribe?.Invoke(msg);
 
         /// <summary>
         /// 通知订阅者断开连接
         /// </summary>
         /// <param name="msg">停止消息</param>
-        public delegate void DisconnectedHandler(string msg);
+        public delegate void DisconnectedHandler(String msg);
 
         /// <summary>
         /// 通知订阅者断开连接
@@ -264,10 +244,7 @@ namespace NewLife.Caching
         /// 通知订阅者断开连接
         /// </summary>
         /// <param name="msg">停止消息</param>
-        protected void OnDisconnected(string msg)
-        {
-            Disconnected?.Invoke(msg);
-        }
+        protected void OnDisconnected(String msg) => Disconnected?.Invoke(msg);
 
 
         #endregion
