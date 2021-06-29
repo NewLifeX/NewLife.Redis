@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using NewLife.Caching;
+using NewLife.Log;
 using Xunit;
 
 namespace XUnitTest

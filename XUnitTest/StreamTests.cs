@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using NewLife;
 using NewLife.Caching;
+using NewLife.Caching.Models;
 using NewLife.Log;
 using NewLife.Security;
 using NewLife.Serialization;
@@ -25,7 +26,7 @@ namespace XUnitTest
             var file = @"config\redis.config";
             if (File.Exists(file)) config = File.ReadAllText(file.GetFullPath())?.Trim();
             if (config.IsNullOrEmpty()) config = "server=127.0.0.1:6379;db=3";
-            if (!File.Exists(file)) File.WriteAllText(file.GetFullPath(), config);
+            if (!File.Exists(file)) File.WriteAllText(file.EnsureDirectory(true).GetFullPath(), config);
 
             _redis = new FullRedis();
             _redis.Init(config);
@@ -359,6 +360,15 @@ namespace XUnitTest
             Assert.Equal(1, vs2.Count);
             Assert.Null(vs2[0].Name);
             Assert.Equal(36, vs2[0].Age);
+        }
+
+        [Fact]
+        public void PendingInfoTest()
+        {
+            var vs = new Object[] { "0", null, null, new Object[0] };
+
+            var pi = new PendingInfo();
+            pi.Parse(vs);
         }
     }
 }
