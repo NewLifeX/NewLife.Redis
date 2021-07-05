@@ -35,7 +35,7 @@ namespace NewLife.Caching
         /// <summary>基元类型数据添加该key构成集合。默认__data</summary>
         public String PrimitiveKey { get; set; } = "__data";
 
-        /// <summary>最大队列长度。默认100万</summary>
+        /// <summary>最大队列长度。要保留的消息个数，超过则移除较老消息，非精确，实际上略大于该值，默认100万</summary>
         public Int32 MaxLenngth { get; set; } = 1_000_000;
 
         /// <summary>最大重试次数。超过该次数后，消息将被抛弃，默认10次</summary>
