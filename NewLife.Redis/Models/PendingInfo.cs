@@ -29,8 +29,8 @@ namespace NewLife.Caching.Models
             if (vs == null || vs.Length < 3) return;
 
             Count = vs[0].ToInt();
-            StartId = (vs[1] as Packet).ToStr();
-            EndId = (vs[2] as Packet).ToStr();
+            StartId = (vs[1] as Packet)?.ToStr();
+            EndId = (vs[2] as Packet)?.ToStr();
 
             var dic = new Dictionary<String, Int32>();
             if (vs.Length >= 4 && vs[3] is Object[] vs2)
@@ -39,9 +39,12 @@ namespace NewLife.Caching.Models
                 {
                     if (vs3 != null && vs3.Length == 2)
                     {
-                        var consumer = (vs3[0] as Packet).ToStr();
-                        var count = (vs3[1] as Packet).ToStr().ToInt();
-                        dic[consumer] = count;
+                        var consumer = (vs3[0] as Packet)?.ToStr();
+                        if (!consumer.IsNullOrEmpty())
+                        {
+                            var count = (vs3[1] as Packet).ToStr().ToInt();
+                            dic[consumer] = count;
+                        }
                     }
                 }
             }
