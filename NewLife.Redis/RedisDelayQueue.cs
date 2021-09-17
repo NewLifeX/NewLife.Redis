@@ -51,11 +51,12 @@ namespace NewLife.Caching
         {
             using var span = Redis.Tracer?.NewSpan($"redismq:AddDelay:{TraceName}", value);
 
+            var target = DateTime.Now.ToUniversalTime().ToInt() + delay;
             var rs = 0;
             for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
             {
                 // 添加到有序集合的成员数量，不包括已经存在更新分数的成员
-                rs = _sort.Add(value, DateTime.Now.ToInt() + delay);
+                rs = _sort.Add(value, target);
                 if (rs > 0) return rs;
 
                 span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
@@ -77,10 +78,11 @@ namespace NewLife.Caching
 
             using var span = Redis.Tracer?.NewSpan($"redismq:AddDelay:{TraceName}", values);
 
+            var target = DateTime.Now.ToUniversalTime().ToInt() + Delay;
             var rs = 0;
             for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
             {
-                rs = _sort.Add(values, DateTime.Now.ToInt() + Delay);
+                rs = _sort.Add(values, target);
                 if (rs > 0) return rs;
 
                 span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
@@ -110,7 +112,7 @@ namespace NewLife.Caching
 
             while (true)
             {
-                var score = DateTime.Now.ToInt();
+                var score = DateTime.Now.ToUniversalTime().ToInt();
                 var rs = _sort.RangeByScore(0, score, 0, 1);
                 if (rs != null && rs.Length > 0 && TryPop(rs[0])) return rs[0];
 
@@ -137,7 +139,7 @@ namespace NewLife.Caching
 
             while (true)
             {
-                var score = DateTime.Now.ToInt();
+                var score = DateTime.Now.ToUniversalTime().ToInt();
                 var rs = await _sort.RangeByScoreAsync(0, score, 0, 1, cancellationToken);
                 if (rs != null && rs.Length > 0 && TryPop(rs[0])) return rs[0];
 
@@ -165,7 +167,7 @@ namespace NewLife.Caching
 
             //RetryAck();
 
-            var score = DateTime.Now.ToInt();
+            var score = DateTime.Now.ToUniversalTime().ToInt();
             var rs = _sort.RangeByScore(0, score, 0, count);
             if (rs == null || rs.Length == 0) yield break;
 
@@ -225,7 +227,7 @@ namespace NewLife.Caching
                 try
                 {
                     // 异步阻塞消费
-                    var score = DateTime.Now.ToInt();
+                    var score = DateTime.Now.ToUniversalTime().ToInt();
                     var msgs = await _sort.RangeByScoreAsync(0, score, 0, 10, cancellationToken);
                     if (msgs != null && msgs.Length > 0)
                     {
