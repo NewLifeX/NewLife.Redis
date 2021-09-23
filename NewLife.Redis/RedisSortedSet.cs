@@ -27,7 +27,7 @@ namespace NewLife.Caching
         /// <param name="member">元素</param>
         /// <param name="score">分数</param>
         /// <returns>添加到有序集合的成员数量，不包括已经存在更新分数的成员</returns>
-        public Int32 Add(T member, Double score) => Execute(rc => rc.Execute<Int32>("ZADD", Key, score, member), true);
+        public Int32 Add(T member, Double score) => Execute(rc => rc.Execute<String>("ZADD", Key, score, member), true).ToInt(-1);
 
         /// <summary>批量添加，返回添加到集合的成员数量</summary>
         /// <param name="members"></param>
@@ -42,7 +42,7 @@ namespace NewLife.Caching
                 args.Add(score);
                 args.Add(item);
             }
-            return Execute(rc => rc.Execute<Int32>("ZADD", args.ToArray()), true);
+            return Execute(rc => rc.Execute<String>("ZADD", args.ToArray()), true).ToInt(-1);
         }
 
         /// <summary>删除元素</summary>

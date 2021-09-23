@@ -57,7 +57,7 @@ namespace NewLife.Caching
             {
                 // 添加到有序集合的成员数量，不包括已经存在更新分数的成员
                 rs = _sort.Add(value, target);
-                if (rs > 0) return rs;
+                if (rs >= 0) return rs;
 
                 span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
 
