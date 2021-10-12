@@ -67,5 +67,26 @@ namespace XUnitTest
             Assert.Equal("stone2", dic.Skip(1).First().Key);
             Assert.Equal("stone3", dic.Skip(2).First().Key);
         }
+
+        [Fact]
+        public void QuoteTest()
+        {
+            var key = "hash_quote";
+
+            // 删除已有
+            _redis.Remove(key);
+
+            var hash = _redis.GetDictionary<String>(key);
+            Assert.NotNull(hash);
+
+            var org1 = "\"TypeName\":\"集团\"";
+            var org5 = "\"LastUpdateTime\":\"2021-10-12 20:07:03\"";
+            hash["org1"] = org1;
+            hash["org5"] = org5;
+
+            Assert.Equal(org1, hash["org1"]);
+
+            Assert.Equal(org5, hash["org5"]);
+        }
     }
 }
