@@ -54,15 +54,15 @@ namespace NewLife.Caching.Models
                     case "first-entry":
                         if (vs[i + 1] is Object[] fs)
                         {
-                            FirstId = (fs[0] as Packet).ToStr();
-                            FirstValues = (fs[1] as Object[]).Select(e => (e as Packet).ToStr()).ToArray();
+                            if (fs[0] is Packet pk) FirstId = pk.ToStr();
+                            if (fs[1] is Object[] objs) FirstValues = objs.Select(e => (e as Packet).ToStr()).ToArray();
                         }
                         break;
                     case "last-entry":
                         if (vs[i + 1] is Object[] ls)
                         {
-                            LastId = (ls[0] as Packet).ToStr();
-                            LastValues = (ls[1] as Object[]).Select(e => (e as Packet).ToStr()).ToArray();
+                            if (ls[0] is Packet pk) LastId = pk.ToStr();
+                            if (ls[1] is Object[] objs) LastValues = objs.Select(e => (e as Packet).ToStr()).ToArray();
                         }
                         break;
                 }
