@@ -12,7 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
-    <PackageReference Include="NewLife.Core" Version="8.11.2021.1216-beta2" />
+    <PackageReference Include="NewLife.Core" Version="8.11.2021.1225" />
   </ItemGroup>
 
   <ItemGroup>
