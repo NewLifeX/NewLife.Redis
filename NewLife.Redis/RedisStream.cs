@@ -9,9 +9,6 @@ using NewLife.Caching.Models;
 using NewLife.Data;
 using NewLife.Log;
 using NewLife.Serialization;
-#if !NET4
-using TaskEx = System.Threading.Tasks.Task;
-#endif
 
 namespace NewLife.Caching
 {

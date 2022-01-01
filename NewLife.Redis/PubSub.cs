@@ -56,7 +56,6 @@ namespace NewLife.Caching
         ///// <returns></returns>
         //public Int32 Subscribe(params String[] channels) => Execute(rc => rc.Execute<Int32>("SUBSCRIBE", channels), true);
 
-#if !NET40
         /// <summary>订阅大循环</summary>
         /// <param name="onMessage"></param>
         /// <param name="cancellationToken"></param>
@@ -83,7 +82,6 @@ namespace NewLife.Caching
 
             Redis.Pool.Put(client);
         }
-#endif
 
         ///// <summary>退订给定的频道</summary>
         ///// <returns></returns>

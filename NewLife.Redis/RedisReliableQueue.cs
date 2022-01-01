@@ -9,9 +9,6 @@ using NewLife.Caching.Models;
 using NewLife.Log;
 using NewLife.Security;
 using NewLife.Serialization;
-#if !NET40
-using TaskEx = System.Threading.Tasks.Task;
-#endif
 
 namespace NewLife.Caching
 {
@@ -166,9 +163,6 @@ namespace NewLife.Caching
         /// <returns></returns>
         public async Task<T> TakeOneAsync(Int32 timeout = 0, CancellationToken cancellationToken = default)
         {
-#if NET4
-            throw new NotSupportedException();
-#else
             RetryAck();
 
             if (timeout > 0 && Redis.Timeout < timeout * 1000) Redis.Timeout = (timeout + 1) * 1000;
@@ -180,7 +174,6 @@ namespace NewLife.Caching
             if (rs != null) _Status.Consumes++;
 
             return rs;
-#endif
         }
 
         /// <summary>异步消费获取</summary>
@@ -294,7 +287,7 @@ namespace NewLife.Caching
                     if (_delayTask == null || _delayTask.IsCompleted)
                     {
                         _source = new CancellationTokenSource();
-                        _delayTask = TaskEx.Run(() => _delay.TransferAsync(this, null, _source.Token));
+                        _delayTask = Task.Run(() => _delay.TransferAsync(this, null, _source.Token));
                     }
                 }
             }
@@ -345,9 +338,6 @@ namespace NewLife.Caching
         /// <returns></returns>
         public async Task<TResult> ConsumeAsync<TResult>(Func<T, Task<TResult>> func, Int32 timeout = 0)
         {
-#if NET4
-            throw new NotSupportedException();
-#else
             RetryAck();
 
             // 取出消息键
@@ -374,7 +364,6 @@ namespace NewLife.Caching
             Acknowledge(msgId);
 
             return rs;
-#endif
         }
         #endregion
 

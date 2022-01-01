@@ -4,9 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Caching.Common;
 using NewLife.Log;
-#if !NET40
-using TaskEx = System.Threading.Tasks.Task;
-#endif
 
 namespace NewLife.Caching
 {
@@ -146,7 +143,7 @@ namespace NewLife.Caching
                 // 是否需要等待
                 if (timeout <= 0) break;
 
-                await TaskEx.Delay(1000, cancellationToken);
+                await Task.Delay(1000, cancellationToken);
                 timeout--;
             }
 
@@ -247,7 +244,7 @@ namespace NewLife.Caching
                     else
                     {
                         // 没有消息，歇一会
-                        await TaskEx.Delay(TransferInterval * 1000, cancellationToken);
+                        await Task.Delay(TransferInterval * 1000, cancellationToken);
                     }
                 }
                 catch (ThreadAbortException) { break; }

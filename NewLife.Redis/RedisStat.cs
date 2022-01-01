@@ -1,5 +1,4 @@
-﻿#if !NET40
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -112,4 +111,3 @@ namespace NewLife.Caching
         #endregion
     }
 }
-#endif

@@ -125,13 +125,7 @@ namespace NewLife.Caching
 
             }
 
-#if NET40
-            var thread = new Thread(s => getSubscribe(subscribeAppName));
-            thread.Start();
-            
-#else
             Task.Run(() => getSubscribe(subscribeAppName), _Cts.Token);
-#endif
         }
 
         /// <summary>
