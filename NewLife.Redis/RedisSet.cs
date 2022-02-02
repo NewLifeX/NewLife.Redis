@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections;
 using NewLife.Caching.Models;
 using NewLife.Data;
 
@@ -44,7 +41,7 @@ namespace NewLife.Caching
         /// <param name="arrayIndex"></param>
         public void CopyTo(T[] array, Int32 arrayIndex)
         {
-            var count = array.Length - arrayIndex;
+            //var count = array.Length - arrayIndex;
 
             var arr = GetAll();
             arr.CopyTo(array, arrayIndex);
@@ -68,10 +65,7 @@ namespace NewLife.Caching
         /// <returns></returns>
         public Int32 SAdd(params T[] members)
         {
-            var args = new List<Object>
-            {
-                Key
-            };
+            var args = new List<Object> { Key };
             foreach (var item in members)
             {
                 args.Add(item);
@@ -85,10 +79,7 @@ namespace NewLife.Caching
         /// <returns></returns>
         public Int32 SDel(params T[] members)
         {
-            var args = new List<Object>
-            {
-                Key
-            };
+            var args = new List<Object> { Key };
             foreach (var item in members)
             {
                 args.Add(item);
