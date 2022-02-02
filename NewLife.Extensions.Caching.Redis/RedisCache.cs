@@ -10,13 +10,16 @@ namespace NewLife.Extensions.Caching.Redis
     public class RedisCache : IDistributedCache, IDisposable
     {
         #region 属性
-        private readonly RedisCacheOptions _options;
-
-        private readonly FullRedis _redis;
         /// <summary>
         /// Redis对象。可使用完整Redis功能
         /// </summary>
         public FullRedis Redis => _redis;
+
+        /// <summary>刷新时的过期时间。默认24小时</summary>
+        public TimeSpan Expire { get; set; } = TimeSpan.FromHours(24);
+
+        private readonly RedisCacheOptions _options;
+        private readonly FullRedis _redis;
         #endregion
 
         #region 构造
@@ -101,7 +104,7 @@ namespace NewLife.Extensions.Caching.Redis
         /// </summary>
         /// <param name="key"></param>
         /// <exception cref="ArgumentNullException"></exception>
-        public void Refresh(String key) => _redis.SetExpire(key, TimeSpan.FromHours(24));
+        public void Refresh(String key) => _redis.SetExpire(key, Expire);
 
         /// <summary>
         /// 异步刷新
