@@ -100,7 +100,7 @@ namespace NewLife.Caching
 
                         var rs = rds.Increment(key, 1);
                         if (rs < 10)
-                            rds.SetExpire(key, TimeSpan.FromHours(24));
+                            rds.SetExpire(key, TimeSpan.FromDays(30));
                         else
                         {
                             queue.Acknowledge(mqMsg);
@@ -227,7 +227,7 @@ namespace NewLife.Caching
 
                         var rs = rds2.Increment(key, 1);
                         if (rs < 10)
-                            rds2.SetExpire(key, TimeSpan.FromHours(24));
+                            rds2.SetExpire(key, TimeSpan.FromDays(30));
                         else
                         {
                             queue.Acknowledge(mqMsg);
@@ -333,7 +333,7 @@ namespace NewLife.Caching
 
                         var rs = rds2.Increment(key, 1);
                         if (rs < 10)
-                            rds2.SetExpire(key, TimeSpan.FromHours(24));
+                            rds2.SetExpire(key, TimeSpan.FromDays(30));
                         else
                         {
                             queue.Acknowledge(mqMsg);
