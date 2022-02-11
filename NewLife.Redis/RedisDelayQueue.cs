@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using NewLife.Caching.Common;
+﻿using NewLife.Caching.Common;
 using NewLife.Log;
 
 namespace NewLife.Caching
@@ -33,10 +29,7 @@ namespace NewLife.Caching
         /// <summary>实例化延迟队列</summary>
         /// <param name="redis"></param>
         /// <param name="key"></param>
-        public RedisDelayQueue(Redis redis, String key) : base(redis, key)
-        {
-            _sort = new RedisSortedSet<T>(redis, key);
-        }
+        public RedisDelayQueue(Redis redis, String key) : base(redis, key) => _sort = new RedisSortedSet<T>(redis, key);
         #endregion
 
         #region 核心方法
@@ -178,8 +171,7 @@ namespace NewLife.Caching
         /// <summary>争夺消费，只有一个线程能够成功删除，作为抢到的标志。同时备份到Ack队列</summary>
         /// <param name="value"></param>
         /// <returns></returns>
-        private Boolean TryPop(T value)
-        {
+        private Boolean TryPop(T value) =>
             //if (_ack != null)
             //{
             //    // 先备份，再删除。备份到Ack队列
@@ -188,8 +180,7 @@ namespace NewLife.Caching
             //}
 
             // 删除作为抢夺
-            return _sort.Remove(value) > 0;
-        }
+            _sort.Remove(value) > 0;
 
         /// <summary>确认删除</summary>
         /// <param name="keys"></param>
@@ -251,6 +242,8 @@ namespace NewLife.Caching
                 catch (ThreadInterruptedException) { break; }
                 catch (Exception ex)
                 {
+                    if (cancellationToken.IsCancellationRequested) break;
+
                     span?.SetError(ex, null);
 
                     onException?.Invoke(ex);

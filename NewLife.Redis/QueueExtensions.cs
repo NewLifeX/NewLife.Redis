@@ -89,6 +89,8 @@ namespace NewLife.Caching
                 catch (ThreadInterruptedException) { break; }
                 catch (Exception ex)
                 {
+                    if (cancellationToken.IsCancellationRequested) break;
+
                     span?.SetError(ex, null);
 
                     // 消息处理错误超过10次则抛弃
@@ -216,6 +218,8 @@ namespace NewLife.Caching
                 catch (ThreadInterruptedException) { break; }
                 catch (Exception ex)
                 {
+                    if (cancellationToken.IsCancellationRequested) break;
+
                     span?.SetError(ex, null);
 
                     // 消息处理错误超过10次则抛弃
@@ -322,6 +326,8 @@ namespace NewLife.Caching
                 catch (ThreadInterruptedException) { break; }
                 catch (Exception ex)
                 {
+                    if (cancellationToken.IsCancellationRequested) break;
+
                     span?.SetError(ex, null);
 
                     // 消息处理错误超过10次则抛弃
@@ -417,6 +423,8 @@ namespace NewLife.Caching
                 catch (ThreadInterruptedException) { break; }
                 catch (Exception ex)
                 {
+                    if (cancellationToken.IsCancellationRequested) break;
+
                     span?.SetError(ex, null);
                     errLog?.Error("[{0}/{1}]消息处理异常：{2} {3}", topic, mqMsg?.Id, mqMsg?.ToJson(), ex);
                 }
