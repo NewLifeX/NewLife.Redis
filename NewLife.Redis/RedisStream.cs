@@ -230,9 +230,25 @@ namespace NewLife.Caching
             if (timeout > 0 && Redis.Timeout < timeout * 1000) Redis.Timeout = (timeout + 1) * 1000;
 
             var rs = !group.IsNullOrEmpty() ?
-                await ReadGroupAsync(group, Consumer, 1, timeout * 1000, cancellationToken) :
+                await ReadGroupAsync(group, Consumer, 1, timeout * 1000, ">", cancellationToken) :
                 await ReadAsync(StartId, 1, timeout * 1000, cancellationToken);
-            if (rs == null || rs.Count == 0) return null;
+            if (rs == null || rs.Count == 0)
+            {
+                // id为>时，消费从未传递给消费者的消息
+                // id为0时，消费当前消费者的历史待处理消息，包括自己未ACK和从其它消费者抢来的消息
+                // 使用消费组时，如果拿不到消息，则尝试消费抢过来的历史消息
+                if (!group.IsNullOrEmpty())
+                {
+                    rs = await ReadGroupAsync(group, Consumer, 1, timeout * 1000, "0", cancellationToken);
+                    if (rs == null || rs.Count == 0) return null;
+
+                    XTrace.WriteLine("处理历史：{0}", rs[0].Id);
+
+                    return rs[0];
+                }
+
+                return null;
+            }
 
             // 全局消费（非消费组）时，更新编号
             if (group.IsNullOrEmpty()) SetNextId(rs[0].Id);
@@ -561,15 +577,20 @@ XREAD count 3 streams stream_key 0-0
         /// <param name="consumer">消费组</param>
         /// <param name="count">消息个数</param>
         /// <param name="block">阻塞毫秒数，0表示永远</param>
+        /// <param name="id">消息id</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns></returns>
-        public async Task<IList<Message>> ReadGroupAsync(String group, String consumer, Int32 count, Int32 block = -1, CancellationToken cancellationToken = default)
+        public async Task<IList<Message>> ReadGroupAsync(String group, String consumer, Int32 count, Int32 block = -1, String id = null, CancellationToken cancellationToken = default)
         {
             if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
 
+            // id为>时，消费从未传递给消费者的消息
+            // id为0时，消费当前消费者的历史待处理消息，包括自己未ACK和从其它消费者抢来的消息
+            if (id.IsNullOrEmpty()) id = ">";
+
             var rs = count > 0 ?
-                await ExecuteAsync(rc => rc.ExecuteAsync<Object[]>("XREADGROUP", new Object[] { "GROUP", group, consumer, "BLOCK", block, "COUNT", count, "STREAMS", Key, ">" }, cancellationToken), true) :
-                await ExecuteAsync(rc => rc.ExecuteAsync<Object[]>("XREADGROUP", new Object[] { "GROUP", group, consumer, "BLOCK", block, "STREAMS", Key, ">" }, cancellationToken), true);
+                await ExecuteAsync(rc => rc.ExecuteAsync<Object[]>("XREADGROUP", new Object[] { "GROUP", group, consumer, "BLOCK", block, "COUNT", count, "STREAMS", Key, id }, cancellationToken), true) :
+                await ExecuteAsync(rc => rc.ExecuteAsync<Object[]>("XREADGROUP", new Object[] { "GROUP", group, consumer, "BLOCK", block, "STREAMS", Key, id }, cancellationToken), true);
             if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
             {
                 if (vs[1] is Object[] vs2) return Parse(vs2);
