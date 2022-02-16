@@ -242,7 +242,7 @@ namespace NewLife.Caching
                     rs = await ReadGroupAsync(group, Consumer, 1, timeout * 1000, "0", cancellationToken);
                     if (rs == null || rs.Count == 0) return null;
 
-                    XTrace.WriteLine("处理历史：{0}", rs[0].Id);
+                    XTrace.WriteLine("[{0}]处理历史：{1}", Group, rs[0].Id);
 
                     return rs[0];
                 }
@@ -283,20 +283,47 @@ namespace NewLife.Caching
                 var retry = RetryInterval * 1000;
 
                 // 拿到死信，重新放入队列
-                var list = Pending(Group, null, null, 100);
-                foreach (var item in list)
+                String id = null;
+                while (true)
                 {
-                    if (item.Idle > retry)
+                    var list = Pending(Group, id, null, 100);
+                    if (list.Length == 0) break;
+
+                    foreach (var item in list)
                     {
-                        if (item.Delivery >= MaxRetry)
+                        if (item.Idle > retry)
                         {
-                            Delete(item.Id);
-                            XTrace.WriteLine("删除多次失败死信：{0}", item.ToJson());
+                            if (item.Delivery >= MaxRetry)
+                            {
+                                XTrace.WriteLine("[{0}]删除多次失败死信：{1}", Group, item.ToJson());
+                                //Delete(item.Id);
+                                Claim(Group, Consumer, item.Id, retry);
+                                Ack(Group, item.Id);
+                            }
+                            else
+                            {
+                                XTrace.WriteLine("[{0}]定时回滚：{1}", Group, item.ToJson());
+                                Claim(Group, Consumer, item.Id, retry);
+                            }
                         }
-                        else
+                    }
+
+                    // 下一个开始id
+                    id = list[^1].Id;
+                    var p = id.IndexOf('-');
+                    if (p > 0) id = $"{(id[..p].ToLong() + 1)}-0";
+                }
+
+                // 清理历史消费者
+                var consumers = GetConsumers(Group);
+                if (consumers != null)
+                {
+                    foreach (var item in consumers)
+                    {
+                        if (item.Pending == 0 && item.Idle > 3600_000)
                         {
-                            Claim(Group, Consumer, item.Id, retry);
-                            XTrace.WriteLine("定时回滚：{0}", item.ToJson());
+                            XTrace.WriteLine("[{0}]删除空闲消费者：{1}", Group, item.ToJson());
+                            GroupDeleteConsumer(Group, item.Name);
                         }
                     }
                 }
