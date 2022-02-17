@@ -213,6 +213,17 @@ namespace XUnitTest
             var info = s.GetInfo();
             Assert.NotNull(info);
 
+            Assert.True(info.Length > 0);
+            Assert.True(info.RadixTreeKeys > 0);
+            Assert.True(info.RadixTreeNodes > 0);
+            Assert.True(info.Groups > 0);
+            Assert.NotEmpty(info.LastGeneratedId);
+
+            Assert.NotEmpty(info.FirstId);
+            Assert.True(info.FirstValues.Length >= 2);
+            Assert.NotEmpty(info.LastId);
+            Assert.True(info.LastValues.Length >= 2);
+
             XTrace.WriteLine(info.ToJson(true));
 
             // 消费者

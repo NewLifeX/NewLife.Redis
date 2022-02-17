@@ -1,6 +1,4 @@
-﻿using System;
-using System.Linq;
-using NewLife.Data;
+﻿using NewLife.Data;
 
 namespace NewLife.Caching.Models
 {
@@ -44,25 +42,26 @@ namespace NewLife.Caching.Models
             for (var i = 0; i < vs.Length - 1; i += 2)
             {
                 var key = (vs[i] as Packet).ToStr();
+                var value = vs[i + 1];
                 switch (key)
                 {
-                    case "length": Length = vs[i + 1].ToInt(); break;
-                    case "radix-tree-keys": RadixTreeKeys = vs[i + 1].ToInt(); break;
-                    case "radix-tree-nodes": RadixTreeNodes = vs[i + 1].ToInt(); break;
-                    case "last-generated-id": LastGeneratedId = (vs[i + 1] as Packet)?.ToStr(); break;
-                    case "groups": Groups = vs[i + 1].ToInt(); break;
+                    case "length": Length = value.ToInt(); break;
+                    case "radix-tree-keys": RadixTreeKeys = value.ToInt(); break;
+                    case "radix-tree-nodes": RadixTreeNodes = value.ToInt(); break;
+                    case "last-generated-id": LastGeneratedId = (value as Packet)?.ToStr(); break;
+                    case "groups": Groups = value.ToInt(); break;
                     case "first-entry":
-                        if (vs[i + 1] is Object[] fs)
+                        if (value is Object[] fs)
                         {
                             if (fs[0] is Packet pk) FirstId = pk.ToStr();
-                            if (fs[1] is Object[] objs) FirstValues = objs.Select(e => (e as Packet).ToStr()).ToArray();
+                            if (fs[1] is Object[] objs) FirstValues = objs.Select(e => (e as Packet)?.ToStr()).ToArray();
                         }
                         break;
                     case "last-entry":
-                        if (vs[i + 1] is Object[] ls)
+                        if (value is Object[] ls)
                         {
                             if (ls[0] is Packet pk) LastId = pk.ToStr();
-                            if (ls[1] is Object[] objs) LastValues = objs.Select(e => (e as Packet).ToStr()).ToArray();
+                            if (ls[1] is Object[] objs) LastValues = objs.Select(e => (e as Packet)?.ToStr()).ToArray();
                         }
                         break;
                 }
