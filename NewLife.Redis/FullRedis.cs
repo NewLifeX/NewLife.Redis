@@ -286,6 +286,11 @@ namespace NewLife.Caching
         #endregion
 
         #region 常用原生命令
+        /// <summary>获取指定键的数据结构类型，如stream</summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public virtual String TYPE(String key) => Execute(key, rc => rc.Execute<String>("TYPE", key), false);
+
         /// <summary>向列表末尾插入</summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="key"></param>
