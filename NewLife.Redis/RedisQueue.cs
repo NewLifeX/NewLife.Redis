@@ -40,7 +40,7 @@ namespace NewLife.Caching
         /// <returns></returns>
         public Int32 Add(T value)
         {
-            using var span = Redis.Tracer?.NewSpan($"redismq:Add:{TraceName}", value);
+            using var span = Redis.Tracer?.NewSpan($"redismq:{_traceHost}:Add:{TraceName}", value);
 
             var val = AttachTraceId ? Redis.AttachTraceId(value) : value;
             var rs = 0;
@@ -65,7 +65,7 @@ namespace NewLife.Caching
         /// <returns></returns>
         public Int32 Add(params T[] values)
         {
-            using var span = Redis.Tracer?.NewSpan($"redismq:Add:{TraceName}", values);
+            using var span = Redis.Tracer?.NewSpan($"redismq:{_traceHost}:Add:{TraceName}", values);
 
             var args = new List<Object> { Key };
             foreach (var item in values)

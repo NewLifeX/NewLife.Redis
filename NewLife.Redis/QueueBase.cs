@@ -1,6 +1,7 @@
 ﻿using System;
 using NewLife.Caching.Common;
 using NewLife.Log;
+using NewLife.Net;
 
 namespace NewLife.Caching
 {
@@ -25,13 +26,30 @@ namespace NewLife.Caching
 
         /// <summary>消息队列主题</summary>
         public String Topic => Key;
+
+        /// <summary>用于埋点名的主机</summary>
+        protected String _traceHost;
         #endregion
 
         #region 构造
         /// <summary>实例化延迟队列</summary>
         /// <param name="redis"></param>
         /// <param name="key"></param>
-        public QueueBase(Redis redis, String key) : base(redis, key) => TraceName = key;
+        public QueueBase(Redis redis, String key) : base(redis, key)
+        {
+            TraceName = key;
+
+            // 计算埋点主机名
+            _traceHost = redis.Name;
+            if (_traceHost.IsNullOrEmpty() || _traceHost.EqualIgnoreCase("Redis", "FullRedis"))
+            {
+                var svr = redis.Server;
+                var p = svr.IndexOf(',', ';');
+                if (p > 0) svr = svr[..p];
+                var uri = new NetUri(svr);
+                _traceHost = uri.Host ?? uri.Address.ToString();
+            }
+        }
         #endregion
 
         #region 方法
