@@ -44,7 +44,7 @@ namespace NewLife.Caching
             if (_traceHost.IsNullOrEmpty() || _traceHost.EqualIgnoreCase("Redis", "FullRedis"))
             {
                 var svr = redis.Server;
-                var p = svr.IndexOf(',', ';');
+                var p = svr.IndexOfAny(new[] { ',', ';' });
                 if (p > 0) svr = svr[..p];
                 var uri = new NetUri(svr);
                 _traceHost = uri.Host ?? uri.Address.ToString();
