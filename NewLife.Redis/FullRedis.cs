@@ -72,7 +72,7 @@ namespace NewLife.Caching
                     if (mode == "cluster") Cluster = new RedisCluster(this);
                 }
             }
-          
+
             if (config.IsNullOrEmpty()) return;
 
             var dic =
@@ -115,6 +115,67 @@ namespace NewLife.Caching
                 {
                     client.Reset();
                     var rs = func(client);
+
+                    Counter?.StopCount(sw);
+
+                    return rs;
+                }
+                catch (InvalidDataException)
+                {
+                    if (i++ >= Retry) throw;
+                }
+                catch (Exception ex)
+                {
+                    // 处理MOVED和ASK指令
+                    var msg = ex.Message;
+                    if (msg.StartsWithIgnoreCase("MOVED", "ASK"))
+                    {
+                        // 取出地址，找到新的节点
+                        var endpoint = msg.Substring(" ");
+                        if (!endpoint.IsNullOrEmpty())
+                        {
+                            // 使用新的节点
+                            node = Cluster.Map(endpoint, key);
+                            if (node != null) continue;
+                        }
+                    }
+
+                    throw;
+                }
+                finally
+                {
+                    pool.Put(client);
+                }
+            } while (true);
+        }
+
+        /// <summary>重载执行，支持集群</summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="key"></param>
+        /// <param name="func"></param>
+        /// <param name="write">是否写入操作</param>
+        /// <returns></returns>
+        public override async Task<T> ExecuteAsync<T>(String key, Func<RedisClient, Task<T>> func, Boolean write = false)
+        {
+            var node = Cluster?.SelectNode(key);
+
+            // 如果不支持集群，直接返回
+            if (node == null) return await base.ExecuteAsync<T>(key, func, write);
+
+            // 统计性能
+            var sw = Counter?.StartCount();
+
+            var i = 0;
+            do
+            {
+                var pool = node.Pool;
+
+                // 每次重试都需要重新从池里借出连接
+                var client = pool.Get();
+                try
+                {
+                    client.Reset();
+                    var rs = await func(client);
 
                     Counter?.StopCount(sw);
 

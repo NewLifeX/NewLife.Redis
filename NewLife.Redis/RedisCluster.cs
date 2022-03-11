@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Text;
 using NewLife.Caching.Models;
 using NewLife.Log;
 
@@ -36,6 +33,8 @@ namespace NewLife.Caching
         /// <param name="nodes"></param>
         public void ParseNodes(String nodes)
         {
+            XTrace.WriteLine("分析[{0}]集群节点：", Redis?.Name);
+
             var list = new List<Node>();
             foreach (var item in nodes.Split("\r", "\n"))
             {
@@ -66,7 +65,7 @@ namespace NewLife.Caching
                 if (node.Slaves != null)
                 {
                     name += "节点：";
-                    name = new String(' ', name.GetBytes(Encoding.BigEndianUnicode).Length);
+                    name = new String(' ', Encoding.Default.GetByteCount(name));
                     foreach (var item in node.Slaves)
                     {
                         XTrace.WriteLine("{0}{1} {2}", name, item, item.Flags);
@@ -136,10 +135,7 @@ namespace NewLife.Caching
         /// <summary>向集群添加新节点</summary>
         /// <param name="ip"></param>
         /// <param name="port"></param>
-        public virtual void Meet(String ip, Int32 port)
-        {
-            Execute(r => r.Execute("CLUSTER", "MEET", ip, port));
-        }
+        public virtual void Meet(String ip, Int32 port) => Execute(r => r.Execute("CLUSTER", "MEET", ip, port));
 
         /// <summary>向节点增加槽</summary>
         /// <param name="node"></param>
