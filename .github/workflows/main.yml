@@ -1,0 +1,29 @@
+name: .NET
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-publish:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 6.0.x
+        include-prerelease: true
+    - name: Restore dependencies
+      run: dotnet restore NewLife.Redis/NewLife.Redis.csproj
+      run: dotnet restore NewLife.Extensions.Caching.Redis/NewLife.Extensions.Caching.Redis.csproj
+    - name: Build
+      run: dotnet pack --no-restore --version-suffix $(date "+%Y.%m%d-beta%H%M") -o out NewLife.Redis/NewLife.Redis.csproj
+      run: dotnet pack --no-restore --version-suffix $(date "+%Y.%m%d-beta%H%M") -o out NewLife.Extensions.Caching.Redis/NewLife.Extensions.Caching.Redis.csproj
+    - name: Publish
+      run: dotnet nuget push ./out/*.nupkg -SkipDuplicate --source https://nuget.pkg.github.com/NewLifeX/index.json --api-key ${{ github.token }}
+      run: dotnet nuget push ./out/*.nupkg -SkipDuplicate --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.nugetKey }}

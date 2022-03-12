@@ -6,9 +6,11 @@
     <Description>Redis基础操作、消息队列，经过日均100亿次调用量的项目验证。旧版NET45找2021年</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2022 新生命开发团队</Copyright>
-    <Version>4.0.2022.0304</Version>
-    <FileVersion>4.0.2022.0304</FileVersion>
-    <AssemblyVersion>4.0.*</AssemblyVersion>
+    <VersionPrefix>4.0</VersionPrefix>
+    <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
+    <Version>$(VersionPrefix).$(VersionSuffix)</Version>
+    <FileVersion>$(Version)</FileVersion>
+    <AssemblyVersion>$(VersionPrefix).*</AssemblyVersion>
     <Deterministic>false</Deterministic>
     <OutputPath>..\..\Bin</OutputPath>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
