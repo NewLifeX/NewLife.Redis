@@ -2,6 +2,7 @@ name: publish-beta
 
 on:
   push:
+    branches: [ master ]
     tags-ignore: [ v* ]
 
 jobs:
