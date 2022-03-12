@@ -1,9 +1,17 @@
-﻿## 新生命Redis组件
+﻿# NewLife.Redis - Redis客户端组件
+
+![GitHub top language](https://img.shields.io/github/languages/top/newlifex/newlife.redis?logo=github)
+![GitHub License](https://img.shields.io/github/license/newlifex/newlife.redis?logo=github)
+![Nuget Downloads](https://img.shields.io/nuget/dt/newlife.redis?logo=nuget)
+![Nuget](https://img.shields.io/nuget/v/newlife.redis?logo=nuget)
+![Nuget (with prereleases)](https://img.shields.io/nuget/vpre/newlife.redis?label=dev%20nuget&logo=nuget)
+
 `NewLife.Redis` 是一个Redis客户端组件，以高性能处理大数据实时计算为目标。  
 Redis协议基础实现Redis/RedisClient位于[X组件](https://github.com/NewLifeX/X)，本库为扩展实现，主要增加列表结构、哈希结构、队列等高级功能。  
 
 源码： https://github.com/NewLifeX/NewLife.Redis  
 Nuget：NewLife.Redis  
+教程：[https://www.yuque.com/smartstone/nx/redis](https://www.yuque.com/smartstone/nx/redis)  
 
 ---
 ### 特性
