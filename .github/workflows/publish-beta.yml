@@ -1,8 +1,9 @@
-name: BuildAndPushNuget
+name: publish-beta
 
 on:
   push:
     branches: [ master ]
+    tags-ignore: [ v* ]
 
 jobs:
   build-publish:
