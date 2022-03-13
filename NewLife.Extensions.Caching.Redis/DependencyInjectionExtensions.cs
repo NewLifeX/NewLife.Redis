@@ -1,5 +1,4 @@
-﻿#if NETSTANDARD || NETCOREAPP
-using System;
+﻿using System;
 using NewLife;
 using NewLife.Caching;
 
@@ -75,4 +74,3 @@ namespace Microsoft.Extensions.DependencyInjection
         }
     }
 }
-#endif

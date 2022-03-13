@@ -8,10 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\NewLife.Redis\DependencyInjectionExtensions.cs" Link="DependencyInjectionExtensions.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />
     <PackageReference Include="NewLife.Core" Version="9.0.2022.304" />
@@ -23,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\NewLife.Extensions.Caching.Redis\NewLife.Extensions.Caching.Redis.csproj" />
     <ProjectReference Include="..\NewLife.Redis\NewLife.Redis.csproj" />
   </ItemGroup>
 
