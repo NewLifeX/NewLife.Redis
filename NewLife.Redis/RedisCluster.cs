@@ -1,21 +1,33 @@
 ﻿using System.Text;
 using NewLife.Caching.Models;
 using NewLife.Log;
+using NewLife.Threading;
 
 namespace NewLife.Caching
 {
     /// <summary>Redis集群</summary>
-    public class RedisCluster : RedisBase
+    public class RedisCluster : RedisBase, IDisposable
     {
         #region 属性
         /// <summary>集群节点</summary>
         public Node[] Nodes { get; private set; }
+
+        private readonly TimerX _timer;
         #endregion
 
         #region 构造
         /// <summary>实例化</summary>
         /// <param name="redis"></param>
-        public RedisCluster(Redis redis) : base(redis, null) => GetNodes();
+        public RedisCluster(Redis redis) : base(redis, null)
+        {
+            GetNodes();
+
+            // 定时刷新集群节点列表
+            if (Nodes != null) _timer = new TimerX(s => GetNodes(), null, 60_000, 600_000) { Async = true };
+        }
+
+        /// <summary>销毁</summary>
+        public void Dispose() => _timer.TryDispose();
         #endregion
 
         #region 方法

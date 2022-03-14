@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
+﻿using System.Text;
 using NewLife.Caching.Models;
 using NewLife.Data;
 using NewLife.Log;
@@ -48,6 +44,15 @@ namespace NewLife.Caching
         /// <param name="provider">服务提供者，将要解析IConfigProvider</param>
         /// <param name="name">缓存名称，也是配置中心key</param>
         public FullRedis(IServiceProvider provider, String name) : base(provider, name) { }
+
+        /// <summary>销毁</summary>
+        /// <param name="disposing"></param>
+        protected override void Dispose(Boolean disposing)
+        {
+            base.Dispose(disposing);
+
+            Cluster.TryDispose();
+        }
 
         private String _configOld;
         /// <summary>初始化配置</summary>
