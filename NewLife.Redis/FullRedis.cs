@@ -14,10 +14,6 @@ namespace NewLife.Caching
     public class FullRedis : Redis
     {
         #region 静态
-        /// <summary>注册</summary>
-        [Obsolete("=>new FullRedis", true)]
-        public static void Register() { }
-
         /// <summary>根据连接字符串创建</summary>
         /// <param name="config"></param>
         /// <returns></returns>
@@ -53,10 +49,20 @@ namespace NewLife.Caching
         /// <param name="name">缓存名称，也是配置中心key</param>
         public FullRedis(IServiceProvider provider, String name) : base(provider, name) { }
 
+        private String _configOld;
         /// <summary>初始化配置</summary>
         /// <param name="config"></param>
         public override void Init(String config)
         {
+            if (config == _configOld) return;
+
+            // 更换Redis连接字符串时，清空相关信息
+            if (!_configOld.IsNullOrEmpty())
+            {
+                Mode = null;
+                Cluster = null;
+            }
+
             base.Init(config);
 
             // 集群不支持Select
@@ -84,6 +90,8 @@ namespace NewLife.Caching
                 if (dic.TryGetValue("ThrowOnFailure", out var str))
                     ThrowOnFailure = str.ToBoolean();
             }
+
+            _configOld = config;
         }
         #endregion
 
