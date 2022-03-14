@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using NewLife.Reflection;
+﻿using NewLife.Reflection;
+using NewLife.Serialization;
 
 namespace NewLife.Caching.Models
 {
@@ -32,7 +30,13 @@ namespace NewLife.Caching.Models
             {
                 if (vs[i] != null && properties.TryGetValue(vs[i], out var pi))
                 {
-                    pi.SetValue(entry, vs[i + 1].ChangeType(pi.PropertyType), null);
+                    // 复杂类型序列化为json字符串
+                    var val = vs[i + 1];
+                    var v = pi.PropertyType.GetTypeCode() == TypeCode.Object ?
+                        val.ToJsonEntity(pi.PropertyType) :
+                        val.ChangeType(pi.PropertyType);
+
+                    pi.SetValue(entry, v, null);
                 }
             }
             return entry;
