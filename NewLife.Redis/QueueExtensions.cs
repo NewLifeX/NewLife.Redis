@@ -362,6 +362,7 @@ namespace NewLife.Caching
         /// <param name="cancellationToken">取消令牌</param>
         /// <param name="log">日志对象</param>
         /// <returns></returns>
+        [Obsolete]
         public static async Task ConsumeAsync<T>(this RedisStream<String> queue, Func<T, Message, CancellationToken, Task> onMessage, CancellationToken cancellationToken = default, ILog log = null)
         {
             await Task.Yield();
@@ -442,6 +443,7 @@ namespace NewLife.Caching
         /// <param name="cancellationToken">取消令牌</param>
         /// <param name="log">日志对象</param>
         /// <returns></returns>
+        [Obsolete]
         public static async Task ConsumeAsync<T>(this RedisStream<String> queue, Action<T> onMessage, CancellationToken cancellationToken = default, ILog log = null)
         {
             await ConsumeAsync<T>(queue, (m, k, t) => { onMessage(m); return Task.FromResult(0); }, cancellationToken, log);

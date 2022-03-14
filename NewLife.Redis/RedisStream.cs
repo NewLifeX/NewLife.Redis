@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Diagnostics;
 using NewLife.Caching.Common;
 using NewLife.Caching.Models;
 using NewLife.Data;
@@ -38,6 +33,9 @@ namespace NewLife.Caching
         /// <summary>最大重试次数。超过该次数后，消息将被抛弃，默认10次</summary>
         public Int32 MaxRetry { get; set; } = 10;
 
+        /// <summary>异步消费时的阻塞时间。默认15秒</summary>
+        public Int32 BlockTime { get; set; } = 15;
+
         /// <summary>开始编号。独立消费时使用，消费组消费时不使用，默认0-0</summary>
         public String StartId { get; set; } = "0-0";
 
@@ -54,10 +52,7 @@ namespace NewLife.Caching
         /// <summary>实例化队列</summary>
         /// <param name="redis"></param>
         /// <param name="key"></param>
-        public RedisStream(Redis redis, String key) : base(redis, key)
-        {
-            Consumer = $"{Environment.MachineName}@{Process.GetCurrentProcess().Id}";
-        }
+        public RedisStream(Redis redis, String key) : base(redis, key) => Consumer = $"{Environment.MachineName}@{Process.GetCurrentProcess().Id}";
         #endregion
 
         #region 核心生产消费
@@ -186,15 +181,13 @@ namespace NewLife.Caching
             }
         }
 
-        private void SetNextId(String key)
-        {
+        private void SetNextId(String key) =>
             //var lastId = key;
             //var ss = lastId.Split('-');
             //if (ss.Length == 2) StartId = $"{ss[0]}-{ss[1].ToInt() + 1}";
 
             // 后面的ID应该使用前一次报告的项目中最后一项的ID，否则将会丢失所有添加到这中间的条目。
             StartId = key;
-        }
 
         /// <summary>消费获取一个</summary>
         /// <param name="timeout"></param>
@@ -227,11 +220,12 @@ namespace NewLife.Caching
             var group = Group;
             if (!group.IsNullOrEmpty()) RetryAck();
 
-            if (timeout > 0 && Redis.Timeout < timeout * 1000) Redis.Timeout = (timeout + 1) * 1000;
+            var t = timeout * 1000;
+            if (timeout > 0 && Redis.Timeout < t) Redis.Timeout = t + 1000;
 
             var rs = !group.IsNullOrEmpty() ?
-                await ReadGroupAsync(group, Consumer, 1, timeout * 1000, ">", cancellationToken) :
-                await ReadAsync(StartId, 1, timeout * 1000, cancellationToken);
+                await ReadGroupAsync(group, Consumer, 1, t, ">", cancellationToken) :
+                await ReadAsync(StartId, 1, t, cancellationToken);
             if (rs == null || rs.Count == 0)
             {
                 // id为>时，消费从未传递给消费者的消息
@@ -239,7 +233,7 @@ namespace NewLife.Caching
                 // 使用消费组时，如果拿不到消息，则尝试消费抢过来的历史消息
                 if (!group.IsNullOrEmpty())
                 {
-                    rs = await ReadGroupAsync(group, Consumer, 1, timeout * 1000, "0", cancellationToken);
+                    rs = await ReadGroupAsync(group, Consumer, 1, 3_000, "0", cancellationToken);
                     if (rs == null || rs.Count == 0) return null;
 
                     XTrace.WriteLine("[{0}]处理历史：{1}", Group, rs[0].Id);
@@ -675,6 +669,92 @@ XREAD count 3 streams stream_key 0-0
 
             return cs;
         }
+        #endregion
+
+        #region 大循环
+        /// <summary>队列消费大循环，处理消息后自动确认</summary>
+        /// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <param name="log">日志对象</param>
+        /// <returns></returns>
+        public async Task ConsumeAsync(Func<T, Message, CancellationToken, Task> onMessage, CancellationToken cancellationToken = default, ILog log = null)
+        {
+            await Task.Yield();
+
+            // 自动创建消费组
+            SetGroup(Group);
+
+            // 主题
+            var topic = Key;
+            if (topic.IsNullOrEmpty()) topic = GetType().Name;
+
+            var rds = Redis;
+            var tracer = rds.Tracer;
+            var errLog = log ?? XTrace.Log;
+
+            // 超时时间，用于阻塞等待
+            var timeout = BlockTime;
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                // 大循环之前，打断性能追踪调用链
+                DefaultSpan.Current = null;
+
+                Message mqMsg = null;
+                ISpan span = null;
+                try
+                {
+                    // 异步阻塞消费
+                    mqMsg = await TakeMessageAsync(timeout, cancellationToken);
+                    if (mqMsg != null)
+                    {
+                        // 埋点
+                        span = tracer?.NewSpan($"redismq:{rds.Name}:Consume:{topic}", mqMsg);
+                        log?.Info($"[{topic}]消息内容为：{mqMsg}");
+
+                        var bodys = mqMsg.Body;
+                        for (var i = 0; i < bodys.Length; i++)
+                        {
+                            if (bodys[i].EqualIgnoreCase("traceParent") && i + 1 < bodys.Length) span.Detach(bodys[i + 1]);
+                        }
+
+                        // 解码
+                        var msg = mqMsg.GetBody<T>();
+
+                        // 处理消息
+                        await onMessage(msg, mqMsg, cancellationToken);
+
+                        // 确认消息
+                        Acknowledge(mqMsg.Id);
+                    }
+                    else
+                    {
+                        // 没有消息，歇一会
+                        await Task.Delay(1000, cancellationToken);
+                    }
+                }
+                catch (ThreadAbortException) { break; }
+                catch (ThreadInterruptedException) { break; }
+                catch (Exception ex)
+                {
+                    if (cancellationToken.IsCancellationRequested) break;
+
+                    span?.SetError(ex, null);
+                    errLog?.Error("[{0}/{1}]消息处理异常：{2} {3}", topic, mqMsg?.Id, mqMsg?.ToJson(), ex);
+                }
+                finally
+                {
+                    span?.Dispose();
+                }
+            }
+        }
+
+        /// <summary>队列消费大循环，处理消息后自动确认</summary>
+        /// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <param name="log">日志对象</param>
+        /// <returns></returns>
+        public async Task ConsumeAsync(Action<T> onMessage, CancellationToken cancellationToken = default, ILog log = null) => await ConsumeAsync((m, k, t) => { onMessage(m); return Task.FromResult(0); }, cancellationToken, log);
         #endregion
     }
 }
