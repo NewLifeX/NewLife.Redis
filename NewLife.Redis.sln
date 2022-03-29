@@ -15,6 +15,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.github\workflows\publish-beta.yml = .github\workflows\publish-beta.yml
 		.github\workflows\publish.yml = .github\workflows\publish.yml
 		Readme.MD = Readme.MD
+		.github\workflows\test.yml = .github\workflows\test.yml
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{E136AE06-927B-4D10-BB83-B607ED0B1FD4}"
