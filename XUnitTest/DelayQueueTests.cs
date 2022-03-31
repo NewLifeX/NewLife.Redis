@@ -11,6 +11,7 @@ using Xunit;
 
 namespace XUnitTest
 {
+    [TestCaseOrderer("NewLife.UnitTest.DefaultOrderer", "NewLife.UnitTest")]
     public class DelayQueueTests
     {
         private readonly FullRedis _redis;
