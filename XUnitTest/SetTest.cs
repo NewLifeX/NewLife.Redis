@@ -14,9 +14,12 @@ namespace XUnitTest
 
         public SetTest()
         {
-            _redis = new FullRedis("127.0.0.1:6379", null, 2);
+            var config = BasicTest.GetConfig();
+
+            _redis = new FullRedis();
+            _redis.Init(config);
 #if DEBUG
-            _redis.Log = XTrace.Log;
+            _redis.Log = NewLife.Log.XTrace.Log;
 #endif
         }
 

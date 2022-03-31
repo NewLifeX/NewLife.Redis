@@ -1,6 +1,8 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using System.Threading;
+using NewLife;
 using NewLife.Caching;
 using NewLife.Log;
 using Xunit;
@@ -13,10 +15,26 @@ namespace XUnitTest
 
         public BasicTest()
         {
-            _redis = new FullRedis("127.0.0.1:6379", null, 2);
+            var config = BasicTest.GetConfig();
+
+            _redis = new FullRedis();
+            _redis.Init(config);
+            _redis.Db = 2;
+
 #if DEBUG
             _redis.Log = XTrace.Log;
 #endif
+        }
+
+        public static String GetConfig()
+        {
+            var config = "";
+            var file = @"config\redis.config";
+            if (File.Exists(file)) config = File.ReadAllText(file.GetFullPath())?.Trim();
+            if (config.IsNullOrEmpty()) config = "server=127.0.0.1:6379;db=3";
+            if (!File.Exists(file)) File.WriteAllText(file.EnsureDirectory(true).GetFullPath(), config);
+
+            return config;
         }
 
         [Fact(DisplayName = "信息测试", Timeout = 1000)]

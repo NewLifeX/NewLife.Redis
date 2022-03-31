@@ -14,11 +14,14 @@ namespace XUnitTest
 
         public RedisDeferredTests()
         {
-            _redis = new FullRedis("127.0.0.1:6379", null, 5);
-            _redis.Expire = 10 * 60;
+            var config = BasicTest.GetConfig();
+
+            _redis = new FullRedis();
+            _redis.Init(config);
 #if DEBUG
-            _redis.Log = XTrace.Log;
+            _redis.Log = NewLife.Log.XTrace.Log;
 #endif
+            _redis.Expire = 10 * 60;
         }
 
         [Fact]

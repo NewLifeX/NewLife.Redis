@@ -12,11 +12,13 @@ namespace XUnitTest
 
         public GeoTests()
         {
-            var rds = new FullRedis("127.0.0.1:6379", null, 2);
+            var config = BasicTest.GetConfig();
+
+            _redis = new FullRedis();
+            _redis.Init(config);
 #if DEBUG
-            rds.Log = NewLife.Log.XTrace.Log;
+            _redis.Log = NewLife.Log.XTrace.Log;
 #endif
-            _redis = rds;
         }
 
         [Fact]

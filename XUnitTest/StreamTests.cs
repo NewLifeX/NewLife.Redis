@@ -20,13 +20,7 @@ namespace XUnitTest
 
         public StreamTests()
         {
-            //_redis = new FullRedis("127.0.0.1:6379", null, 2);
-
-            var config = "";
-            var file = @"config\redis.config";
-            if (File.Exists(file)) config = File.ReadAllText(file.GetFullPath())?.Trim();
-            if (config.IsNullOrEmpty()) config = "server=127.0.0.1:6379;db=3";
-            if (!File.Exists(file)) File.WriteAllText(file.EnsureDirectory(true).GetFullPath(), config);
+            var config = BasicTest.GetConfig();
 
             _redis = new FullRedis();
             _redis.Init(config);
