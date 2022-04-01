@@ -639,7 +639,7 @@ namespace XUnitTest
 
             // 到期以后
             XTrace.WriteLine("可信队列阻塞消费");
-            var v2 = await queue.TakeOneAsync(3);
+            var v2 = await queue.TakeOneAsync(5);
             sw.Stop();
             Assert.Equal("1234", v2);
             // 延迟队列没有阻塞方法，需要等1秒
