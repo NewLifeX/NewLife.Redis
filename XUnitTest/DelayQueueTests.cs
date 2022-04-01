@@ -369,6 +369,7 @@ namespace XUnitTest
             queue2.ClearAllAck();
 
             // 添加
+            var sw = Stopwatch.StartNew();
             var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
             queue.Delay = 2;
             queue.TransferInterval = 2;
@@ -385,11 +386,10 @@ namespace XUnitTest
 
             // 到期以后
             XTrace.WriteLine("可信队列阻塞消费");
-            var sw = Stopwatch.StartNew();
             var v2 = await queue2.TakeOneAsync(3);
             sw.Stop();
             Assert.Equal("1234", v2);
-            Assert.True(sw.ElapsedMilliseconds <= 3000);
+            Assert.True(sw.ElapsedMilliseconds >= 2000);
             queue2.Acknowledge(v2);
 
             //await task;

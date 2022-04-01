@@ -626,6 +626,7 @@ namespace XUnitTest
             dq.TransferInterval = 2;
 
             // 添加延迟消息
+            var sw = Stopwatch.StartNew();
             var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
             foreach (var item in vs)
             {
@@ -638,12 +639,11 @@ namespace XUnitTest
 
             // 到期以后
             XTrace.WriteLine("可信队列阻塞消费");
-            var sw = Stopwatch.StartNew();
             var v2 = await queue.TakeOneAsync(3);
             sw.Stop();
             Assert.Equal("1234", v2);
             // 延迟队列没有阻塞方法，需要等1秒
-            Assert.True(sw.ElapsedMilliseconds <= 2000 + 1000);
+            Assert.True(sw.ElapsedMilliseconds >= 2000);
             queue.Acknowledge(v2);
         }
 
