@@ -1,6 +1,9 @@
 name: publish
 
-on: workflow_dispatch
+on:
+  push:
+    tags: [ v* ]
+  workflow_dispatch:
 
 jobs:
   build-publish:

@@ -5,6 +5,7 @@ on:
     branches: [ '*' ]
   pull_request:
     branches: [ '*' ]
+  workflow_dispatch:
 
 jobs:
   build-publish:
@@ -21,7 +22,7 @@ jobs:
       run: |
         dotnet build -c Release
     - name: Redis Server
-      uses: supercharge/redis-github-action@1.4.0
+      uses: nnhy/redis-github-action@v1.0
     - name: Test
       run: |
         dotnet test -c Release XUnitTest/XUnitTest.csproj
