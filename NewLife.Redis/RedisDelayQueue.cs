@@ -39,7 +39,7 @@ namespace NewLife.Caching
         /// <returns></returns>
         public Int32 Add(T value, Int32 delay)
         {
-            using var span = Redis.Tracer?.NewSpan($"redismq:{_traceHost}:Add:{TraceName}", value);
+            using var span = Redis.Tracer?.NewSpan($"redismq:{TraceName}:Add", value);
 
             var target = DateTime.Now.ToUniversalTime().ToInt() + delay;
             var rs = 0;
@@ -66,7 +66,7 @@ namespace NewLife.Caching
         {
             if (values == null || values.Length == 0) return 0;
 
-            using var span = Redis.Tracer?.NewSpan($"redismq:{_traceHost}:Add:{TraceName}", values);
+            using var span = Redis.Tracer?.NewSpan($"redismq:{TraceName}:Add", values);
 
             var target = DateTime.Now.ToUniversalTime().ToInt() + Delay;
             var rs = 0;
@@ -220,7 +220,7 @@ namespace NewLife.Caching
                     if (msgs != null && msgs.Length > 0)
                     {
                         // 删除消息后直接进入目标队列，无需进入Ack
-                        span = tracer?.NewSpan($"redismq:{_traceHost}:Transfer:{TraceName}", msgs);
+                        span = tracer?.NewSpan($"redismq:{TraceName}:Transfer", msgs);
 
                         // 逐个删除，多线程争夺可能失败
                         var list = new List<T>();

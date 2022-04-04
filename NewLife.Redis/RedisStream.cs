@@ -85,7 +85,7 @@ namespace NewLife.Caching
         {
             if (value == null) throw new ArgumentNullException(nameof(value));
 
-            using var span = Redis.Tracer?.NewSpan($"redismq:{_traceHost}:Add:{TraceName}", value);
+            using var span = Redis.Tracer?.NewSpan($"redismq:{TraceName}:Add", value);
 
             // 自动修剪超长部分，每1000次生产，修剪一次
             if (_count <= 0) _count = Count;
@@ -709,7 +709,7 @@ XREAD count 3 streams stream_key 0-0
                     if (mqMsg != null)
                     {
                         // 埋点
-                        span = tracer?.NewSpan($"redismq:{rds.Name}:Consume:{topic}", mqMsg);
+                        span = tracer?.NewSpan($"redismq:{topic}:Consume", mqMsg);
                         log?.Info($"[{topic}]消息内容为：{mqMsg}");
 
                         var bodys = mqMsg.Body;

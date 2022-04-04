@@ -27,6 +27,7 @@ namespace NewLife.Caching
         /// <summary>批处理事件</summary>
         public EventHandler<BatchEventArgs> Process;
 
+        private FullRedis _redis;
         private readonly RedisSet<String> _set;
         private TimerX _timer;
         #endregion
@@ -37,6 +38,7 @@ namespace NewLife.Caching
         /// <param name="name"></param>
         public RedisDeferred(FullRedis redis, String name)
         {
+            _redis = redis;
             Name = name;
 
             _set = redis.GetSet<String>(name) as RedisSet<String>;
@@ -90,7 +92,7 @@ namespace NewLife.Caching
                 var keys = _set.Pop(BatchSize);
                 if (keys != null && keys.Length > 0)
                 {
-                    using var span = _set.Redis.Tracer?.NewSpan("redis:Deferred", $"Name={Name} keys={keys.Join()}");
+                    using var span = _set.Redis.Tracer?.NewSpan($"redis:{_redis.Name}:Deferred", $"Name={Name} keys={keys.Join()}");
                     try
                     {
                         OnProcess(keys);

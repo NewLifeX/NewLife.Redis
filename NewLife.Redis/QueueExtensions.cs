@@ -54,7 +54,7 @@ namespace NewLife.Caching
                     if (mqMsg != null)
                     {
                         // 埋点
-                        span = tracer?.NewSpan($"redismq:{rds.Name}:Consume:{topic}", mqMsg);
+                        span = tracer?.NewSpan($"redismq:{topic}:Consume", mqMsg);
                         log?.Info($"[{topic}]消息内容为：{mqMsg}");
 
                         // 解码
@@ -183,7 +183,7 @@ namespace NewLife.Caching
                     if (mqMsg != null)
                     {
                         // 埋点
-                        span = tracer?.NewSpan($"redismq:{rds.Name}:Consume:{topic}", mqMsg);
+                        span = tracer?.NewSpan($"redismq:{topic}:Consume", mqMsg);
                         log?.Info($"[{topic}]消息内容为：{mqMsg}");
 
                         // 解码
@@ -307,7 +307,7 @@ namespace NewLife.Caching
                     if (mqMsg != null)
                     {
                         // 埋点
-                        span = tracer?.NewSpan($"redismq:{rds.Name}:Consume:{topic}", mqMsg);
+                        span = tracer?.NewSpan($"redismq:{topic}:Consume", mqMsg);
                         log?.Info($"[{topic}]消息内容为：{mqMsg}");
 
                         // 处理消息
@@ -396,7 +396,7 @@ namespace NewLife.Caching
                     if (mqMsg != null)
                     {
                         // 埋点
-                        span = tracer?.NewSpan($"redismq:{rds.Name}:Consume:{topic}", mqMsg);
+                        span = tracer?.NewSpan($"redismq:{topic}:Consume", mqMsg);
                         log?.Info($"[{topic}]消息内容为：{mqMsg}");
 
                         var bodys = mqMsg.Body;
