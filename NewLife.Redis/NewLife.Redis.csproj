@@ -7,7 +7,7 @@
     <Description>Redis基础操作、消息队列，经过日均100亿次调用量的项目验证。旧版NET45找2021年</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2022 新生命开发团队</Copyright>
-    <VersionPrefix>4.0</VersionPrefix>
+    <VersionPrefix>4.1</VersionPrefix>
     <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
     <Version>$(VersionPrefix).$(VersionSuffix)</Version>
     <FileVersion>$(Version)</FileVersion>
@@ -29,7 +29,6 @@
     <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
     <PackageReleaseNotes>这是NETSTANDARD2.1起步的主力版本，旧版NET40/NET45/NETSTANDARD2.0请找2021.1225，源码分支net40_45_std20。</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
@@ -44,7 +43,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="9.0.2022.415-beta0444" />
+    <PackageReference Include="NewLife.Core" Version="9.1.2022.501" />
   </ItemGroup>
 
   <ItemGroup>
