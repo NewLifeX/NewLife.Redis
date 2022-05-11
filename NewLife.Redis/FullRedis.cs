@@ -78,19 +78,7 @@ namespace NewLife.Caching
 
             base.Init(config);
 
-            // 集群不支持Select
-            if (Db == 0)
-            {
-                // 访问一次info信息，解析工作模式，以判断是否集群
-                var info = Info;
-                if (info != null)
-                {
-                    if (info.TryGetValue("redis_mode", out var mode)) Mode = mode;
-
-                    // 集群模式初始化节点
-                    if (mode == "cluster") Cluster = new RedisCluster(this);
-                }
-            }
+            _initCluster = false;
 
             if (config.IsNullOrEmpty()) return;
 
@@ -109,6 +97,28 @@ namespace NewLife.Caching
         #endregion
 
         #region 方法
+        private Boolean _initCluster;
+        private void InitCluster()
+        {
+            if (_initCluster) return;
+
+            // 集群不支持Select
+            if (Db == 0)
+            {
+                // 访问一次info信息，解析工作模式，以判断是否集群
+                var info = Info;
+                if (info != null)
+                {
+                    if (info.TryGetValue("redis_mode", out var mode)) Mode = mode;
+
+                    // 集群模式初始化节点
+                    if (mode == "cluster") Cluster = new RedisCluster(this);
+                }
+            }
+
+            _initCluster = true;
+        }
+
         /// <summary>重载执行，支持集群</summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="key"></param>
@@ -117,6 +127,7 @@ namespace NewLife.Caching
         /// <returns></returns>
         public override T Execute<T>(String key, Func<RedisClient, T> func, Boolean write = false)
         {
+            InitCluster();
             var node = Cluster?.SelectNode(key);
 
             // 如果不支持集群，直接返回
@@ -178,6 +189,7 @@ namespace NewLife.Caching
         /// <returns></returns>
         public override async Task<T> ExecuteAsync<T>(String key, Func<RedisClient, Task<T>> func, Boolean write = false)
         {
+            InitCluster();
             var node = Cluster?.SelectNode(key);
 
             // 如果不支持集群，直接返回
