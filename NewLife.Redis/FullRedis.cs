@@ -101,6 +101,7 @@ namespace NewLife.Caching
         private void InitCluster()
         {
             if (_initCluster) return;
+            _initCluster = true;
 
             // 集群不支持Select
             if (Db == 0)
@@ -115,8 +116,6 @@ namespace NewLife.Caching
                     if (mode == "cluster") Cluster = new RedisCluster(this);
                 }
             }
-
-            _initCluster = true;
         }
 
         /// <summary>重载执行，支持集群</summary>

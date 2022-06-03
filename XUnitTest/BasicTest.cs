@@ -89,5 +89,13 @@ namespace XUnitTest
             //var ss3 = ic.Search("ReliableQueue:Status:*", 100).ToArray();
             //Assert.True(ss3.Length > 0);
         }
+
+        [Fact]
+        public void GetInfo()
+        {
+            var rds = _redis.CreateSub(0);
+            var inf = rds.GetInfo(true);
+            Assert.NotNull(inf);
+        }
     }
 }
