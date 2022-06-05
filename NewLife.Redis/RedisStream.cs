@@ -85,17 +85,28 @@ namespace NewLife.Caching
         {
             if (value == null) throw new ArgumentNullException(nameof(value));
 
-            using var span = Redis.Tracer?.NewSpan($"redismq:{TraceName}:Add", value);
-
             // 自动修剪超长部分，每1000次生产，修剪一次
             if (_count <= 0) _count = Count;
             Interlocked.Increment(ref _count);
 
-            var args = new List<Object> { Key };
+            var trim = false;
             if (MaxLenngth > 0 && _count % 1000 == 0)
             {
                 _count = Count + 1;
 
+                trim = true;
+            }
+
+            return AddInternal(value, msgId, trim, true);
+        }
+
+        private String AddInternal(T value, String msgId, Boolean trim, Boolean retryOnFailed)
+        {
+            using var span = Redis.Tracer?.NewSpan($"redismq:{TraceName}:Add", value);
+
+            var args = new List<Object> { Key };
+            if (trim)
+            {
                 args.Add("maxlen");
                 args.Add("~");
                 args.Add(MaxLenngth);
@@ -133,7 +144,7 @@ namespace NewLife.Caching
             for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
             {
                 rs = Execute(rc => rc.Execute<String>("XADD", args.ToArray()), true);
-                if (!rs.IsNullOrEmpty()) return rs;
+                if (!retryOnFailed || !rs.IsNullOrEmpty()) return rs;
 
                 span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
 
@@ -152,10 +163,30 @@ namespace NewLife.Caching
         {
             if (values == null) throw new ArgumentNullException(nameof(values));
 
+            // 自动修剪超长部分，每1000次生产，修剪一次
+            if (_count <= 0) _count = Count;
+
+            var trim = false;
+            if (MaxLenngth > 0 && _count > 0 && _count % 1000 == 0)
+            {
+                _count = Count + 1;
+
+                trim = true;
+            }
+
+            // 开启管道
+            var rds = Redis;
+            rds.StartPipeline();
+
             foreach (var item in values)
             {
-                Add(item);
+                Interlocked.Increment(ref _count);
+
+                AddInternal(item, null, trim, false);
+                trim = false;
             }
+
+            rds.StopPipeline(true);
 
             return values.Length;
         }
