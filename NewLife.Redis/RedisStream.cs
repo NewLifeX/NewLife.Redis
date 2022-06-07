@@ -163,6 +163,16 @@ namespace NewLife.Caching
         {
             if (values == null) throw new ArgumentNullException(nameof(values));
 
+            // 量少时直接插入，而不用管道
+            if (values.Length <= 2)
+            {
+                for (var i = 0; i < values.Length; i++)
+                {
+                    Add(values[i]);
+                }
+                return values.Length;
+            }
+
             // 自动修剪超长部分，每1000次生产，修剪一次
             if (_count <= 0) _count = Count;
 
