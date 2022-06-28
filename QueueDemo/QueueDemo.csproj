@@ -7,6 +7,8 @@
     <Deterministic>false</Deterministic>
     <OutputPath>..\Bin\QueueDemo</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>

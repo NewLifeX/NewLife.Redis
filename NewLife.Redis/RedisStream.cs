@@ -716,9 +716,8 @@ XREAD count 3 streams stream_key 0-0
         /// <summary>队列消费大循环，处理消息后自动确认</summary>
         /// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
         /// <param name="cancellationToken">取消令牌</param>
-        /// <param name="log">日志对象</param>
         /// <returns></returns>
-        public async Task ConsumeAsync(Func<T, Message, CancellationToken, Task> onMessage, CancellationToken cancellationToken = default, ILog log = null)
+        public async Task ConsumeAsync(Func<T, Message, CancellationToken, Task> onMessage, CancellationToken cancellationToken = default)
         {
             await Task.Yield();
 
@@ -731,7 +730,6 @@ XREAD count 3 streams stream_key 0-0
 
             var rds = Redis;
             var tracer = rds.Tracer;
-            var errLog = log ?? XTrace.Log;
 
             // 超时时间，用于阻塞等待
             var timeout = BlockTime;
@@ -751,7 +749,6 @@ XREAD count 3 streams stream_key 0-0
                     {
                         // 埋点
                         span = tracer?.NewSpan($"redismq:{topic}:Consume", mqMsg);
-                        log?.Info($"[{topic}]消息内容为：{mqMsg}");
 
                         var bodys = mqMsg.Body;
                         for (var i = 0; i < bodys.Length; i++)
@@ -781,7 +778,7 @@ XREAD count 3 streams stream_key 0-0
                     if (cancellationToken.IsCancellationRequested) break;
 
                     span?.SetError(ex, null);
-                    errLog?.Error("[{0}/{1}]消息处理异常：{2} {3}", topic, mqMsg?.Id, mqMsg?.ToJson(), ex);
+                    XTrace.Log?.Error("[{0}/{1}]消息处理异常：{2} {3}", topic, mqMsg?.Id, mqMsg?.ToJson(), ex);
                 }
                 finally
                 {
@@ -793,9 +790,8 @@ XREAD count 3 streams stream_key 0-0
         /// <summary>队列消费大循环，处理消息后自动确认</summary>
         /// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
         /// <param name="cancellationToken">取消令牌</param>
-        /// <param name="log">日志对象</param>
         /// <returns></returns>
-        public async Task ConsumeAsync(Action<T> onMessage, CancellationToken cancellationToken = default, ILog log = null) => await ConsumeAsync((m, k, t) => { onMessage(m); return Task.FromResult(0); }, cancellationToken, log);
+        public async Task ConsumeAsync(Action<T> onMessage, CancellationToken cancellationToken = default) => await ConsumeAsync((m, k, t) => { onMessage(m); return Task.FromResult(0); }, cancellationToken);
         #endregion
     }
 }

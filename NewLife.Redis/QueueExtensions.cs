@@ -355,99 +355,99 @@ namespace NewLife.Caching
             }
         }
 
-        /// <summary>队列消费大循环，处理消息后自动确认</summary>
-        /// <typeparam name="T">消息类型</typeparam>
-        /// <param name="queue">队列</param>
-        /// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <param name="log">日志对象</param>
-        /// <returns></returns>
-        [Obsolete]
-        public static async Task ConsumeAsync<T>(this RedisStream<String> queue, Func<T, Message, CancellationToken, Task> onMessage, CancellationToken cancellationToken = default, ILog log = null)
-        {
-            await Task.Yield();
+        ///// <summary>队列消费大循环，处理消息后自动确认</summary>
+        ///// <typeparam name="T">消息类型</typeparam>
+        ///// <param name="queue">队列</param>
+        ///// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
+        ///// <param name="cancellationToken">取消令牌</param>
+        ///// <param name="log">日志对象</param>
+        ///// <returns></returns>
+        //[Obsolete]
+        //public static async Task ConsumeAsync<T>(this RedisStream<String> queue, Func<T, Message, CancellationToken, Task> onMessage, CancellationToken cancellationToken = default, ILog log = null)
+        //{
+        //    await Task.Yield();
 
-            // 大循环之前，打断性能追踪调用链
-            DefaultSpan.Current = null;
+        //    // 大循环之前，打断性能追踪调用链
+        //    DefaultSpan.Current = null;
 
-            // 自动创建消费组
-            var gis = queue.GetGroups();
-            if (gis == null || !queue.Group.IsNullOrEmpty() && !gis.Any(e => e.Name.EqualIgnoreCase(queue.Group))) queue.GroupCreate(queue.Group);
+        //    // 自动创建消费组
+        //    var gis = queue.GetGroups();
+        //    if (gis == null || !queue.Group.IsNullOrEmpty() && !gis.Any(e => e.Name.EqualIgnoreCase(queue.Group))) queue.GroupCreate(queue.Group);
 
-            // 主题
-            var topic = queue.Key;
-            if (topic.IsNullOrEmpty()) topic = queue.GetType().Name;
+        //    // 主题
+        //    var topic = queue.Key;
+        //    if (topic.IsNullOrEmpty()) topic = queue.GetType().Name;
 
-            var rds = queue.Redis;
-            var tracer = rds.Tracer;
-            var errLog = log ?? XTrace.Log;
+        //    var rds = queue.Redis;
+        //    var tracer = rds.Tracer;
+        //    var errLog = log ?? XTrace.Log;
 
-            // 超时时间，用于阻塞等待
-            var timeout = rds.Timeout / 1000 - 1;
+        //    // 超时时间，用于阻塞等待
+        //    var timeout = rds.Timeout / 1000 - 1;
 
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                Message mqMsg = null;
-                ISpan span = null;
-                try
-                {
-                    // 异步阻塞消费
-                    mqMsg = await queue.TakeMessageAsync(timeout, cancellationToken);
-                    if (mqMsg != null)
-                    {
-                        // 埋点
-                        span = tracer?.NewSpan($"redismq:{topic}:Consume", mqMsg);
-                        log?.Info($"[{topic}]消息内容为：{mqMsg}");
+        //    while (!cancellationToken.IsCancellationRequested)
+        //    {
+        //        Message mqMsg = null;
+        //        ISpan span = null;
+        //        try
+        //        {
+        //            // 异步阻塞消费
+        //            mqMsg = await queue.TakeMessageAsync(timeout, cancellationToken);
+        //            if (mqMsg != null)
+        //            {
+        //                // 埋点
+        //                span = tracer?.NewSpan($"redismq:{topic}:Consume", mqMsg);
+        //                log?.Info($"[{topic}]消息内容为：{mqMsg}");
 
-                        var bodys = mqMsg.Body;
-                        for (var i = 0; i < bodys.Length; i++)
-                        {
-                            if (bodys[i].EqualIgnoreCase("traceParent") && i + 1 < bodys.Length) span.Detach(bodys[i + 1]);
-                        }
+        //                var bodys = mqMsg.Body;
+        //                for (var i = 0; i < bodys.Length; i++)
+        //                {
+        //                    if (bodys[i].EqualIgnoreCase("traceParent") && i + 1 < bodys.Length) span.Detach(bodys[i + 1]);
+        //                }
 
-                        // 解码
-                        var msg = mqMsg.GetBody<T>();
+        //                // 解码
+        //                var msg = mqMsg.GetBody<T>();
 
-                        // 处理消息
-                        await onMessage(msg, mqMsg, cancellationToken);
+        //                // 处理消息
+        //                await onMessage(msg, mqMsg, cancellationToken);
 
-                        // 确认消息
-                        queue.Acknowledge(mqMsg.Id);
-                    }
-                    else
-                    {
-                        // 没有消息，歇一会
-                        await Task.Delay(1000, cancellationToken);
-                    }
-                }
-                catch (ThreadAbortException) { break; }
-                catch (ThreadInterruptedException) { break; }
-                catch (Exception ex)
-                {
-                    if (cancellationToken.IsCancellationRequested) break;
+        //                // 确认消息
+        //                queue.Acknowledge(mqMsg.Id);
+        //            }
+        //            else
+        //            {
+        //                // 没有消息，歇一会
+        //                await Task.Delay(1000, cancellationToken);
+        //            }
+        //        }
+        //        catch (ThreadAbortException) { break; }
+        //        catch (ThreadInterruptedException) { break; }
+        //        catch (Exception ex)
+        //        {
+        //            if (cancellationToken.IsCancellationRequested) break;
 
-                    span?.SetError(ex, null);
-                    errLog?.Error("[{0}/{1}]消息处理异常：{2} {3}", topic, mqMsg?.Id, mqMsg?.ToJson(), ex);
-                }
-                finally
-                {
-                    span?.Dispose();
-                }
-            }
-        }
+        //            span?.SetError(ex, null);
+        //            errLog?.Error("[{0}/{1}]消息处理异常：{2} {3}", topic, mqMsg?.Id, mqMsg?.ToJson(), ex);
+        //        }
+        //        finally
+        //        {
+        //            span?.Dispose();
+        //        }
+        //    }
+        //}
 
-        /// <summary>队列消费大循环，处理消息后自动确认</summary>
-        /// <typeparam name="T">消息类型</typeparam>
-        /// <param name="queue">队列</param>
-        /// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <param name="log">日志对象</param>
-        /// <returns></returns>
-        [Obsolete]
-        public static async Task ConsumeAsync<T>(this RedisStream<String> queue, Action<T> onMessage, CancellationToken cancellationToken = default, ILog log = null)
-        {
-            await ConsumeAsync<T>(queue, (m, k, t) => { onMessage(m); return Task.FromResult(0); }, cancellationToken, log);
-        }
+        ///// <summary>队列消费大循环，处理消息后自动确认</summary>
+        ///// <typeparam name="T">消息类型</typeparam>
+        ///// <param name="queue">队列</param>
+        ///// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
+        ///// <param name="cancellationToken">取消令牌</param>
+        ///// <param name="log">日志对象</param>
+        ///// <returns></returns>
+        //[Obsolete]
+        //public static async Task ConsumeAsync<T>(this RedisStream<String> queue, Action<T> onMessage, CancellationToken cancellationToken = default, ILog log = null)
+        //{
+        //    await ConsumeAsync<T>(queue, (m, k, t) => { onMessage(m); return Task.FromResult(0); }, cancellationToken, log);
+        //}
         #endregion
     }
 }

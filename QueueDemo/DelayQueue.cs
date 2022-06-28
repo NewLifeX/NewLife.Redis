@@ -20,6 +20,7 @@ namespace QueueDemo
             // 发布消息
             Public(redis, topic);
 
+            Thread.Sleep(1500);
             source.Cancel();
         }
 
