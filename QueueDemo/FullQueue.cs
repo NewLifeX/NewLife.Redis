@@ -55,30 +55,4 @@ class FullQueue
 
         return Task.CompletedTask;
     }
-
-    //private static async Task ConsumeAsync(FullRedis redis, String topic, CancellationToken token)
-    //{
-    //    var queue = redis.GetStream<String>(topic);
-    //    queue.Group = "test";
-    //    queue.GroupCreate(queue.Group);
-
-    //    while (!token.IsCancellationRequested)
-    //    {
-    //        try
-    //        {
-    //            var mqMsg = await queue.TakeMessageAsync(10);
-    //            if (mqMsg != null)
-    //            {
-    //                var msg = mqMsg.GetBody<Area>();
-    //                XTrace.WriteLine("Consume {0} {1}", msg.Code, msg.Name);
-
-    //                queue.Acknowledge(mqMsg.Id);
-    //            }
-    //        }
-    //        catch (Exception ex)
-    //        {
-    //            XTrace.WriteException(ex);
-    //        }
-    //    }
-    //}
 }

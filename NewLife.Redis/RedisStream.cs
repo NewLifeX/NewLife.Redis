@@ -45,6 +45,13 @@ namespace NewLife.Caching
         /// <summary>消费者</summary>
         public String Consumer { get; set; }
 
+        /// <summary>首次消费时的消费策略</summary>
+        /// <remarks>
+        /// 默认值false，表示从头部开始消费，等同于RocketMQ/Java版的CONSUME_FROM_FIRST_OFFSET
+        /// 一个新的订阅组第一次启动从队列的最前位置开始消费，后续再启动接着上次消费的进度开始消费。
+        /// </remarks>
+        public Boolean FromLastOffset { get; set; }
+
         private Int32 _count;
         #endregion
 
@@ -271,8 +278,10 @@ namespace NewLife.Caching
             var t = timeout * 1000;
             if (timeout > 0 && Redis.Timeout < t) Redis.Timeout = t + 1000;
 
+            var id = FromLastOffset ? "$" : ">";
+
             var rs = !group.IsNullOrEmpty() ?
-                await ReadGroupAsync(group, Consumer, count, t, ">", cancellationToken) :
+                await ReadGroupAsync(group, Consumer, count, t, id, cancellationToken) :
                 await ReadAsync(StartId, count, t, cancellationToken);
             if (rs == null || rs.Count == 0)
             {
@@ -631,9 +640,10 @@ XREAD count 3 streams stream_key 0-0
         {
             if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
 
+            var id = FromLastOffset ? "$" : ">";
             var rs = count > 0 ?
-                Execute(rc => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "COUNT", count, "STREAMS", Key, ">"), true) :
-                Execute(rc => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "STREAMS", Key, ">"), true);
+                Execute(rc => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "COUNT", count, "STREAMS", Key, id), true) :
+                Execute(rc => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "STREAMS", Key, id), true);
             if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
             {
                 if (vs[1] is Object[] vs2) return Parse(vs2);
