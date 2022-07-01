@@ -202,7 +202,7 @@ namespace NewLife.Caching
         }
 
         /// <summary>批量消费获取，前移指针StartId</summary>
-        /// <param name="count"></param>
+        /// <param name="count">批量消费消息数</param>
         /// <returns></returns>
         public IEnumerable<T> Take(Int32 count = 1)
         {
@@ -222,13 +222,9 @@ namespace NewLife.Caching
             }
         }
 
-        private void SetNextId(String key) =>
-            //var lastId = key;
-            //var ss = lastId.Split('-');
-            //if (ss.Length == 2) StartId = $"{ss[0]}-{ss[1].ToInt() + 1}";
-
-            // 后面的ID应该使用前一次报告的项目中最后一项的ID，否则将会丢失所有添加到这中间的条目。
-            StartId = key;
+        /// <summary>后面的ID应该使用前一次报告的项目中最后一项的ID，否则将会丢失所有添加到这中间的条目。</summary>
+        /// <param name="key"></param>
+        private void SetNextId(String key) => StartId = key;
 
         /// <summary>消费获取一个</summary>
         /// <param name="timeout"></param>
@@ -258,6 +254,17 @@ namespace NewLife.Caching
         /// <returns></returns>
         public async Task<Message> TakeMessageAsync(Int32 timeout = 0, CancellationToken cancellationToken = default)
         {
+            var rs = await TakeMessagesAsync(1, timeout, cancellationToken);
+            return rs?.FirstOrDefault();
+        }
+
+        /// <summary>批量消费</summary>
+        /// <param name="count">批量消费消息数</param>
+        /// <param name="timeout">超时时间，默认10秒阻塞</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns></returns>
+        public async Task<IList<Message>> TakeMessagesAsync(Int32 count, Int32 timeout = 10, CancellationToken cancellationToken = default)
+        {
             var group = Group;
             if (!group.IsNullOrEmpty()) RetryAck();
 
@@ -265,30 +272,31 @@ namespace NewLife.Caching
             if (timeout > 0 && Redis.Timeout < t) Redis.Timeout = t + 1000;
 
             var rs = !group.IsNullOrEmpty() ?
-                await ReadGroupAsync(group, Consumer, 1, t, ">", cancellationToken) :
-                await ReadAsync(StartId, 1, t, cancellationToken);
+                await ReadGroupAsync(group, Consumer, count, t, ">", cancellationToken) :
+                await ReadAsync(StartId, count, t, cancellationToken);
             if (rs == null || rs.Count == 0)
             {
                 // id为>时，消费从未传递给消费者的消息
+                // id为$时，消费从从阻塞开始新收到的消息
                 // id为0时，消费当前消费者的历史待处理消息，包括自己未ACK和从其它消费者抢来的消息
                 // 使用消费组时，如果拿不到消息，则尝试消费抢过来的历史消息
                 if (!group.IsNullOrEmpty())
                 {
-                    rs = await ReadGroupAsync(group, Consumer, 1, 3_000, "0", cancellationToken);
+                    rs = await ReadGroupAsync(group, Consumer, count, 3_000, "0", cancellationToken);
                     if (rs == null || rs.Count == 0) return null;
 
-                    XTrace.WriteLine("[{0}]处理历史：{1}", Group, rs[0].Id);
+                    XTrace.WriteLine("[{0}]处理历史：{1}", Group, rs.Join(",", e => e.Id));
 
-                    return rs[0];
+                    return rs;
                 }
 
                 return null;
             }
 
             // 全局消费（非消费组）时，更新编号
-            if (group.IsNullOrEmpty()) SetNextId(rs[0].Id);
+            if (group.IsNullOrEmpty()) SetNextId(rs[rs.Count - 1].Id);
 
-            return rs[0];
+            return rs;
         }
 
         /// <summary>消费确认</summary>
@@ -639,7 +647,7 @@ XREAD count 3 streams stream_key 0-0
         /// <param name="consumer">消费组</param>
         /// <param name="count">消息个数</param>
         /// <param name="block">阻塞毫秒数，0表示永远</param>
-        /// <param name="id">消息id</param>
+        /// <param name="id">消息id。为大于号时，消费从未传递给消费者的消息；为0是，消费理事会待处理消息</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns></returns>
         public async Task<IList<Message>> ReadGroupAsync(String group, String consumer, Int32 count, Int32 block = -1, String id = null, CancellationToken cancellationToken = default)
@@ -647,6 +655,7 @@ XREAD count 3 streams stream_key 0-0
             if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
 
             // id为>时，消费从未传递给消费者的消息
+            // id为$时，消费从从阻塞开始新收到的消息
             // id为0时，消费当前消费者的历史待处理消息，包括自己未ACK和从其它消费者抢来的消息
             if (id.IsNullOrEmpty()) id = ">";
 
@@ -728,9 +737,6 @@ XREAD count 3 streams stream_key 0-0
             var topic = Key;
             if (topic.IsNullOrEmpty()) topic = GetType().Name;
 
-            var rds = Redis;
-            var tracer = rds.Tracer;
-
             // 超时时间，用于阻塞等待
             var timeout = BlockTime;
 
@@ -739,16 +745,16 @@ XREAD count 3 streams stream_key 0-0
                 // 大循环之前，打断性能追踪调用链
                 DefaultSpan.Current = null;
 
-                Message mqMsg = null;
+                //Message mqMsg = null;
                 ISpan span = null;
                 try
                 {
                     // 异步阻塞消费
-                    mqMsg = await TakeMessageAsync(timeout, cancellationToken);
+                    var mqMsg = await TakeMessageAsync(timeout, cancellationToken);
                     if (mqMsg != null)
                     {
                         // 埋点
-                        span = tracer?.NewSpan($"redismq:{topic}:Consume", mqMsg);
+                        span = Redis.Tracer?.NewSpan($"redismq:{topic}:Consume", mqMsg);
 
                         var bodys = mqMsg.Body;
                         for (var i = 0; i < bodys.Length; i++)
@@ -778,7 +784,7 @@ XREAD count 3 streams stream_key 0-0
                     if (cancellationToken.IsCancellationRequested) break;
 
                     span?.SetError(ex, null);
-                    XTrace.Log?.Error("[{0}/{1}]消息处理异常：{2} {3}", topic, mqMsg?.Id, mqMsg?.ToJson(), ex);
+                    //XTrace.Log?.Error("[{0}/{1}]消息处理异常：{2} {3}", topic, mqMsg?.Id, mqMsg?.ToJson(), ex);
                 }
                 finally
                 {
