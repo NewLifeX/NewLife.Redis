@@ -53,6 +53,7 @@ namespace NewLife.Caching
         public Boolean FromLastOffset { get; set; }
 
         private Int32 _count;
+        private Int32 _setGroupId;
         #endregion
 
         #region 构造
@@ -272,16 +273,19 @@ namespace NewLife.Caching
         /// <returns></returns>
         public async Task<IList<Message>> TakeMessagesAsync(Int32 count, Int32 timeout = 10, CancellationToken cancellationToken = default)
         {
+            if (FromLastOffset && _setGroupId == 0 && Interlocked.CompareExchange(ref _setGroupId, 1, 0) == 0)
+                GroupSetId(Group, "$");
+
             var group = Group;
             if (!group.IsNullOrEmpty()) RetryAck();
 
             var t = timeout * 1000;
             if (timeout > 0 && Redis.Timeout < t) Redis.Timeout = t + 1000;
 
-            var id = FromLastOffset ? "$" : ">";
+            //var id = FromLastOffset ? "$" : ">";
 
             var rs = !group.IsNullOrEmpty() ?
-                await ReadGroupAsync(group, Consumer, count, t, id, cancellationToken) :
+                await ReadGroupAsync(group, Consumer, count, t, ">", cancellationToken) :
                 await ReadAsync(StartId, count, t, cancellationToken);
             if (rs == null || rs.Count == 0)
             {
@@ -640,10 +644,13 @@ XREAD count 3 streams stream_key 0-0
         {
             if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
 
-            var id = FromLastOffset ? "$" : ">";
+            if (FromLastOffset && _setGroupId == 0 && Interlocked.CompareExchange(ref _setGroupId, 1, 0) == 0)
+                GroupSetId(Group, "$");
+
+            //var id = FromLastOffset ? "$" : ">";
             var rs = count > 0 ?
-                Execute(rc => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "COUNT", count, "STREAMS", Key, id), true) :
-                Execute(rc => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "STREAMS", Key, id), true);
+                Execute(rc => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "COUNT", count, "STREAMS", Key, ">"), true) :
+                Execute(rc => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "STREAMS", Key, ">"), true);
             if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
             {
                 if (vs[1] is Object[] vs2) return Parse(vs2);
