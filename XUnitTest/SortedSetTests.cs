@@ -340,7 +340,7 @@ namespace XUnitTest
             Assert.Equal(2, count);
 
             var rs = zset.RangeByScore(13.56, 14.34, 1, 2);
-            Assert.Equal(1, rs.Length);
+            Assert.Single(rs);
             Assert.Equal("stone3", rs[0]);
 
             var rs2 = zset.RangeByScoreWithScores(13.56, 14.34, 1, 2);

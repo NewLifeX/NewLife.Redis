@@ -3,10 +3,10 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyTitle>新生命Redis缓存组件</AssemblyTitle>
-    <Description>Redis基础操作、消息队列，经过日均100亿次调用量的项目验证。旧版NET45找2021年</Description>
+    <Description>Redis缓存扩展库，便于注入Redis</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2022 新生命开发团队</Copyright>
-    <VersionPrefix>4.0</VersionPrefix>
+    <VersionPrefix>4.1</VersionPrefix>
     <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
     <Version>$(VersionPrefix).$(VersionSuffix)</Version>
     <FileVersion>$(Version)</FileVersion>
@@ -28,7 +28,6 @@
     <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
     <PackageReleaseNotes></PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>

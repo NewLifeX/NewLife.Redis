@@ -227,7 +227,7 @@ namespace XUnitTest
 
             // 消费者
             var consumers = s.GetConsumers("mygroup");
-            Assert.Equal(1, consumers.Length);
+            Assert.Single(consumers);
             XTrace.WriteLine(consumers.ToJson(true));
         }
 
@@ -362,7 +362,7 @@ namespace XUnitTest
 
             // 取出来
             var vs2 = s.Take(2).ToList();
-            Assert.Equal(1, vs2.Count);
+            Assert.Single(vs2);
             Assert.Null(vs2[0].Name);
             Assert.Equal(36, vs2[0].Age);
         }
