@@ -38,7 +38,16 @@ public class RedisCache : IDistributedCache, IDisposable
         {
             Name = _options.InstanceName
         };
-        _redis.Init(_options.Configuration);
+
+        if (!_options.Configuration.IsNullOrEmpty())
+            _redis.Init(_options.Configuration);
+        else
+        {
+            _redis.Server = _options.Server;
+            _redis.Db = _options.Db;
+            _redis.Password = _options.Password;
+            _redis.Timeout = _options.Timeout;
+        }
     }
 
     /// <summary>

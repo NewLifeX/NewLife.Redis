@@ -12,6 +12,18 @@ public class RedisCacheOptions : IOptions<RedisCacheOptions>
     /// </summary>
     public String Configuration { get; set; }
 
+    /// <summary>服务器</summary>
+    public String Server { get; set; }
+
+    /// <summary>数据库</summary>
+    public Int32 Db { get; set; }
+
+    /// <summary>密码</summary>
+    public String Password { get; set; }
+
+    /// <summary>超时时间。单位毫秒</summary>
+    public Int32 Timeout { get; set; }
+
     /// <summary>
     /// 实例名
     /// </summary>
