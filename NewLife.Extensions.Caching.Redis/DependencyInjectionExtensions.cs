@@ -77,22 +77,22 @@ public static class DependencyInjectionExtensions
         return redis;
     }
 
-    /// <summary>添加Redis缓存</summary>
-    /// <param name="services"></param>
-    /// <param name="setupAction"></param>
-    /// <returns></returns>
-    /// <exception cref="ArgumentNullException"></exception>
-    public static IServiceCollection AddRedis(this IServiceCollection services, Action<IOptions<RedisOptions>> setupAction)
-    {
-        if (services == null)
-            throw new ArgumentNullException(nameof(services));
-        if (setupAction == null)
-            throw new ArgumentNullException(nameof(setupAction));
+    ///// <summary>添加Redis缓存</summary>
+    ///// <param name="services"></param>
+    ///// <param name="setupAction"></param>
+    ///// <returns></returns>
+    ///// <exception cref="ArgumentNullException"></exception>
+    //public static IServiceCollection AddRedis(this IServiceCollection services, Action<IOptions<RedisOptions>> setupAction)
+    //{
+    //    if (services == null)
+    //        throw new ArgumentNullException(nameof(services));
+    //    if (setupAction == null)
+    //        throw new ArgumentNullException(nameof(setupAction));
 
-        services.AddOptions();
-        services.Configure(setupAction);
-        services.Add(ServiceDescriptor.Singleton<ICache, FullRedis>());
+    //    services.AddOptions();
+    //    services.Configure(setupAction);
+    //    services.Add(ServiceDescriptor.Singleton<ICache, FullRedis>());
 
-        return services;
-    }
+    //    return services;
+    //}
 }
