@@ -1,5 +1,7 @@
 ﻿using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using NewLife.Caching;
 
 namespace NewLife.Extensions.Caching.Redis;
 
@@ -15,7 +17,7 @@ public static class RedisCacheServiceCollectionExtensions
     /// <param name="setupAction"></param>
     /// <returns></returns>
     /// <exception cref="ArgumentNullException"></exception>
-    public static IServiceCollection AddDistributedRedisCache(this IServiceCollection services, Action<RedisCacheOptions> setupAction)
+    public static IServiceCollection AddDistributedRedisCache(this IServiceCollection services, Action<IOptions<RedisOptions>> setupAction)
     {
         if (services == null)
             throw new ArgumentNullException(nameof(services));

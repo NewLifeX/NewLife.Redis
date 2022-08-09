@@ -1,12 +1,13 @@
-﻿using Microsoft.Extensions.Options;
-
-namespace NewLife.Extensions.Caching.Redis;
+﻿namespace NewLife.Caching;
 
 /// <summary>
 /// Redis缓存选项
 /// </summary>
-public class RedisCacheOptions : IOptions<RedisCacheOptions>
+public class RedisOptions 
 {
+    /// <summary>实例名</summary>
+    public String InstanceName { get; set; }
+
     /// <summary>
     /// 配置字符串。例如：server=127.0.0.1:6379;password=123456;db=3;timeout=3000
     /// </summary>
@@ -23,11 +24,4 @@ public class RedisCacheOptions : IOptions<RedisCacheOptions>
 
     /// <summary>超时时间。单位毫秒</summary>
     public Int32 Timeout { get; set; }
-
-    /// <summary>
-    /// 实例名
-    /// </summary>
-    public String InstanceName { get; set; }
-
-    RedisCacheOptions IOptions<RedisCacheOptions>.Value => this;
 }

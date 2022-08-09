@@ -1,6 +1,8 @@
 ﻿using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NewLife.Caching;
+using NewLife.Log;
 
 namespace NewLife.Extensions.Caching.Redis;
 
@@ -18,7 +20,7 @@ public class RedisCache : IDistributedCache, IDisposable
     /// <summary>刷新时的过期时间。默认24小时</summary>
     public TimeSpan Expire { get; set; } = TimeSpan.FromHours(24);
 
-    private readonly RedisCacheOptions _options;
+    private readonly RedisOptions _options;
     private readonly FullRedis _redis;
     #endregion
 
@@ -27,8 +29,9 @@ public class RedisCache : IDistributedCache, IDisposable
     /// 实例化Redis分布式缓存
     /// </summary>
     /// <param name="optionsAccessor"></param>
+    /// <param name="serviceProvider"></param>
     /// <exception cref="ArgumentNullException"></exception>
-    public RedisCache(IOptions<RedisCacheOptions> optionsAccessor)
+    public RedisCache(IOptions<RedisOptions> optionsAccessor, IServiceProvider serviceProvider)
     {
         if (optionsAccessor == null) throw new ArgumentNullException(nameof(optionsAccessor));
 
@@ -36,7 +39,8 @@ public class RedisCache : IDistributedCache, IDisposable
 
         _redis = new FullRedis
         {
-            Name = _options.InstanceName
+            Name = _options.InstanceName,
+            Tracer = serviceProvider.GetService<ITracer>(),
         };
 
         if (!_options.Configuration.IsNullOrEmpty())
