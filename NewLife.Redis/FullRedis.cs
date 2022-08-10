@@ -48,6 +48,23 @@ namespace NewLife.Caching
         /// <param name="db"></param>
         public FullRedis(String server, String password, Int32 db) : base(server, password, db) { }
 
+        /// <summary>实例化增强版Redis</summary>
+        /// <param name="options"></param>
+        public FullRedis(RedisOptions options)
+        {
+            Name = options.InstanceName;
+
+            if (!options.Configuration.IsNullOrEmpty())
+                Init(options.Configuration);
+            else
+            {
+                Server = options.Server;
+                Password = options.Password;
+                Db = options.Db;
+                Timeout = options.Timeout;
+            }
+        }
+
         /// <summary>按照配置服务实例化Redis，用于NETCore依赖注入</summary>
         /// <param name="provider">服务提供者，将要解析IConfigProvider</param>
         /// <param name="name">缓存名称，也是配置中心key</param>
