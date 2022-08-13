@@ -22,7 +22,7 @@ namespace Test
             try
             {
                 //TestHyperLogLog();
-                Test1();
+                Test3();
             }
             catch (Exception ex)
             {
@@ -113,8 +113,18 @@ namespace Test
 
         static void Test3()
         {
-            var _redis = new FullRedis("127.0.0.1:6379", null, 3);
+            //var redis = new FullRedis("127.0.0.1:6379", null, 3);
             //ic.Log = XTrace.Log;
+
+            var services = new ServiceCollection();
+            services.AddRedis(options =>
+            {
+                options.Server = "127.0.0.1:6379";
+                options.Db = 3;
+            });
+
+            var sp = services.BuildServiceProvider();
+            var redis = sp.GetService<FullRedis>();
 
             var key = "ReliableQueue_unique";
 
@@ -122,7 +132,7 @@ namespace Test
 
             for (var i = 0; i < 1_000_000; i++)
             {
-                var q = _redis.GetReliableQueue<String>(key);
+                var q = redis.GetReliableQueue<String>(key);
 
                 //Assert.DoesNotContain(q.AckKey, hash);
                 var rs = hash.Contains(q.AckKey);
