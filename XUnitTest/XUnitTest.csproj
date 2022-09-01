@@ -2,16 +2,16 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <OutputPath>..\BinUnitTest</OutputPath>
+    <OutputPath>..\Bin\UnitTest</OutputPath>
 
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.2.0" />
-    <PackageReference Include="NewLife.Core" Version="10.0.2022.813-beta1403" />
-    <PackageReference Include="NewLife.UnitTest" Version="1.0.2022.401" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.3.1" />
+    <PackageReference Include="NewLife.Core" Version="10.0.2022.901" />
+    <PackageReference Include="NewLife.UnitTest" Version="1.0.2022.901" />
     <PackageReference Include="xunit" Version="2.4.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5">
       <PrivateAssets>all</PrivateAssets>
