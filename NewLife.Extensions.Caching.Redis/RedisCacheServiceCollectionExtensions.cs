@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using NewLife.Caching;
 
 namespace NewLife.Extensions.Caching.Redis;
@@ -24,7 +23,7 @@ public static class RedisCacheServiceCollectionExtensions
         if (setupAction == null)
             throw new ArgumentNullException(nameof(setupAction));
 
-        services.AddOptions();
+        //services.AddOptions();
         services.Configure(setupAction);
         services.Add(ServiceDescriptor.Singleton<IDistributedCache, RedisCache>());
 
