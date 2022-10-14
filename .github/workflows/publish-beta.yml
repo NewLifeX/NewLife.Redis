@@ -6,6 +6,7 @@ on:
     paths:
         - 'NewLife.Redis/**'
         - 'NewLife.Extensions.Caching.Redis/**'
+  workflow_dispatch:
 
 jobs:
   build-publish:

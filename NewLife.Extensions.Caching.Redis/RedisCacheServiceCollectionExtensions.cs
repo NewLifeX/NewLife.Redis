@@ -17,7 +17,7 @@ public static class RedisCacheServiceCollectionExtensions
     /// <param name="setupAction"></param>
     /// <returns></returns>
     /// <exception cref="ArgumentNullException"></exception>
-    public static IServiceCollection AddDistributedRedisCache(this IServiceCollection services, Action<IOptions<RedisOptions>> setupAction)
+    public static IServiceCollection AddDistributedRedisCache(this IServiceCollection services, Action<RedisOptions> setupAction)
     {
         if (services == null)
             throw new ArgumentNullException(nameof(services));
