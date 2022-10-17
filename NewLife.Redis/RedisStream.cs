@@ -28,7 +28,7 @@ namespace NewLife.Caching
         public String PrimitiveKey { get; set; } = "__data";
 
         /// <summary>最大队列长度。要保留的消息个数，超过则移除较老消息，非精确，实际上略大于该值，默认100万</summary>
-        public Int32 MaxLenngth { get; set; } = 1_000_000;
+        public Int32 MaxLength { get; set; } = 1_000_000;
 
         /// <summary>最大重试次数。超过该次数后，消息将被抛弃，默认10次</summary>
         public Int32 MaxRetry { get; set; } = 10;
@@ -98,7 +98,7 @@ namespace NewLife.Caching
             Interlocked.Increment(ref _count);
 
             var trim = false;
-            if (MaxLenngth > 0 && _count % 1000 == 0)
+            if (MaxLength > 0 && _count % 1000 == 0)
             {
                 _count = Count + 1;
 
@@ -117,7 +117,7 @@ namespace NewLife.Caching
             {
                 args.Add("maxlen");
                 args.Add("~");
-                args.Add(MaxLenngth);
+                args.Add(MaxLength);
             }
 
             // *号表示服务器自动生成ID
@@ -185,7 +185,7 @@ namespace NewLife.Caching
             if (_count <= 0) _count = Count;
 
             var trim = false;
-            if (MaxLenngth > 0 && _count > 0 && _count % 1000 == 0)
+            if (MaxLength > 0 && _count > 0 && _count % 1000 == 0)
             {
                 _count = Count + 1;
 

@@ -71,7 +71,7 @@ namespace NewLife.Caching
             if (_Redis != null)
             {
                 _Queue = _Redis.GetStream<T>(queueName);
-                _Queue.MaxLenngth = QueueLen;
+                _Queue.MaxLength = QueueLen;
             }
             else
             {
