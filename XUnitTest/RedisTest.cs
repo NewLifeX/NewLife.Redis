@@ -575,12 +575,13 @@ namespace XUnitTest.Caching
         }
 
         [TestOrder(90)]
-        [Fact]
+        [Fact(Skip = "跳过")]
         public void AddRedis()
         {
             var ioc = new ObjectContainer();
 
             var config = new HttpConfigProvider();
+            config.Server = "http://star.newlifex.com:6600";
             config["orderRedis"] = "server=127.0.0.1:6379;password=pass;db=7";
             ioc.AddSingleton<IConfigProvider>(config);
             ioc.AddSingleton(provider => new Redis(provider, "orderRedis"));
