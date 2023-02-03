@@ -177,7 +177,7 @@ Redis实现ICache接口，它的孪生兄弟MemoryCache，内存缓存，千万�
 数据增大（10万）以后，改用Redis实现，不需要修改业务代码。  
 
 ## 新生命项目矩阵
-各项目默认支持net7.0/netstandard2.1/netstandard2.0/net4.61，旧版（2021.1225）支持net4.5/net4.0/net2.0  
+各项目默认支持net7.0/netstandard2.1/netstandard2.0/net4.61，旧版（2022.1225）支持net4.5/net4.0/net2.0  
 
 |                               项目                               | 年份  | 说明                                                                                   |
 | :--------------------------------------------------------------: | :---: | -------------------------------------------------------------------------------------- |
@@ -207,8 +207,8 @@ Redis实现ICache接口，它的孪生兄弟MemoryCache，内存缓存，千万�
 |        [HttpMeter](https://github.com/NewLifeX/HttpMeter)        | 2022  | Http压力测试工具                                                                       |
 |         [GitCandy](https://github.com/NewLifeX/GitCandy)         | 2015  | Git源代码管理系统                                                                      |
 |          [SmartOS](https://github.com/NewLifeX/SmartOS)          | 2014  | 嵌入式操作系统，完全独立自主，支持ARM Cortex-M芯片架构                                 |
-|                            NewLife.A2                            | 2019  | 嵌入式工业计算机，物联网边缘网关，高性能.NET6主机，应用于工业、农业、交通、医疗        |
-|                           NewLife.IoT                            | 2020  | 物联网整体解决方案，建筑、环保、农业，软硬件及大数据分析一体化，单机十万级点位项目验证 |
+|          [SmartA2](https://github.com/NewLifeX/SmartA2)          | 2019  | 嵌入式工业计算机，物联网边缘网关，高性能.NET6主机，应用于工业、农业、交通、医疗        |
+|                           菲凡物联FIoT                           | 2020  | 物联网整体解决方案，建筑、环保、农业，软硬件及大数据分析一体化，单机十万级点位项目验证 |
 |                           NewLife.UWB                            | 2020  | 厘米级（10~20cm）高精度室内定位，软硬件一体化，与其它系统联动，大型展厅项目验证        |
 
 ## 新生命开发团队
