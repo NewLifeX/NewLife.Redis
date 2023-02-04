@@ -9,6 +9,7 @@ using Xunit;
 
 namespace XUnitTest
 {
+    [Collection("Basic")]
     public class HyperLogLogTests
     {
         private readonly FullRedis _redis;

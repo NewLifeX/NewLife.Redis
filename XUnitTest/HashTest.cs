@@ -8,6 +8,7 @@ using Xunit;
 
 namespace XUnitTest
 {
+    [Collection("Basic")]
     public class HashTest
     {
         private readonly FullRedis _redis;
