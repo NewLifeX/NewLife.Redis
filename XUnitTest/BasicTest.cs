@@ -26,15 +26,22 @@ namespace XUnitTest
 #endif
         }
 
+        private static String _config;
         public static String GetConfig()
         {
-            var config = "";
-            var file = @"config\redis.config";
-            if (File.Exists(file)) config = File.ReadAllText(file.GetFullPath())?.Trim();
-            if (config.IsNullOrEmpty()) config = "server=127.0.0.1:6379;db=3";
-            if (!File.Exists(file)) File.WriteAllText(file.EnsureDirectory(true).GetFullPath(), config);
+            if (_config != null) return _config;
+            lock (typeof(BasicTest))
+            {
+                if (_config != null) return _config;
 
-            return config;
+                var config = "";
+                var file = @"config\redis.config";
+                if (File.Exists(file)) config = File.ReadAllText(file.GetFullPath())?.Trim();
+                if (config.IsNullOrEmpty()) config = "server=127.0.0.1:6379;db=3";
+                if (!File.Exists(file)) File.WriteAllText(file.EnsureDirectory(true).GetFullPath(), config);
+
+                return _config = config;
+            }
         }
 
         [Fact(DisplayName = "信息测试", Timeout = 1000)]
