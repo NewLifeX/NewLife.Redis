@@ -68,20 +68,20 @@ public class RedisTest
         Assert.Equal(3600, redis.Expire);
     }
 
-    [TestOrder(2)]
-    [Fact]
-    public void ConfigTest2()
-    {
-        var prv = new HttpConfigProvider
-        {
-            Server = "http://star.newlifex.com:6600",
-            AppId = "Test"
-        };
+    //[TestOrder(2)]
+    //[Fact]
+    //public void ConfigTest2()
+    //{
+    //    var prv = new HttpConfigProvider
+    //    {
+    //        Server = "http://star.newlifex.com:6600",
+    //        AppId = "Test"
+    //    };
 
-        var rds = new Redis();
-        rds.Init(prv["redis6"]);
-        Assert.Equal(6, rds.Db);
-    }
+    //    var rds = new Redis();
+    //    rds.Init(prv["redis6"]);
+    //    Assert.Equal(6, rds.Db);
+    //}
 
     [TestOrder(4)]
     [Fact(DisplayName = "基础测试")]
