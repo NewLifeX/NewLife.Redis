@@ -127,7 +127,7 @@ namespace NewLife.Caching
             // 最长等待
             if (timeout == 0) timeout = 60;
 
-            while (true)
+            while (!cancellationToken.IsCancellationRequested)
             {
                 var score = DateTime.Now.ToUniversalTime().ToInt();
                 var rs = await _sort.RangeByScoreAsync(0, score, 0, 1, cancellationToken);
