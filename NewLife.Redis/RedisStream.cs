@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Threading;
 using NewLife.Caching.Common;
 using NewLife.Caching.Models;
 using NewLife.Data;
@@ -199,10 +200,27 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
     public IEnumerable<T> Take(Int32 count = 1)
     {
         var group = Group;
-        if (!group.IsNullOrEmpty()) RetryAck();
+        if (!group.IsNullOrEmpty())
+        {
+            // 优先处理未确认死信，避免在处理海量消息的过程中，未确认死信一直得不到处理
+            var claims = RetryAck();
+            if (claims > 0)
+            {
+                var rs2 = ReadGroup(group, Consumer, count, "0");
+                if (rs2 != null && rs2.Count > 0)
+                {
+                    XTrace.WriteLine("[{0}]优先处理历史：{1}", Group, rs2.Join(",", e => e.Id));
+
+                    foreach (var item in rs2)
+                    {
+                        yield return item.GetBody<T>();
+                    }
+                }
+            }
+        }
 
         var rs = !group.IsNullOrEmpty() ?
-            ReadGroup(group, Consumer, count) :
+            ReadGroup(group, Consumer, count, ">") :
             Read(StartId, count);
         if (rs == null || rs.Count == 0) yield break;
 
@@ -261,7 +279,21 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
             GroupSetId(Group, "$");
 
         var group = Group;
-        if (!group.IsNullOrEmpty()) RetryAck();
+        if (!group.IsNullOrEmpty())
+        {
+            // 优先处理未确认死信，避免在处理海量消息的过程中，未确认死信一直得不到处理
+            var claims = RetryAck();
+            if (claims > 0)
+            {
+                var rs2 = await ReadGroupAsync(group, Consumer, count, 3_000, "0", cancellationToken);
+                if (rs2 != null && rs2.Count > 0)
+                {
+                    XTrace.WriteLine("[{0}]优先处理历史：{1}", Group, rs2.Join(",", e => e.Id));
+
+                    return rs2;
+                }
+            }
+        }
 
         var t = timeout * 1000;
         if (timeout > 0 && Redis.Timeout < t) Redis.Timeout = t + 1000;
@@ -313,8 +345,9 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
     #region 死信处理
     private DateTime _nextRetry;
     /// <summary>处理未确认的死信，重新放入队列</summary>
-    private void RetryAck()
+    private Int32 RetryAck()
     {
+        var count = 0;
         var now = DateTime.Now;
         // 一定间隔处理当前ukey死信
         if (_nextRetry < now)
@@ -344,6 +377,8 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
                         {
                             XTrace.WriteLine("[{0}]定时回滚：{1}", Group, item.ToJson());
                             Claim(Group, Consumer, item.Id, retry);
+
+                            count++;
                         }
                     }
                 }
@@ -368,6 +403,8 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
                 }
             }
         }
+
+        return count;
     }
     #endregion
 
@@ -629,18 +666,24 @@ XREAD count 3 streams stream_key 0-0
     /// <param name="group">消费组</param>
     /// <param name="consumer">消费组</param>
     /// <param name="count">消息个数</param>
+    /// <param name="id">消息id。为大于号时，消费从未传递给消费者的消息；为0是，消费理事会待处理消息</param>
     /// <returns></returns>
-    public IList<Message> ReadGroup(String group, String consumer, Int32 count)
+    public IList<Message> ReadGroup(String group, String consumer, Int32 count, String id = null)
     {
         if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
 
         if (FromLastOffset && _setGroupId == 0 && Interlocked.CompareExchange(ref _setGroupId, 1, 0) == 0)
             GroupSetId(Group, "$");
 
+        // id为>时，消费从未传递给消费者的消息
+        // id为$时，消费从从阻塞开始新收到的消息
+        // id为0时，消费当前消费者的历史待处理消息，包括自己未ACK和从其它消费者抢来的消息
+        if (id.IsNullOrEmpty()) id = ">";
+
         //var id = FromLastOffset ? "$" : ">";
         var rs = count > 0 ?
-            Execute(rc => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "COUNT", count, "STREAMS", Key, ">"), true) :
-            Execute(rc => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "STREAMS", Key, ">"), true);
+            Execute(rc => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "COUNT", count, "STREAMS", Key, id), true) :
+            Execute(rc => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "STREAMS", Key, id), true);
         if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
         {
             if (vs[1] is Object[] vs2) return Parse(vs2);
