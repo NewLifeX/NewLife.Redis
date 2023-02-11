@@ -614,7 +614,12 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
     /// <summary>批量移除缓存项</summary>
     /// <param name="keys">键集合</param>
-    public override Int32 Remove(params String[] keys) => Execute(keys.FirstOrDefault(), rds => rds.Execute<Int32>("DEL", keys), true);
+    public override Int32 Remove(params String[] keys)
+    {
+        if (keys == null || !keys.Any()) return 0;
+
+        return Execute(keys.FirstOrDefault(), rds => rds.Execute<Int32>("DEL", keys), true);
+    }
 
     /// <summary>清空所有缓存项</summary>
     public override void Clear() => Execute(null, rds => rds.Execute<String>("FLUSHDB"), true);
