@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Threading;
 using NewLife.Caching.Common;
 using NewLife.Caching.Models;
 using NewLife.Data;
@@ -43,7 +42,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
     /// <summary>消费者组。指定消费组后，不再使用独立消费。通过SetGroup可自动创建消费组</summary>
     public String Group { get; set; }
 
-    /// <summary>消费者</summary>
+    /// <summary>消费者。同一个消费组内的消费者标识必须唯一</summary>
     public String Consumer { get; set; }
 
     /// <summary>首次消费时的消费策略</summary>
@@ -55,6 +54,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
 
     private Int32 _count;
     private Int32 _setGroupId;
+    private Int32 _claims;
     #endregion
 
     #region 构造
@@ -203,20 +203,24 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
         if (!group.IsNullOrEmpty())
         {
             // 优先处理未确认死信，避免在处理海量消息的过程中，未确认死信一直得不到处理
-            var claims = RetryAck();
-            if (claims > 0)
-            {
-                var rs2 = ReadGroup(group, Consumer, count, "0");
-                if (rs2 != null && rs2.Count > 0)
-                {
-                    XTrace.WriteLine("[{0}]优先处理历史：{1}", Group, rs2.Join(",", e => e.Id));
+            _claims += RetryAck();
+        }
 
-                    foreach (var item in rs2)
-                    {
-                        yield return item.GetBody<T>();
-                    }
+        // 抢过来的消息，优先处理，可能需要多次消费才能消耗完
+        if (_claims > 0)
+        {
+            var rs2 = ReadGroup(group, Consumer, count, "0");
+            if (rs2 != null && rs2.Count > 0)
+            {
+                _claims -= rs2.Count;
+                XTrace.WriteLine("[{0}]优先处理历史：{1}", Group, rs2.Join(",", e => e.Id));
+
+                foreach (var item in rs2)
+                {
+                    yield return item.GetBody<T>();
                 }
             }
+            _claims = 0;
         }
 
         var rs = !group.IsNullOrEmpty() ?
@@ -282,17 +286,21 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
         if (!group.IsNullOrEmpty())
         {
             // 优先处理未确认死信，避免在处理海量消息的过程中，未确认死信一直得不到处理
-            var claims = RetryAck();
-            if (claims > 0)
-            {
-                var rs2 = await ReadGroupAsync(group, Consumer, count, 3_000, "0", cancellationToken);
-                if (rs2 != null && rs2.Count > 0)
-                {
-                    XTrace.WriteLine("[{0}]优先处理历史：{1}", Group, rs2.Join(",", e => e.Id));
+            _claims += RetryAck();
+        }
 
-                    return rs2;
-                }
+        // 抢过来的消息，优先处理，可能需要多次消费才能消耗完
+        if (_claims > 0)
+        {
+            var rs2 = await ReadGroupAsync(group, Consumer, count, 3_000, "0", cancellationToken);
+            if (rs2 != null && rs2.Count > 0)
+            {
+                _claims -= rs2.Count;
+                XTrace.WriteLine("[{0}]优先处理历史：{1}", Group, rs2.Join(",", e => e.Id));
+
+                return rs2;
             }
+            _claims = 0;
         }
 
         var t = timeout * 1000;
@@ -376,6 +384,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
                         else
                         {
                             XTrace.WriteLine("[{0}]定时回滚：{1}", Group, item.ToJson());
+                            // 抢夺消息，所有者更改为当前消费者，Idle从零开始计算。这些消息需要尽快得到处理，否则会再次过期
                             Claim(Group, Consumer, item.Id, retry);
 
                             count++;

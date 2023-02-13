@@ -24,7 +24,7 @@ public class BasicTest
         _redis.Db = 2;
 
 #if DEBUG
-        _redis.Log = XTrace.Log;
+        _redis.Log = NewLife.Log.XTrace.Log;
 #endif
     }
 

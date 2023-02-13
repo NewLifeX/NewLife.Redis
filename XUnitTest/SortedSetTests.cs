@@ -19,7 +19,7 @@ public class SortedSetTests
         _redis = new FullRedis();
         _redis.Init(config);
 #if DEBUG
-        _redis.Log = XTrace.Log;
+        _redis.Log = NewLife.Log.XTrace.Log;
 #endif
     }
 

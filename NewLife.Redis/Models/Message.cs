@@ -24,9 +24,9 @@ public class Message
         var type = typeof(T);
         if (type == typeof(Object)) return (T)(Object)vs;
         if (type == typeof(String[])) return (T)(Object)vs;
-        if (type == typeof(String)) return (T)(Object)vs.Join();
 
         if (vs.Length == 2 && vs[0] == "__data") return vs[1].ChangeType<T>();
+        if (type == typeof(String)) return (T)(Object)vs.Join();
 
         var properties = typeof(T).GetProperties(true).ToDictionary(e => e.Name, e => e);
 
