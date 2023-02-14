@@ -9,7 +9,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Caching.Redis" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
-    <PackageReference Include="NewLife.Core" Version="10.1.2023.203" />
+    <PackageReference Include="NewLife.Core" Version="10.1.2023.213-beta1035" />
   </ItemGroup>
 
   <ItemGroup>
