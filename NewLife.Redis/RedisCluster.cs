@@ -45,7 +45,8 @@ namespace NewLife.Caching
         /// <param name="nodes"></param>
         public void ParseNodes(String nodes)
         {
-            XTrace.WriteLine("分析[{0}]集群节点：", Redis?.Name);
+            var showLog = Nodes == null;
+            if (showLog) XTrace.WriteLine("分析[{0}]集群节点：", Redis?.Name);
 
             var list = new List<Node>();
             foreach (var item in nodes.Split("\r", "\n"))
@@ -72,7 +73,8 @@ namespace NewLife.Caching
             {
                 var name = Redis?.Name + "";
                 if (!name.IsNullOrEmpty()) name = $"[{name}]";
-                XTrace.WriteLine("{0}节点：{1} {2} {3}", name, node, node.Flags, node.Slots.Join(" "));
+
+                if (showLog) XTrace.WriteLine("{0}节点：{1} {2} {3}", name, node, node.Flags, node.Slots.Join(" "));
 
                 if (node.Slaves != null)
                 {
@@ -80,7 +82,7 @@ namespace NewLife.Caching
                     name = new String(' ', Encoding.Default.GetByteCount(name));
                     foreach (var item in node.Slaves)
                     {
-                        XTrace.WriteLine("{0}{1} {2}", name, item, item.Flags);
+                        if (showLog) XTrace.WriteLine("{0}{1} {2}", name, item, item.Flags);
                     }
                 }
             }
