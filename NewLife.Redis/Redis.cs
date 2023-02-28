@@ -164,7 +164,9 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         if (config.IsNullOrEmpty()) return;
 
         if (config == _configOld) return;
-        if (!_configOld.IsNullOrEmpty()) XTrace.WriteLine("Redis[{0}]连接字符串改变！", Name);
+
+        if (!_configOld.IsNullOrEmpty() && XTrace.Log.Level <= LogLevel.Debug)
+            XTrace.WriteLine("Redis[{0}]连接字符串改变！", Name);
 
         var dic =
             config.Contains(',') && !config.Contains(';') ?
@@ -281,7 +283,8 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
         if (idx != _idxLast)
         {
-            XTrace.WriteLine("Redis使用 {0}", svrs[idx % svrs.Length]);
+            if (XTrace.Log.Level <= LogLevel.Debug)
+                XTrace.WriteLine("Redis使用 {0}", svrs[idx % svrs.Length]);
 
             _idxLast = idx;
         }
