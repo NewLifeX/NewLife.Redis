@@ -38,9 +38,26 @@ public class Message
             {
                 // 复杂类型序列化为json字符串
                 var val = vs[i + 1];
-                var v = pi.PropertyType.GetTypeCode() == TypeCode.Object ?
-                    val.ToJsonEntity(pi.PropertyType) :
-                    val.ChangeType(pi.PropertyType);
+                object v;
+                if (pi.PropertyType.GetTypeCode() == TypeCode.Object)
+                {
+                    try
+                    {
+                        //ToJsonEntity,如果对像是中文字串，以object转对像会异常，TODO:修改ToJsonEntity的具体实现
+                        //"内容".ToJsonEntity(typeof(object)) 出错
+                        //"888".ToJsonEntity(typeof(object)) 正常
+                        v = val.ToJsonEntity(pi.PropertyType);
+
+                    }
+                    catch (NewLife.XException err)
+                    {
+                        v = val.ChangeType(pi.PropertyType);
+                    }
+                }
+                else
+                {
+                    v = val.ChangeType(pi.PropertyType);
+                }
 
                 pi.SetValue(entry, v, null);
             }
