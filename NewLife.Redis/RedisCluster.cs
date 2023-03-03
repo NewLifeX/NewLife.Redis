@@ -58,7 +58,7 @@ namespace NewLife.Caching
                         Owner = Redis
                     };
 
-                    XTrace.WriteLine("{0}", item);
+                    if (showLog) XTrace.WriteLine("{0}", item);
 
                     node.Parse(item);
                     list.Add(node);
