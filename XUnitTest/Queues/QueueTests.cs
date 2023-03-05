@@ -5,10 +5,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Caching;
+using NewLife.Caching.Queues;
 using NewLife.Security;
 using Xunit;
 
-namespace XUnitTest;
+namespace XUnitTest.Queues;
 
 //[Collection("Queue")]
 public class QueueTests
@@ -92,9 +93,7 @@ public class QueueTests
         // 添加
         var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
         foreach (var item in vs)
-        {
             q.Add(item);
-        }
 
         // 对比个数
         var count2 = q.Count;
@@ -167,9 +166,7 @@ public class QueueTests
         {
             var list = new List<String>();
             for (var j = 0; j < 100; j++)
-            {
                 list.Add(Rand.NextString(32));
-            }
             q.Add(list.ToArray());
         }
 
@@ -199,9 +196,7 @@ public class QueueTests
         {
             var list = new List<String>();
             for (var j = 0; j < 100; j++)
-            {
                 list.Add(Rand.NextString(32));
-            }
             q.Add(list.ToArray());
         }
 
@@ -210,7 +205,6 @@ public class QueueTests
         var count = 0;
         var ths = new List<Task>();
         for (var i = 0; i < 16; i++)
-        {
             ths.Add(Task.Run(() =>
             {
                 while (true)
@@ -222,7 +216,6 @@ public class QueueTests
                     Interlocked.Add(ref count, list.Count);
                 }
             }));
-        }
 
         Task.WaitAll(ths.ToArray());
 

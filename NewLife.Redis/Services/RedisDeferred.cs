@@ -2,7 +2,7 @@
 using NewLife.Log;
 using NewLife.Threading;
 
-namespace NewLife.Caching;
+namespace NewLife.Caching.Services;
 
 /// <summary>Redis延迟计算，常用于统计中的凑批行为</summary>
 /// <remarks>
@@ -67,16 +67,12 @@ public class RedisDeferred : DisposeBase
     private void StartTimer()
     {
         if (_timer == null)
-        {
             lock (this)
-            {
                 if (_timer == null)
                 {
                     var p = Period > 100 ? Period : 1000;
                     _timer = new TimerX(DoWork, null, p, p) { Async = true };
                 }
-            }
-        }
     }
 
     private void DoWork(Object state)

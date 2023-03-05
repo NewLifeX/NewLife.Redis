@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using NewLife;
 using NewLife.Caching;
+using NewLife.Caching.Clusters;
 using NewLife.Log;
 using NewLife.Security;
 using NewLife.Serialization;

@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using NewLife.Caching;
+using NewLife.Caching.Services;
 using NewLife.Security;
 using Xunit;
 
-namespace XUnitTest;
+namespace XUnitTest.Services;
 
 public class RedisDeferredTests
 {

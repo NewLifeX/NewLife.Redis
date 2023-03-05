@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using NewLife.Caching.Clusters;
 using NewLife.Caching.Models;
+using NewLife.Caching.Queues;
 using NewLife.Data;
 using NewLife.Log;
 using NewLife.Serialization;

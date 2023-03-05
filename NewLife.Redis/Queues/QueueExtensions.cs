@@ -1,13 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using NewLife.Caching.Models;
-using NewLife.Log;
+﻿using NewLife.Log;
 using NewLife.Serialization;
 
-namespace NewLife.Caching;
+namespace NewLife.Caching.Queues;
 
 /// <summary>IProducerConsumer接口扩展</summary>
 public static class QueueExtensions
@@ -161,7 +155,7 @@ public static class QueueExtensions
             Server = rds.Server,
             UserName = rds.UserName,
             Password = rds.Password,
-            Db = rds.Db == 15 ? 0 : (rds.Db + 1),
+            Db = rds.Db == 15 ? 0 : rds.Db + 1,
             Tracer = rds.Tracer,
         };
 
@@ -194,13 +188,11 @@ public static class QueueExtensions
 
                     // 消息标识
                     foreach (var item in ids)
-                    {
                         if (dic.TryGetValue(item, out var id))
                         {
                             msgId = id + "";
                             if (!msgId.IsNullOrEmpty()) break;
                         }
-                    }
 
                     // 处理消息
                     await onMessage(msg, mqMsg, cancellationToken);
@@ -209,10 +201,8 @@ public static class QueueExtensions
                     queue.Acknowledge(mqMsg);
                 }
                 else
-                {
                     // 没有消息，歇一会
                     await Task.Delay(1000, cancellationToken);
-                }
             }
             catch (ThreadAbortException) { break; }
             catch (ThreadInterruptedException) { break; }
@@ -257,7 +247,7 @@ public static class QueueExtensions
     /// <returns></returns>
     public static async Task ConsumeAsync<T>(this RedisReliableQueue<String> queue, Action<T> onMessage, CancellationToken cancellationToken = default, ILog log = null, String idField = null)
     {
-        await ConsumeAsync<T>(queue, (m, k, t) => { onMessage(m); return Task.FromResult(0); }, cancellationToken, log, idField);
+        await queue.ConsumeAsync<T>((m, k, t) => { onMessage(m); return Task.FromResult(0); }, cancellationToken, log, idField);
     }
 
     /// <summary>队列消费大循环，处理消息后自动确认</summary>
@@ -289,7 +279,7 @@ public static class QueueExtensions
             Server = rds.Server,
             UserName = rds.UserName,
             Password = rds.Password,
-            Db = rds.Db == 15 ? 0 : (rds.Db + 1),
+            Db = rds.Db == 15 ? 0 : rds.Db + 1,
             Tracer = rds.Tracer,
         };
 
@@ -317,10 +307,8 @@ public static class QueueExtensions
                     queue.Acknowledge(mqMsg);
                 }
                 else
-                {
                     // 没有消息，歇一会
                     await Task.Delay(1000, cancellationToken);
-                }
             }
             catch (ThreadAbortException) { break; }
             catch (ThreadInterruptedException) { break; }

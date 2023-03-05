@@ -10,7 +10,7 @@ using NewLife.Security;
 using NewLife.Serialization;
 using Xunit;
 
-namespace XUnitTest;
+namespace XUnitTest.Queues;
 
 public class StreamTests
 {
@@ -23,7 +23,7 @@ public class StreamTests
         _redis = new FullRedis();
         _redis.Init(config);
 #if DEBUG
-        _redis.Log = NewLife.Log.XTrace.Log;
+        _redis.Log = XTrace.Log;
 #endif
     }
 
@@ -189,9 +189,7 @@ public class StreamTests
 
         // 添加基础类型
         for (var i = 0; i < 7; i++)
-        {
             s.Add(Rand.NextString(8));
-        }
 
         // 创建
         s.GroupCreate("mygroup", "0");
@@ -241,9 +239,7 @@ public class StreamTests
 
         // 添加基础类型
         for (var i = 0; i < 7; i++)
-        {
             queue.Add(Rand.NextString(8));
-        }
 
         // 消费
         var rs = queue.Take(6).ToList();

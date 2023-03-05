@@ -1,15 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 using NewLife.Caching;
+using NewLife.Caching.Queues;
+using NewLife.Caching.Services;
 using NewLife.Log;
 using NewLife.Reflection;
 using NewLife.Security;
 using NewLife.Serialization;
 using Xunit;
 
-namespace XUnitTest;
+namespace XUnitTest.Services;
 
 public class StatTests
 {
@@ -22,7 +23,7 @@ public class StatTests
         _redis = new FullRedis();
         _redis.Init(config);
 #if DEBUG
-        _redis.Log = NewLife.Log.XTrace.Log;
+        _redis.Log = XTrace.Log;
 #endif
     }
 

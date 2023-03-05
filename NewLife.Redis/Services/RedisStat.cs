@@ -1,7 +1,8 @@
-﻿using NewLife.Data;
+﻿using NewLife.Caching.Queues;
+using NewLife.Data;
 using NewLife.Security;
 
-namespace NewLife.Caching;
+namespace NewLife.Caching.Services;
 
 /// <summary>保存指定key数据的委托</summary>
 /// <param name="key"></param>

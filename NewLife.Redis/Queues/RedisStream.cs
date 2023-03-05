@@ -5,7 +5,7 @@ using NewLife.Data;
 using NewLife.Log;
 using NewLife.Serialization;
 
-namespace NewLife.Caching;
+namespace NewLife.Caching.Queues;
 
 /// <summary>Redis5.0的Stream数据结构，完整态消息队列，支持多消费组</summary>
 /// <remarks>
@@ -79,9 +79,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
 
         var gs = GetGroups();
         if (gs == null || !gs.Any(e => e.Name == group))
-        {
             return GroupCreate(group);
-        }
 
         return false;
     }
@@ -125,12 +123,8 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
             args.Add(value);
         }
         else if (value.GetType().IsArray)
-        {
-            foreach (var item in (value as Array))
-            {
+            foreach (var item in value as Array)
                 args.Add(item);
-            }
-        }
         else
         {
             // 在消息体内注入TraceId，用于构建调用链
@@ -169,9 +163,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
         if (values.Length <= 2)
         {
             for (var i = 0; i < values.Length; i++)
-            {
                 Add(values[i]);
-            }
             return values.Length;
         }
         if (_count == 0) Trim(MaxLength, true);
@@ -201,10 +193,8 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
     {
         var group = Group;
         if (!group.IsNullOrEmpty())
-        {
             // 优先处理未确认死信，避免在处理海量消息的过程中，未确认死信一直得不到处理
             _claims += RetryAck();
-        }
 
         // 抢过来的消息，优先处理，可能需要多次消费才能消耗完
         if (_claims > 0)
@@ -216,9 +206,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
                 XTrace.WriteLine("[{0}]优先处理历史：{1}", Group, rs2.Join(",", e => e.Id));
 
                 foreach (var item in rs2)
-                {
                     yield return item.GetBody<T>();
-                }
             }
             _claims = 0;
         }
@@ -284,10 +272,8 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
 
         var group = Group;
         if (!group.IsNullOrEmpty())
-        {
             // 优先处理未确认死信，避免在处理海量消息的过程中，未确认死信一直得不到处理
             _claims += RetryAck();
-        }
 
         // 抢过来的消息，优先处理，可能需要多次消费才能消耗完
         if (_claims > 0)
@@ -343,9 +329,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
     {
         var rs = 0;
         foreach (var item in keys)
-        {
             rs += Ack(Group, item);
-        }
         return rs;
     }
     #endregion
@@ -371,9 +355,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
                 if (list.Length == 0) break;
 
                 foreach (var item in list)
-                {
                     if (item.Idle > retry)
-                    {
                         if (item.Delivery >= MaxRetry)
                         {
                             XTrace.WriteLine("[{0}]删除多次失败死信：{1}", Group, item.ToJson());
@@ -389,28 +371,22 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
 
                             count++;
                         }
-                    }
-                }
 
                 // 下一个开始id
                 id = list[^1].Id;
                 var p = id.IndexOf('-');
-                if (p > 0) id = $"{(id[..p].ToLong() + 1)}-0";
+                if (p > 0) id = $"{id[..p].ToLong() + 1}-0";
             }
 
             // 清理历史消费者
             var consumers = GetConsumers(Group);
             if (consumers != null)
-            {
                 foreach (var item in consumers)
-                {
                     if (item.Pending == 0 && item.Idle > 3600_000)
                     {
                         XTrace.WriteLine("[{0}]删除空闲消费者：{1}", Group, item.ToJson());
                         GroupDeleteConsumer(Group, item.Name);
                     }
-                }
-            }
         }
 
         return count;
@@ -496,7 +472,6 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
 
         var rs = Execute(rc => rc.Execute<Object[]>("XREAD", args.ToArray()), true);
         if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
-        {
             /*
 XREAD count 3 streams stream_key 0-0
 
@@ -520,7 +495,6 @@ XREAD count 3 streams stream_key 0-0
             4)      "36"
              */
             if (vs[1] is Object[] vs2) return Parse(vs2);
-        }
 
         return null;
     }
@@ -555,9 +529,7 @@ XREAD count 3 streams stream_key 0-0
 
         var rs = await ExecuteAsync(rc => rc.ExecuteAsync<Object[]>("XREAD", args.ToArray(), cancellationToken), true);
         if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
-        {
             if (vs[1] is Object[] vs2) return Parse(vs2);
-        }
 
         return null;
     }
@@ -566,16 +538,12 @@ XREAD count 3 streams stream_key 0-0
     {
         var list = new List<Message>();
         foreach (var item in vs)
-        {
             if (item is Object[] vs3 && vs3.Length == 2 && vs3[0] is Packet pkId && vs3[1] is Object[] vs4)
-            {
                 list.Add(new Message
                 {
                     Id = pkId.ToStr(),
                     Body = vs4.Select(e => (e as Packet)?.ToStr()).ToArray(),
                 });
-            }
-        }
         return list;
     }
     #endregion
@@ -694,9 +662,7 @@ XREAD count 3 streams stream_key 0-0
             Execute(rc => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "COUNT", count, "STREAMS", Key, id), true) :
             Execute(rc => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "STREAMS", Key, id), true);
         if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
-        {
             if (vs[1] is Object[] vs2) return Parse(vs2);
-        }
 
         return null;
     }
@@ -722,9 +688,7 @@ XREAD count 3 streams stream_key 0-0
             await ExecuteAsync(rc => rc.ExecuteAsync<Object[]>("XREADGROUP", new Object[] { "GROUP", group, consumer, "BLOCK", block, "COUNT", count, "STREAMS", Key, id }, cancellationToken), true) :
             await ExecuteAsync(rc => rc.ExecuteAsync<Object[]>("XREADGROUP", new Object[] { "GROUP", group, consumer, "BLOCK", block, "STREAMS", Key, id }, cancellationToken), true);
         if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
-        {
             if (vs[1] is Object[] vs2) return Parse(vs2);
-        }
 
         return null;
     }
@@ -817,9 +781,7 @@ XREAD count 3 streams stream_key 0-0
 
                     var bodys = mqMsg.Body;
                     for (var i = 0; i < bodys.Length; i++)
-                    {
                         if (bodys[i].EqualIgnoreCase("traceParent") && i + 1 < bodys.Length) span.Detach(bodys[i + 1]);
-                    }
 
                     // 解码
                     var msg = mqMsg.GetBody<T>();
@@ -831,10 +793,8 @@ XREAD count 3 streams stream_key 0-0
                     Acknowledge(mqMsg.Id);
                 }
                 else
-                {
                     // 没有消息，歇一会
                     await Task.Delay(1000, cancellationToken);
-                }
             }
             catch (ThreadAbortException) { break; }
             catch (ThreadInterruptedException) { break; }

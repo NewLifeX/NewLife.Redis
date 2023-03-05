@@ -11,7 +11,7 @@ using NewLife.Security;
 using NewLife.Serialization;
 using Xunit;
 
-namespace XUnitTest;
+namespace XUnitTest.Queues;
 
 //[Collection("Queue")]
 public class ReliableQueueTests
@@ -25,7 +25,7 @@ public class ReliableQueueTests
         _redis = new FullRedis();
         _redis.Init(config);
 #if DEBUG
-        _redis.Log = NewLife.Log.XTrace.Log;
+        _redis.Log = XTrace.Log;
 #endif
     }
 
@@ -58,9 +58,7 @@ public class ReliableQueueTests
         // 添加
         var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
         foreach (var item in vs)
-        {
             queue.Add(item);
-        }
 
         // 取出来
         var vs2 = new[] { queue.TakeOne(), queue.TakeOne(), queue.TakeOne(), };
@@ -175,9 +173,7 @@ public class ReliableQueueTests
         // 添加
         var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
         foreach (var item in vs)
-        {
             queue.Add(item);
-        }
 
         // 对比个数
         var count2 = queue.Count;
@@ -275,9 +271,7 @@ public class ReliableQueueTests
         {
             var list = new List<String>();
             for (var j = 0; j < 100; j++)
-            {
                 list.Add(Rand.NextString(32));
-            }
             q.Add(list.ToArray());
         }
 
@@ -315,9 +309,7 @@ public class ReliableQueueTests
         {
             var list = new List<String>();
             for (var j = 0; j < 100; j++)
-            {
                 list.Add($"msgContent-{i}-{j}");
-            }
             queue.Add(list.ToArray());
         }
 
@@ -326,7 +318,6 @@ public class ReliableQueueTests
         //var count = 0;
         var ths = new List<Task<Int32>>();
         for (var i = 0; i < 16; i++)
-        {
             ths.Add(Task.Run(() =>
             {
                 var count = 0;
@@ -346,7 +337,6 @@ public class ReliableQueueTests
                 }
                 return count;
             }));
-        }
 
         //Task.WaitAll(ths.ToArray());
         var rs = Task.WhenAll(ths).Result.Sum();
@@ -369,9 +359,7 @@ public class ReliableQueueTests
         // 生产几个消息，消费但不确认
         var list = new List<String>();
         for (var i = 0; i < 5; i++)
-        {
             list.Add(Rand.NextString(32));
-        }
         queue.Add(list.ToArray());
 
         var list2 = queue.Take(10).ToList();
@@ -630,9 +618,7 @@ public class ReliableQueueTests
         var sw = Stopwatch.StartNew();
         var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
         foreach (var item in vs)
-        {
             queue.AddDelay(item, 2);
-        }
 
         // 可信队列消费
         var v1 = await queue.TakeOneAsync(-1);

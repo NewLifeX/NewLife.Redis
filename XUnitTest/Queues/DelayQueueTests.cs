@@ -5,11 +5,12 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Caching;
+using NewLife.Caching.Queues;
 using NewLife.Log;
 using NewLife.Security;
 using Xunit;
 
-namespace XUnitTest;
+namespace XUnitTest.Queues;
 
 //[Collection("Queue")]
 [TestCaseOrderer("NewLife.UnitTest.DefaultOrderer", "NewLife.UnitTest")]
@@ -24,7 +25,7 @@ public class DelayQueueTests
         _redis = new FullRedis();
         _redis.Init(config);
 #if DEBUG
-        _redis.Log = NewLife.Log.XTrace.Log;
+        _redis.Log = XTrace.Log;
 #endif
     }
 
@@ -123,9 +124,7 @@ public class DelayQueueTests
         // 添加
         var vs = new[] { "1234", "ABEF", "abcd", "新生命团队" };
         foreach (var item in vs)
-        {
             queue.Add(item, 2);
-        }
 
         // 对比个数
         var count2 = queue.Count;
@@ -209,9 +208,7 @@ public class DelayQueueTests
         {
             var list = new List<String>();
             for (var j = 0; j < 20; j++)
-            {
                 list.Add(Rand.NextString(32));
-            }
             queue.Add(list.ToArray());
         }
 
@@ -251,9 +248,7 @@ public class DelayQueueTests
         {
             var list = new List<String>();
             for (var j = 0; j < 20; j++)
-            {
                 list.Add(Rand.NextString(32));
-            }
             queue.Add(list.ToArray());
         }
 
@@ -263,7 +258,6 @@ public class DelayQueueTests
         var count = 0;
         var ths = new List<Task>();
         for (var i = 0; i < 16; i++)
-        {
             ths.Add(Task.Run(() =>
             {
                 var queue2 = _redis.GetDelayQueue<String>(key);
@@ -279,7 +273,6 @@ public class DelayQueueTests
                     Interlocked.Add(ref count, list.Count);
                 }
             }));
-        }
 
         Task.WaitAll(ths.ToArray());
 

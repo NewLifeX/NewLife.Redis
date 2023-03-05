@@ -1,11 +1,10 @@
 ﻿using System.Text;
 using System.Xml.Linq;
-using NewLife.Caching.Clusters;
 using NewLife.Caching.Models;
 using NewLife.Log;
 using NewLife.Threading;
 
-namespace NewLife.Caching;
+namespace NewLife.Caching.Clusters;
 
 /// <summary>Redis集群</summary>
 public class RedisCluster : RedisBase, IRedisCluster, IDisposable
@@ -55,7 +54,6 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
 
         var list = new List<Node>();
         foreach (var item in nodes.Split("\r", "\n"))
-        {
             if (!item.IsNullOrEmpty())
             {
                 var node = new Node
@@ -70,7 +68,6 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
 
                 //XTrace.WriteLine("[{0}]节点：{1}", Redis.Name, node);
             }
-        }
         //list = list.OrderBy(e => e.EndPoint).ToList();
         list = SortNodes(list);
 
@@ -86,9 +83,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
                 name += "节点：";
                 name = new String(' ', Encoding.Default.GetByteCount(name));
                 foreach (var item in node.Slaves)
-                {
                     if (showLog) XTrace.WriteLine("{0}{1} {2}", name, item, item.Flags);
-                }
             }
         }
         Nodes = list.ToArray();
@@ -122,14 +117,10 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
         var ns = Nodes.Where(e => e.LinkState == 1).ToList();
         // 找主节点
         foreach (var node in ns)
-        {
             if (!node.Slave && node.Contain(slot)) return node;
-        }
         // 找从节点
         foreach (var node in ns)
-        {
             if (node.Contain(slot)) return node;
-        }
 
         return null;
     }
@@ -148,9 +139,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
             // 取出地址，找到新的节点
             var endpoint = msg.Substring(" ");
             if (!endpoint.IsNullOrEmpty())
-            {
                 return Map(endpoint, key);
-            }
         }
 
         return null;
