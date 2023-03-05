@@ -38,8 +38,13 @@ public class Message
             {
                 // 复杂类型序列化为json字符串
                 var val = vs[i + 1];
-                object v;
-                if (pi.PropertyType.GetTypeCode() == TypeCode.Object)
+                Object v;
+                if (pi.PropertyType == typeof(Object))
+                {
+                    // 有的模型类属性就是Object类型
+                    v = val;
+                }
+                else if (pi.PropertyType.GetTypeCode() == TypeCode.Object)
                 {
                     try
                     {
@@ -49,7 +54,7 @@ public class Message
                         v = val.ToJsonEntity(pi.PropertyType);
 
                     }
-                    catch (NewLife.XException err)
+                    catch (XException)
                     {
                         v = val.ChangeType(pi.PropertyType);
                     }
@@ -58,8 +63,6 @@ public class Message
                 {
                     v = val.ChangeType(pi.PropertyType);
                 }
-
-
 
                 pi.SetValue(entry, v, null);
             }
