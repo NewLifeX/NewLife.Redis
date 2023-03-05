@@ -190,6 +190,8 @@ public class FullRedis : Redis
             }
             catch (Exception ex)
             {
+                if (i++ >= Retry) throw;
+
                 // 使用新的节点
                 node = Cluster.ReselectNode(key, write, ex);
                 if (node != null) continue;
@@ -242,6 +244,8 @@ public class FullRedis : Redis
             }
             catch (Exception ex)
             {
+                if (i++ >= Retry) throw;
+
                 // 使用新的节点
                 node = Cluster.ReselectNode(key, write, ex);
                 if (node != null) continue;

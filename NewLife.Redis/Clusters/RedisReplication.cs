@@ -1,5 +1,7 @@
-﻿using System.Text;
+﻿using System.Net.Sockets;
+using System.Text;
 using NewLife.Log;
+using NewLife.Model;
 using NewLife.Threading;
 
 namespace NewLife.Caching.Clusters;
@@ -15,6 +17,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     public ReplicationInfo Replication { get; private set; }
 
     private TimerX _timer;
+    private Int32 _idx;
     #endregion
 
     #region 构造
@@ -97,11 +100,17 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     {
         if (key.IsNullOrEmpty()) return null;
 
+        var ns = Nodes;
+        if (ns == null || ns.Length == 0) return null;
+
         // 先找主节点
         foreach (var item in Nodes)
         {
             if (!item.Slave) return item;
         }
+
+        // 如果不是写入，也可以使用从节点
+        if (!write) return Nodes[Interlocked.Increment(ref _idx) % ns.Length];
 
         return null;
     }
@@ -111,6 +120,18 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     /// <param name="write">可写</param>
     /// <param name="exception"></param>
     /// <returns></returns>
-    public IRedisNode ReselectNode(String key, Boolean write, Exception exception) => null;
+    public IRedisNode ReselectNode(String key, Boolean write, Exception exception)
+    {
+        var ns = Nodes;
+        if (ns == null || ns.Length == 0) return null;
+
+        // 读取指令网络异常时，换一个从节点
+        if (exception is SocketException or IOException)
+        {
+            if (!write) return Nodes[Interlocked.Increment(ref _idx) % ns.Length];
+        }
+
+        return null;
+    }
     #endregion
 }
