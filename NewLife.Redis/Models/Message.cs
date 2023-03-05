@@ -52,7 +52,6 @@ public class Message
                         //"内容".ToJsonEntity(typeof(object)) 出错
                         //"888".ToJsonEntity(typeof(object)) 正常
                         v = val.ToJsonEntity(pi.PropertyType);
-
                     }
                     catch (XException)
                     {
