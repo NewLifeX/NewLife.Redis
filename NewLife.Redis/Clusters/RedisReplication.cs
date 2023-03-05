@@ -1,4 +1,5 @@
-﻿using NewLife.Log;
+﻿using System.Text;
+using NewLife.Log;
 using NewLife.Threading;
 
 namespace NewLife.Caching.Clusters;
@@ -8,7 +9,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
 {
     #region 属性
     /// <summary>集群节点</summary>
-    public Node[] Nodes { get; private set; }
+    public RedisNode[] Nodes { get; private set; }
 
     /// <summary>主从信息</summary>
     public ReplicationInfo Replication { get; private set; }
@@ -41,7 +42,8 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         var showLog = Nodes == null;
         if (showLog) XTrace.WriteLine("分析[{0}]主从节点：", Redis?.Name);
 
-        var rs = Execute(r => r.Execute<String>("INFO", "Replication"));
+        // 从第一个连接获取一次信息，仅支持一主一从或一主多从的情况
+        var rs = Redis.Execute(r => r.Execute<String>("INFO", "Replication"));
         if (rs.IsNullOrEmpty()) return;
 
         var inf = rs.SplitAsDictionary(":", "\r\n");
@@ -50,13 +52,14 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
 
         Replication = rep;
 
-        var list = new List<Node>();
+        var list = new List<RedisNode>();
         foreach (var item in rep.Slaves)
         {
             if (item.IP.IsNullOrEmpty()) continue;
 
-            var node = new Node
+            var node = new RedisNode
             {
+                Owner = Redis,
                 EndPoint = $"{item.IP}:{item.Port}",
                 Slave = true,
             };
@@ -65,13 +68,22 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
 
         // Master节点
         {
-            var node = new Node
+            var node = new RedisNode
             {
+                Owner = Redis,
+                EndPoint = Redis.Server,
                 Slave = rep.Role != "master",
-                Slaves = list,
             };
 
-            list.Add(node);
+            list.Insert(0, node);
+        }
+
+        foreach (var node in list)
+        {
+            var name = Redis?.Name + "";
+            if (!name.IsNullOrEmpty()) name = $"[{name}]";
+
+            if (showLog) XTrace.WriteLine("节点：{0} {1}", node.Slave ? "slave" : "master", node.EndPoint);
         }
 
         Nodes = list.ToArray();
@@ -85,19 +97,10 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     {
         if (key.IsNullOrEmpty()) return null;
 
-        var slot = key.GetBytes().Crc16() % 16384;
-        var ns = Nodes.Where(e => e.LinkState == 1).ToList();
-
-        // 找主节点
-        foreach (var node in ns)
+        // 先找主节点
+        foreach (var item in Nodes)
         {
-            if (!node.Slave && node.Contain(slot)) return node;
-        }
-
-        // 找从节点
-        foreach (var node in ns)
-        {
-            if (node.Contain(slot)) return node;
+            if (!item.Slave) return item;
         }
 
         return null;
@@ -108,33 +111,6 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     /// <param name="write">可写</param>
     /// <param name="exception"></param>
     /// <returns></returns>
-    public IRedisNode ReselectNode(String key, Boolean write, Exception exception)
-    {
-        // 处理MOVED和ASK指令
-        var msg = exception.Message;
-        if (msg.StartsWithIgnoreCase("MOVED", "ASK"))
-        {
-            // 取出地址，找到新的节点
-            var endpoint = msg.Substring(" ");
-            if (!endpoint.IsNullOrEmpty())
-            {
-                return Map(endpoint, key);
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>把Key映射到指定地址的节点</summary>
-    /// <param name="endpoint"></param>
-    /// <param name="key"></param>
-    /// <returns></returns>
-    public virtual Node Map(String endpoint, String key)
-    {
-        var node = Nodes.FirstOrDefault(e => e.EndPoint == endpoint);
-        if (node == null) return null;
-
-        return node;
-    }
+    public IRedisNode ReselectNode(String key, Boolean write, Exception exception) => null;
     #endregion
 }

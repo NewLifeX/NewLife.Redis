@@ -13,6 +13,9 @@ public class RedisNode : IRedisNode
     /// <summary>当前节点地址</summary>
     public String EndPoint { get; set; }
 
+    /// <summary>是否从节点</summary>
+    public Boolean Slave { get; set; }
+
     #region 客户端池
     class MyPool : ObjectPool<RedisClient>
     {

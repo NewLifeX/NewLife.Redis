@@ -11,7 +11,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
 {
     #region 属性
     /// <summary>集群节点</summary>
-    public Node[] Nodes { get; private set; }
+    public ClusterNode[] Nodes { get; private set; }
 
     private TimerX _timer;
     #endregion
@@ -35,28 +35,30 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
         if (Nodes != null) _timer = new TimerX(s => GetNodes(), null, 60_000, 600_000) { Async = true };
     }
 
-    private void GetNodes()
+    /// <summary>获取节点</summary>
+    public void GetNodes()
     {
         if (Redis is not FullRedis rds) return;
 
-        var rs = Execute(r => r.Execute<String>("Cluster", "Nodes"));
+        var rs = Redis.Execute(r => r.Execute<String>("Cluster", "Nodes"));
         if (rs.IsNullOrEmpty()) return;
 
-        ParseClusterNodes(rs);
+        ParseNodes(rs);
     }
 
     /// <summary>分析节点</summary>
     /// <param name="nodes"></param>
-    public void ParseClusterNodes(String nodes)
+    public void ParseNodes(String nodes)
     {
         var showLog = Nodes == null;
         if (showLog) XTrace.WriteLine("分析[{0}]集群节点：", Redis?.Name);
 
-        var list = new List<Node>();
+        var list = new List<ClusterNode>();
         foreach (var item in nodes.Split("\r", "\n"))
+        {
             if (!item.IsNullOrEmpty())
             {
-                var node = new Node
+                var node = new ClusterNode
                 {
                     Owner = Redis
                 };
@@ -68,6 +70,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
 
                 //XTrace.WriteLine("[{0}]节点：{1}", Redis.Name, node);
             }
+        }
         //list = list.OrderBy(e => e.EndPoint).ToList();
         list = SortNodes(list);
 
@@ -89,7 +92,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
         Nodes = list.ToArray();
     }
 
-    private List<Node> SortNodes(List<Node> list)
+    private List<ClusterNode> SortNodes(List<ClusterNode> list)
     {
         // 主节点按照数据槽排序
         var masters = list.Where(e => e.Master == "-").OrderBy(e => e.Slots.Min(x => x.From)).ToList();
@@ -155,7 +158,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
     /// <param name="endpoint"></param>
     /// <param name="key"></param>
     /// <returns></returns>
-    public virtual Node Map(String endpoint, String key)
+    public virtual ClusterNode Map(String endpoint, String key)
     {
         var node = Nodes.FirstOrDefault(e => e.EndPoint == endpoint);
         if (node == null) return null;
@@ -178,7 +181,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
     /// <param name="node"></param>
     /// <param name="slots"></param>
     /// <returns></returns>
-    public virtual void AddSlots(Node node, params Int32[] slots)
+    public virtual void AddSlots(ClusterNode node, params Int32[] slots)
     {
         var pool = node.Pool;
         var client = pool.Get();
@@ -203,7 +206,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
     /// <param name="node"></param>
     /// <param name="slots"></param>
     /// <returns></returns>
-    public virtual void DeleteSlots(Node node, params Int32[] slots)
+    public virtual void DeleteSlots(ClusterNode node, params Int32[] slots)
     {
         var pool = node.Pool;
         var client = pool.Get();

@@ -24,4 +24,8 @@
     <ProjectReference Include="..\NewLife.Redis\NewLife.Redis.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Models\" />
+  </ItemGroup>
+
 </Project>

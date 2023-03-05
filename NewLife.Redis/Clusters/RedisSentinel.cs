@@ -8,7 +8,7 @@ public class RedisSentinel : RedisBase, IRedisCluster, IDisposable
 {
     #region 属性
     /// <summary>集群节点</summary>
-    public Node[] Nodes { get; private set; }
+    public ClusterNode[] Nodes { get; private set; }
 
     /// <summary>主从信息</summary>
     public ReplicationInfo Replication { get; private set; }
@@ -50,12 +50,12 @@ public class RedisSentinel : RedisBase, IRedisCluster, IDisposable
 
         Replication = rep;
 
-        var list = new List<Node>();
+        var list = new List<ClusterNode>();
         foreach (var item in rep.Slaves)
         {
             if (item.IP.IsNullOrEmpty()) continue;
 
-            var node = new Node
+            var node = new ClusterNode
             {
                 EndPoint = $"{item.IP}:{item.Port}",
                 Slave = true,
@@ -66,7 +66,7 @@ public class RedisSentinel : RedisBase, IRedisCluster, IDisposable
         // Master节点
         if (rep.Role == "master")
         {
-            var node = new Node
+            var node = new ClusterNode
             {
                 Slave = false,
                 Slaves = list,
@@ -76,7 +76,7 @@ public class RedisSentinel : RedisBase, IRedisCluster, IDisposable
         }
         else
         {
-            var node = new Node
+            var node = new ClusterNode
             {
                 Slave = false,
                 Slaves = list,
@@ -139,7 +139,7 @@ public class RedisSentinel : RedisBase, IRedisCluster, IDisposable
     /// <param name="endpoint"></param>
     /// <param name="key"></param>
     /// <returns></returns>
-    public virtual Node Map(String endpoint, String key)
+    public virtual ClusterNode Map(String endpoint, String key)
     {
         var node = Nodes.FirstOrDefault(e => e.EndPoint == endpoint);
         if (node == null) return null;

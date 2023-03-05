@@ -413,6 +413,36 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         } while (true);
     }
 
+    /// <summary>直接执行命令，不考虑集群读写</summary>
+    /// <typeparam name="TResult">返回类型</typeparam>
+    /// <param name="func">回调函数</param>
+    /// <returns></returns>
+    public virtual TResult Execute<TResult>(Func<RedisClient, TResult> func)
+    {
+        // 每次重试都需要重新从池里借出连接
+        var pool = Pool;
+        var client = pool.Get();
+        try
+        {
+            client.Reset();
+            return func(client);
+        }
+        catch (Exception ex)
+        {
+            if (ex is SocketException or IOException)
+            {
+                // 销毁连接
+                client.TryDispose();
+            }
+
+            throw;
+        }
+        finally
+        {
+            pool.Put(client);
+        }
+    }
+
     /// <summary>异步执行命令</summary>
     /// <typeparam name="TResult">返回类型</typeparam>
     /// <param name="key">命令key，用于选择集群节点</param>

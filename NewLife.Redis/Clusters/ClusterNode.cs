@@ -2,8 +2,8 @@
 
 namespace NewLife.Caching.Clusters;
 
-/// <summary>服务器节点。内部连接池</summary>
-public class Node : RedisNode
+/// <summary>集群节点。内部连接池</summary>
+public class ClusterNode : RedisNode
 {
     #region 属性
     /// <summary>标识</summary>
@@ -18,11 +18,8 @@ public class Node : RedisNode
     /// <summary>链接状态</summary>
     public Int32 LinkState { get; set; }
 
-    /// <summary>是否从节点</summary>
-    public Boolean Slave { get; set; }
-
     /// <summary>当前节点的从节点集合</summary>
-    public IList<Node> Slaves { get; set; }
+    public IList<ClusterNode> Slaves { get; set; }
 
     /// <summary>本节点数据槽</summary>
     public IList<Slot> Slots { get; private set; } = new List<Slot>();
@@ -125,7 +122,10 @@ public class Node : RedisNode
     public Boolean Contain(Int32 slot)
     {
         foreach (var item in Slots)
+        {
             if (slot >= item.From && slot <= item.To) return true;
+        }
+
         return false;
     }
 
@@ -135,8 +135,12 @@ public class Node : RedisNode
     {
         var list = new List<Int32>();
         foreach (var item in Slots)
+        {
             for (var i = item.From; i <= item.To; i++)
+            {
                 list.Add(i);
+            }
+        }
 
         return list.Distinct().OrderBy(e => e).ToArray();
     }

@@ -3,7 +3,7 @@ using NewLife.Caching.Clusters;
 using NewLife.Caching.Models;
 using Xunit;
 
-namespace XUnitTest.Models;
+namespace XUnitTest.Clusters;
 
 public class ReplicationInfoTests
 {

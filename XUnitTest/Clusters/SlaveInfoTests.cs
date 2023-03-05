@@ -1,7 +1,7 @@
 ﻿using NewLife.Caching.Clusters;
 using Xunit;
 
-namespace XUnitTest.Models;
+namespace XUnitTest.Clusters;
 
 public class SlaveInfoTests
 {
