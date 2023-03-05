@@ -1,4 +1,4 @@
-﻿using NewLife.Caching.Models;
+﻿using NewLife.Caching.Clusters;
 using Xunit;
 
 namespace XUnitTest.Models;

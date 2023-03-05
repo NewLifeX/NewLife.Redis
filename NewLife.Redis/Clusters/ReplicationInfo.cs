@@ -1,4 +1,4 @@
-﻿namespace NewLife.Caching.Models;
+﻿namespace NewLife.Caching.Clusters;
 
 /// <summary>主从复制信息</summary>
 public class ReplicationInfo
@@ -33,13 +33,11 @@ public class ReplicationInfo
             {
                 var list = new List<SlaveInfo>();
                 for (var i = 0; i < num; i++)
-                {
                     if (data.TryGetValue($"slave{i}", out str))
                     {
                         var inf = SlaveInfo.Parse(str);
                         if (inf != null) list.Add(inf);
                     }
-                }
 
                 Slaves = list.ToArray();
             }

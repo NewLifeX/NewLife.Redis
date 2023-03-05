@@ -109,18 +109,24 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
     /// <param name="key">键</param>
     /// <param name="write">可写</param>
     /// <returns></returns>
-    public virtual Node SelectNode(String key, Boolean write)
+    public virtual IRedisNode SelectNode(String key, Boolean write)
     {
         if (key.IsNullOrEmpty()) return null;
 
         var slot = key.GetBytes().Crc16() % 16384;
         var ns = Nodes.Where(e => e.LinkState == 1).ToList();
+
         // 找主节点
         foreach (var node in ns)
+        {
             if (!node.Slave && node.Contain(slot)) return node;
+        }
+
         // 找从节点
         foreach (var node in ns)
+        {
             if (node.Contain(slot)) return node;
+        }
 
         return null;
     }
@@ -130,7 +136,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
     /// <param name="write">可写</param>
     /// <param name="exception"></param>
     /// <returns></returns>
-    public Node ReselectNode(String key, Boolean write, Exception exception)
+    public IRedisNode ReselectNode(String key, Boolean write, Exception exception)
     {
         // 处理MOVED和ASK指令
         var msg = exception.Message;

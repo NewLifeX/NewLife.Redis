@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using NewLife.Caching.Common;
-using NewLife.Caching.Models;
 using NewLife.Data;
 using NewLife.Log;
 using NewLife.Serialization;

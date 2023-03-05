@@ -1,5 +1,4 @@
-﻿using NewLife.Caching.Models;
-using NewLife.Log;
+﻿using NewLife.Log;
 using NewLife.Threading;
 
 namespace NewLife.Caching.Clusters;
@@ -36,13 +35,8 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         if (Nodes != null) _timer = new TimerX(s => GetNodes(), null, 60_000, 600_000) { Async = true };
     }
 
-    private void GetNodes()
-    {
-        ParseMasterSlaveNodes();
-    }
-
     /// <summary>分析主从节点</summary>
-    public void ParseMasterSlaveNodes()
+    public void GetNodes()
     {
         var showLog = Nodes == null;
         if (showLog) XTrace.WriteLine("分析[{0}]主从节点：", Redis?.Name);
@@ -70,45 +64,41 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         }
 
         // Master节点
-        if (rep.Role == "master")
         {
             var node = new Node
             {
-                Slave = false,
-                Slaves = list,
-            };
-
-            Nodes = new[] { node };
-        }
-        else
-        {
-            var node = new Node
-            {
-                Slave = false,
+                Slave = rep.Role != "master",
                 Slaves = list,
             };
 
             list.Add(node);
-            Nodes = list.ToArray();
         }
+
+        Nodes = list.ToArray();
     }
 
     /// <summary>根据Key选择节点</summary>
     /// <param name="key">键</param>
     /// <param name="write">可写</param>
     /// <returns></returns>
-    public virtual Node SelectNode(String key, Boolean write)
+    public virtual IRedisNode SelectNode(String key, Boolean write)
     {
         if (key.IsNullOrEmpty()) return null;
 
         var slot = key.GetBytes().Crc16() % 16384;
         var ns = Nodes.Where(e => e.LinkState == 1).ToList();
+
         // 找主节点
         foreach (var node in ns)
+        {
             if (!node.Slave && node.Contain(slot)) return node;
+        }
+
         // 找从节点
         foreach (var node in ns)
+        {
             if (node.Contain(slot)) return node;
+        }
 
         return null;
     }
@@ -118,7 +108,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     /// <param name="write">可写</param>
     /// <param name="exception"></param>
     /// <returns></returns>
-    public Node ReselectNode(String key, Boolean write, Exception exception)
+    public IRedisNode ReselectNode(String key, Boolean write, Exception exception)
     {
         // 处理MOVED和ASK指令
         var msg = exception.Message;

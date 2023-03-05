@@ -1,5 +1,5 @@
 ﻿using NewLife.Caching;
-using NewLife.Caching.Models;
+using NewLife.Caching.Queues;
 using NewLife.Log;
 
 namespace QueueDemo;

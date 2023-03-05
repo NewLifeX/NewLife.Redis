@@ -1,4 +1,5 @@
 ﻿using NewLife;
+using NewLife.Caching.Clusters;
 using NewLife.Caching.Models;
 using Xunit;
 

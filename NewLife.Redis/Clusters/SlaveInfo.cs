@@ -1,4 +1,4 @@
-﻿namespace NewLife.Caching.Models;
+﻿namespace NewLife.Caching.Clusters;
 
 /// <summary>从节点信息</summary>
 public class SlaveInfo

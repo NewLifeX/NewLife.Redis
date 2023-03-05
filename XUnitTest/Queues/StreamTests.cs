@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using NewLife.Caching;
-using NewLife.Caching.Models;
+using NewLife.Caching.Queues;
 using NewLife.Log;
 using NewLife.Security;
 using NewLife.Serialization;

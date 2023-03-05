@@ -27,10 +27,10 @@ public class RedisReplicationTests
     }
 
     [Fact]
-    public void ParseMasterSlaveNodes()
+    public void GetNodes()
     {
         var cluster = new RedisReplication(_redis);
-        cluster.ParseMasterSlaveNodes();
+        cluster.GetNodes();
 
         var rep = cluster.Replication;
         Assert.NotNull(rep);
