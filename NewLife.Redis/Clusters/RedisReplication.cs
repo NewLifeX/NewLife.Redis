@@ -1,7 +1,5 @@
 ﻿using System.Net.Sockets;
-using System.Text;
 using NewLife.Log;
-using NewLife.Model;
 using NewLife.Threading;
 
 namespace NewLife.Caching.Clusters;
@@ -11,10 +9,10 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
 {
     #region 属性
     /// <summary>集群节点</summary>
-    public RedisNode[] Nodes { get; private set; }
+    public RedisNode[] Nodes { get; protected set; }
 
     /// <summary>主从信息</summary>
-    public ReplicationInfo Replication { get; private set; }
+    public ReplicationInfo Replication { get; protected set; }
 
     private TimerX _timer;
     private Int32 _idx;
@@ -40,7 +38,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     }
 
     /// <summary>分析主从节点</summary>
-    public void GetNodes()
+    public virtual void GetNodes()
     {
         var showLog = Nodes == null;
         if (showLog) XTrace.WriteLine("分析[{0}]主从节点：", Redis?.Name);

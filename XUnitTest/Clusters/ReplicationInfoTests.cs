@@ -80,4 +80,33 @@ public class ReplicationInfoTests
         Assert.Equal("127.0.0.1", rep.MasterHost);
         Assert.Equal(6379, rep.MasterPort);
     }
+
+    [Fact]
+    public void ParseSentinels()
+    {
+        var str = """
+                # Sentinel
+                sentinel_masters:1
+                sentinel_tilt:0
+                sentinel_running_scripts:0
+                sentinel_scripts_queue_length:0
+                sentinel_simulate_failure_flags:0
+                master0:name=redis-master,status=ok,address=127.0.0.1:6379,slaves=3,sentinels=3
+
+                """;
+
+        var dic = str.SplitAsDictionary(":", "\n");
+
+        var rep = new ReplicationInfo();
+        rep.Load(dic);
+
+        var inf = rep.Masters[0];
+        Assert.NotNull(inf);
+        Assert.Equal("redis-master", inf.Name);
+        Assert.Equal("ok", inf.Status);
+        Assert.Equal("127.0.0.1", inf.IP);
+        Assert.Equal(6379, inf.Port);
+        Assert.Equal(3, inf.Slaves);
+        Assert.Equal(3, inf.Sentinels);
+    }
 }

@@ -15,6 +15,9 @@ public class ReplicationInfo
 
     /// <summary>主节点端口。仅slave有</summary>
     public Int32 MasterPort { get; set; }
+
+    /// <summary>主节点集合</summary>
+    public MasterInfo[] Masters { get; set; }
     #endregion
 
     #region 方法
@@ -33,13 +36,34 @@ public class ReplicationInfo
             {
                 var list = new List<SlaveInfo>();
                 for (var i = 0; i < num; i++)
+                {
                     if (data.TryGetValue($"slave{i}", out str))
                     {
                         var inf = SlaveInfo.Parse(str);
                         if (inf != null) list.Add(inf);
                     }
+                }
 
                 Slaves = list.ToArray();
+            }
+        }
+
+        if (data.TryGetValue("sentinel_masters", out str))
+        {
+            var num = str.ToInt();
+            if (num > 0)
+            {
+                var list = new List<MasterInfo>();
+                for (var i = 0; i < num; i++)
+                {
+                    if (data.TryGetValue($"master{i}", out str))
+                    {
+                        var inf = MasterInfo.Parse(str);
+                        if (inf != null) list.Add(inf);
+                    }
+                }
+
+                Masters = list.ToArray();
             }
         }
     }
