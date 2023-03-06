@@ -9,7 +9,7 @@ public class ClusterNode : RedisNode
     /// <summary>标识</summary>
     public String ID { get; set; }
 
-    /// <summary>标志</summary>
+    /// <summary>标志。master/slave/myself</summary>
     public String Flags { get; set; }
 
     /// <summary>主机。当前节点对应的主机</summary>
@@ -70,6 +70,7 @@ public class ClusterNode : RedisNode
         LinkState = fs.Contains("fail?") ? 0 : 1;
 
         if (ss.Length >= 9)
+        {
             for (var i = 8; i < ss.Length; i++)
             {
                 var str = ss[i];
@@ -87,6 +88,7 @@ public class ClusterNode : RedisNode
                     });
                 }
             }
+        }
     }
 
     private void ParseImportingAndMigrating(String str)

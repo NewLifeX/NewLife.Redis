@@ -1,6 +1,4 @@
 ﻿using System.Text;
-using System.Xml.Linq;
-using NewLife.Caching.Models;
 using NewLife.Log;
 using NewLife.Threading;
 
@@ -32,7 +30,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
         GetNodes();
 
         // 定时刷新集群节点列表
-        if (Nodes != null) _timer = new TimerX(s => GetNodes(), null, 60_000, 600_000) { Async = true };
+        if (Nodes != null) _timer = new TimerX(s => GetNodes(), null, 60_000, 60_000) { Async = true };
     }
 
     /// <summary>获取节点</summary>
@@ -46,6 +44,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
         ParseNodes(rs);
     }
 
+    private String _lastNodes;
     /// <summary>分析节点</summary>
     /// <param name="nodes"></param>
     public void ParseNodes(String nodes)
@@ -71,22 +70,28 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
                 //XTrace.WriteLine("[{0}]节点：{1}", Redis.Name, node);
             }
         }
+
+        var str = list.Join("\n", n => n + " " + n?.Slots.Join(","));
+        if (str != _lastNodes)
+        {
+            if (!showLog) XTrace.WriteLine("分析[{0}]集群节点：", Redis?.Name);
+            showLog = true;
+            _lastNodes = str;
+        }
+
         //list = list.OrderBy(e => e.EndPoint).ToList();
         list = SortNodes(list);
 
         foreach (var node in list)
         {
-            var name = Redis?.Name + "";
-            if (!name.IsNullOrEmpty()) name = $"[{name}]";
-
-            if (showLog) XTrace.WriteLine("{0}节点：{1} {2} {3}", name, node, node.Flags, node.Slots.Join(" "));
+            if (showLog) XTrace.WriteLine("节点：{0} {1} {2}", node, node.Flags, node.Slots.Join(" "));
 
             if (node.Slaves != null)
             {
-                name += "节点：";
-                name = new String(' ', Encoding.Default.GetByteCount(name));
                 foreach (var item in node.Slaves)
-                    if (showLog) XTrace.WriteLine("{0}{1} {2}", name, item, item.Flags);
+                {
+                    if (showLog) XTrace.WriteLine("      {0} {1}", item, item.Flags);
+                }
             }
         }
         Nodes = list.ToArray();
