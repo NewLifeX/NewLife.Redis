@@ -536,7 +536,7 @@ public class RedisClient : DisposeBase
         // 结果集数量
         var len = ReadLine(ms).ToInt(-1);
         log?.Append(len);
-        if (len < 0) return Array.Empty<Object>();
+        if (len < 0) return new Object[0];
 
         var arr = new Object[len];
         for (var i = 0; i < len; i++)
