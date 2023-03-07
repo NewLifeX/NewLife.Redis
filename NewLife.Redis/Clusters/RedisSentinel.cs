@@ -15,6 +15,7 @@ public class RedisSentinel : RedisReplication
     #endregion
 
     #region 方法
+    private String _lastNodes;
     /// <summary>分析主从节点</summary>
     public override void GetNodes()
     {
@@ -56,11 +57,15 @@ public class RedisSentinel : RedisReplication
         nodes = nodes.OrderBy(e => e.Slave).ThenBy(e => e.EndPoint).ToList();
         Nodes = nodes.ToArray();
 
+        var str = nodes.Join("\n", e => $"{e.EndPoint}-{e.Slave}");
+        if (_lastNodes != str)
+        {
+            if (!showLog) XTrace.WriteLine("分析[{0}]哨兵节点：", Redis?.Name);
+            showLog = true;
+            _lastNodes = str;
+        }
         foreach (var node in nodes)
         {
-            var name = Redis?.Name + "";
-            if (!name.IsNullOrEmpty()) name = $"[{name}]";
-
             if (showLog) XTrace.WriteLine("节点：{0} {1}", node.Slave ? "slave" : "master", node.EndPoint);
         }
     }

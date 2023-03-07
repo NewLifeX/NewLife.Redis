@@ -35,9 +35,10 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         GetNodes();
 
         // 定时刷新集群节点列表
-        if (Nodes != null) _timer = new TimerX(s => GetNodes(), null, 60_000, 600_000) { Async = true };
+        if (Nodes != null) _timer = new TimerX(s => GetNodes(), null, 60_000, 60_000) { Async = true };
     }
 
+    private String _lastNodes;
     /// <summary>分析主从节点</summary>
     public virtual void GetNodes()
     {
@@ -53,11 +54,15 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         nodes = nodes.OrderBy(e => e.Slave).ThenBy(e => e.EndPoint).ToList();
         Nodes = nodes.ToArray();
 
+        var str = nodes.Join("\n", e => $"{e.EndPoint}-{e.Slave}");
+        if (_lastNodes != str)
+        {
+            if (!showLog) XTrace.WriteLine("分析[{0}]主从节点：", Redis?.Name);
+            showLog = true;
+            _lastNodes = str;
+        }
         foreach (var node in nodes)
         {
-            var name = Redis?.Name + "";
-            if (!name.IsNullOrEmpty()) name = $"[{name}]";
-
             if (showLog) XTrace.WriteLine("节点：{0} {1}", node.Slave ? "slave" : "master", node.EndPoint);
         }
     }

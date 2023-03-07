@@ -23,7 +23,7 @@ class Program
         try
         {
             //TestHyperLogLog();
-            Test6();
+            Test5();
         }
         catch (Exception ex)
         {
@@ -181,8 +181,22 @@ class Program
         XTrace.WriteLine("Json: {0}", user2.ToJson());
         XTrace.WriteLine("Json: {0}", rds.Get<String>("user"));
         if (rds.ContainsKey("user")) XTrace.WriteLine("存在！");
-        rds.Remove("user");
+        //rds.Remove("user");
 
+        for (var i = 0; i < 1000; i++)
+        {
+            try
+            {
+                user2 = rds.Get<User>("user");
+                XTrace.WriteLine("Json: {0}", user2.ToJson());
+            }
+            catch (Exception ex)
+            {
+                XTrace.WriteException(ex);
+            }
+
+            Thread.Sleep(1000);
+        }
     }
 
     static async void Test6()
