@@ -174,7 +174,7 @@ class Program
     static void Test5()
     {
         var user = new User { Name = "NewLife", CreateTime = DateTime.Now };
-        var rds = new FullRedis("127.0.0.1:6002,127.0.0.1:6003", null, 2);
+        var rds = new FullRedis("127.0.0.1:7002,127.0.0.1:6003", null, 2);
         rds.Log = XTrace.Log;
         rds.Set("user", user, 3600);
         var user2 = rds.Get<User>("user");

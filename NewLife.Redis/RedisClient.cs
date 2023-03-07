@@ -373,6 +373,7 @@ public class RedisClient : DisposeBase
         {
             // 验证登录
             CheckLogin(cmd);
+            CheckSelect(cmd);
 
             var ms = Pool.MemoryStream.Get();
             GetRequest(ms, cmd, args, oriArgs);
@@ -483,6 +484,7 @@ public class RedisClient : DisposeBase
         {
             // 验证登录
             CheckLogin(cmd);
+            CheckSelect(cmd);
 
             var ms = Pool.MemoryStream.Get();
             GetRequest(ms, cmd, args, oriArgs);
@@ -505,15 +507,24 @@ public class RedisClient : DisposeBase
     private void CheckLogin(String cmd)
     {
         if (Logined) return;
-        if (cmd.EqualIgnoreCase("Auth", "Select")) return;
+        if (cmd.EqualIgnoreCase("Auth")) return;
 
         if (!Host.Password.IsNullOrEmpty() && !Auth(Host.UserName, Host.Password))
             throw new Exception("登录失败！");
 
-        if (Host.Db > 0) Select(Host.Db);
-
         Logined = true;
         LoginTime = DateTime.Now;
+    }
+
+    private Int32 _selected = -1;
+    private void CheckSelect(String cmd)
+    {
+        if (_selected >= 0 && _selected != Host.Db) return;
+        if (cmd.EqualIgnoreCase("Select", "Info")) return;
+
+        if (Host.Db > 0 && (Host is not FullRedis rds || rds.Mode != "sentinel")) Select(Host.Db);
+
+        _selected = Host.Db;
     }
 
     /// <summary>重置。干掉历史残留数据</summary>
@@ -842,6 +853,7 @@ public class RedisClient : DisposeBase
 
         // 验证登录
         CheckLogin(null);
+        CheckSelect(null);
 
         // 整体打包所有命令
         var ms = Pool.MemoryStream.Get();
