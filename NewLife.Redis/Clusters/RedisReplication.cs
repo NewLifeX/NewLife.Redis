@@ -1,6 +1,7 @@
 ﻿using System.Net.Sockets;
 using NewLife.Log;
 using NewLife.Net;
+using NewLife.Reflection;
 using NewLife.Threading;
 
 namespace NewLife.Caching.Clusters;
@@ -205,7 +206,8 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     {
         if (key.IsNullOrEmpty()) return null;
 
-        var ns = Nodes;
+        var now = DateTime.Now;
+        var ns = Nodes?.Where(e => e.NextTime < now).ToArray();
         if (ns == null || ns.Length == 0) return null;
 
         // 先找主节点
@@ -229,16 +231,25 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     /// <summary>根据异常重选节点</summary>
     /// <param name="key">键</param>
     /// <param name="write">可写</param>
+    /// <param name="node"></param>
     /// <param name="exception"></param>
     /// <returns></returns>
-    public virtual IRedisNode ReselectNode(String key, Boolean write, Exception exception)
+    public virtual IRedisNode ReselectNode(String key, Boolean write, IRedisNode node, Exception exception)
     {
-        var ns = Nodes;
+        // 屏蔽旧节点一段时间
+        var now = DateTime.Now;
+        var redisNode = node as RedisNode;
+
+        var ns = Nodes?.Where(e => e.NextTime < now).ToArray();
+        if (ns != null && redisNode != null) ns = ns.Where(e => e.EndPoint != redisNode.EndPoint).ToArray();
         if (ns == null || ns.Length == 0) return null;
 
         // 读取指令网络异常时，换一个节点
         if (exception is SocketException or IOException)
         {
+            // 屏蔽旧节点一段时间
+            if (redisNode != null) redisNode.NextTime = now.AddSeconds(Redis.ShieldingTime);
+
             if (!write) return ns[Interlocked.Increment(ref _idx) % ns.Length];
         }
 

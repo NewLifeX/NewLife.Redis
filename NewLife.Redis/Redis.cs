@@ -42,6 +42,9 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <summary>出错重试次数。如果出现协议解析错误，可以重试的次数，默认3</summary>
     public Int32 Retry { get; set; } = 3;
 
+    /// <summary>不可用节点的屏蔽时间。默认60秒</summary>
+    public Int32 ShieldingTime { get; set; } = 60;
+
     /// <summary>完全管道。读取操作是否合并进入管道，默认false</summary>
     public Boolean FullPipeline { get; set; }
 

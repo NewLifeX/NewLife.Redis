@@ -1,6 +1,5 @@
 ﻿using NewLife.Collections;
 using NewLife.Log;
-using NewLife.Model;
 using NewLife.Net;
 
 namespace NewLife.Caching.Clusters;
@@ -8,6 +7,7 @@ namespace NewLife.Caching.Clusters;
 /// <summary>集群中的节点</summary>
 public class RedisNode : IRedisNode
 {
+    #region 属性
     /// <summary>拥有者</summary>
     public Redis Owner { get; set; }
 
@@ -16,6 +16,10 @@ public class RedisNode : IRedisNode
 
     /// <summary>是否从节点</summary>
     public Boolean Slave { get; set; }
+
+    /// <summary>下一次时间。节点出错时，将禁用一段时间</summary>
+    public DateTime NextTime { get;set;}
+    #endregion
 
     #region 构造
     /// <summary>已重载。友好显示节点地址</summary>

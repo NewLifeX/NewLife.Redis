@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Net.Sockets;
+using System.Text;
 using NewLife.Log;
 using NewLife.Threading;
 
@@ -121,8 +122,11 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
     {
         if (key.IsNullOrEmpty()) return null;
 
+        var now = DateTime.Now;
+        var ns = Nodes?.Where(e => e.NextTime < now && e.LinkState == 1).ToArray();
+        if (ns == null || ns.Length == 0) return null;
+
         var slot = key.GetBytes().Crc16() % 16384;
-        var ns = Nodes.Where(e => e.LinkState == 1).ToList();
 
         // 找主节点
         foreach (var node in ns)
@@ -142,10 +146,14 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
     /// <summary>根据异常重选节点</summary>
     /// <param name="key">键</param>
     /// <param name="write">可写</param>
+    /// <param name="node"></param>
     /// <param name="exception"></param>
     /// <returns></returns>
-    public IRedisNode ReselectNode(String key, Boolean write, Exception exception)
+    public IRedisNode ReselectNode(String key, Boolean write, IRedisNode node, Exception exception)
     {
+        // 屏蔽旧节点一段时间
+        var now = DateTime.Now;
+
         // 处理MOVED和ASK指令
         var msg = exception.Message;
         if (msg.StartsWithIgnoreCase("MOVED", "ASK"))
@@ -154,6 +162,13 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
             var endpoint = msg.Substring(" ");
             if (!endpoint.IsNullOrEmpty())
                 return Map(endpoint, key);
+        }
+
+        // 读取指令网络异常时，换一个节点
+        if (exception is SocketException or IOException)
+        {
+            // 屏蔽旧节点一段时间
+            if (node is RedisNode redisNode) redisNode.NextTime = now.AddSeconds(Redis.ShieldingTime);
         }
 
         return null;
