@@ -291,8 +291,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
         if (idx != _idxLast)
         {
-            if (XTrace.Log.Level <= LogLevel.Debug)
-                XTrace.WriteLine("Redis使用 {0}", svrs[idx % svrs.Length]);
+            WriteLog("使用Redis节点：{0}", svrs[idx % svrs.Length]);
 
             _idxLast = idx;
         }

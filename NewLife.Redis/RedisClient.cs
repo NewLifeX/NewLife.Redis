@@ -31,6 +31,9 @@ public class RedisClient : DisposeBase
     /// <summary>宿主</summary>
     public Redis Host { get; set; }
 
+    /// <summary>读写超时时间。默认为0取Host.Timeout</summary>
+    public Int32 Timeout { get; set; }
+
     /// <summary>是否已登录</summary>
     public Boolean Logined { get; private set; }
 
@@ -102,7 +105,8 @@ public class RedisClient : DisposeBase
             tc.TryDispose();
             if (!create) return null;
 
-            var timeout = Host.Timeout;
+            var timeout = Timeout;
+            if (timeout == 0) timeout = Host.Timeout;
             tc = new TcpClient
             {
                 SendTimeout = timeout,
@@ -192,7 +196,8 @@ public class RedisClient : DisposeBase
             tc.TryDispose();
             if (!create) return null;
 
-            var timeout = Host.Timeout;
+            var timeout = Timeout;
+            if (timeout == 0) timeout = Host.Timeout;
             tc = new TcpClient
             {
                 SendTimeout = timeout,
@@ -410,7 +415,8 @@ public class RedisClient : DisposeBase
 
         // 取巧进行异步操作，只要异步读取到第一个字节，后续同步读取
         var buf = new Byte[1];
-        if (cancellationToken == CancellationToken.None) cancellationToken = new CancellationTokenSource(Host.Timeout).Token;
+        if (cancellationToken == CancellationToken.None)
+            cancellationToken = new CancellationTokenSource(Timeout > 0 ? Timeout : Host.Timeout).Token;
         var n = await ms.ReadAsync(buf, 0, buf.Length, cancellationToken);
         if (n <= 0) return list;
 

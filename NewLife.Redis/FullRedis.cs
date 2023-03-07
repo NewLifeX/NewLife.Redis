@@ -128,6 +128,7 @@ public class FullRedis : Redis
         {
             if (info.TryGetValue("redis_mode", out var mode)) Mode = mode;
             // 主从复制时，仅master有connected_slaves，因此Server地址必须把master节点放在第一位
+            info.TryGetValue("role", out var role);
             info.TryGetValue("connected_slaves", out var connected_slaves);
 
             // 集群模式初始化节点
@@ -143,7 +144,7 @@ public class FullRedis : Redis
                 cluster.StartMonitor();
                 Cluster = cluster;
             }
-            else if (mode.EqualIgnoreCase("standalone") && connected_slaves.ToInt() > 0)
+            else if (mode.EqualIgnoreCase("standalone") && (connected_slaves.ToInt() > 0 || role == "slave"))
             {
                 var cluster = new RedisReplication(this);
                 cluster.StartMonitor();

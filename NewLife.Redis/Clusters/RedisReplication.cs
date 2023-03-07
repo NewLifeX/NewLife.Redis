@@ -46,14 +46,15 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
 
         // 可能配置了多个地址，主从混合，需要探索式查找
         var servers = Redis.GetServers().ToList();
-        var hash = new HashSet<String>();
+        var hash = servers.Select(e => e.EndPoint + "").ToList();
         var nodes = new List<RedisNode>();
         for (var i = 0; i < servers.Count; i++)
         {
             var svr = servers[i];
             var (rep, list) = GetReplication(Redis, svr);
 
-            if (rep != null) Replication = rep;
+            Replication ??= rep;
+
             if (list != null)
             {
                 // 合并列表
@@ -67,6 +68,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
                         hash.Add(item.EndPoint);
 
                         var uri = new NetUri(item.EndPoint) { Type = NetType.Tcp };
+                        if (uri.Port == 0) uri.Port = 6379;
                         servers.Add(uri);
                     }
                 }
@@ -99,13 +101,13 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         var rs = "";
         try
         {
-            using var client = new RedisClient(redis, server);
+            using var client = new RedisClient(redis, server) { Timeout = 5_000 };
             rs = client.Execute<String>("INFO", "Replication");
         }
         catch (Exception ex)
         {
             span?.SetError(ex, null);
-            XTrace.WriteLine("探索[{0}]异常 {1}", server, ex.Message);
+            XTrace.WriteLine("探索[{0}]异常 {1}", server.EndPoint, ex.Message);
         }
         if (rs.IsNullOrEmpty()) return (null, null);
 
@@ -152,7 +154,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
             {
                 Owner = redis,
                 EndPoint = rep.EndPoint,
-                Slave = rep.Role != "master",
+                Slave = false,
             };
 
             list.Insert(0, node);
@@ -185,13 +187,19 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         if (ns == null || ns.Length == 0) return null;
 
         // 先找主节点
-        foreach (var item in Nodes)
+        foreach (var item in ns)
         {
             if (!item.Slave) return item;
         }
 
         // 如果不是写入，也可以使用从节点
-        if (!write) return Nodes[Interlocked.Increment(ref _idx) % ns.Length];
+        if (!write)
+        {
+            foreach (var item in ns)
+            {
+                if (item.Slave) return item;
+            }
+        }
 
         return null;
     }
@@ -201,15 +209,15 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     /// <param name="write">可写</param>
     /// <param name="exception"></param>
     /// <returns></returns>
-    public IRedisNode ReselectNode(String key, Boolean write, Exception exception)
+    public virtual IRedisNode ReselectNode(String key, Boolean write, Exception exception)
     {
         var ns = Nodes;
         if (ns == null || ns.Length == 0) return null;
 
-        // 读取指令网络异常时，换一个从节点
+        // 读取指令网络异常时，换一个节点
         if (exception is SocketException or IOException)
         {
-            if (!write) return Nodes[Interlocked.Increment(ref _idx) % ns.Length];
+            if (!write) return ns[Interlocked.Increment(ref _idx) % ns.Length];
         }
 
         return null;

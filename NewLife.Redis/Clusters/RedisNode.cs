@@ -10,11 +10,17 @@ public class RedisNode : IRedisNode
     /// <summary>拥有者</summary>
     public Redis Owner { get; set; }
 
-    /// <summary>当前节点地址</summary>
+    /// <summary>节点地址</summary>
     public String EndPoint { get; set; }
 
     /// <summary>是否从节点</summary>
     public Boolean Slave { get; set; }
+
+    #region 构造
+    /// <summary>已重载。友好显示节点地址</summary>
+    /// <returns></returns>
+    public override String ToString() => EndPoint ?? base.ToString();
+    #endregion
 
     #region 客户端池
     class MyPool : ObjectPool<RedisClient>
@@ -70,6 +76,8 @@ public class RedisNode : IRedisNode
                     AllIdleTime = 120,
                     Log = Owner.Log,
                 };
+
+                Owner.WriteLog("使用Redis节点：{0}", EndPoint);
 
                 return _Pool = pool;
             }
