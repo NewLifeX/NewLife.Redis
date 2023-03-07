@@ -19,6 +19,11 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
     private RedisStream<T> _Queue;
 
     /// <summary>
+    /// 编码器
+    /// </summary>
+    public RedisJsonEncoder Encoder { set; get; } = new RedisJsonEncoder();
+
+    /// <summary>
     /// 读写超时(默认15000ms)
     /// </summary>
     public Int32 TimeOut { set; get; } = 15_000;
@@ -54,6 +59,16 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
     }
 
     /// <summary>
+    /// 初始化
+    /// </summary>
+    /// <param name="encoder">编码器</param>
+    public MultipleConsumerGroupsQueue(RedisJsonEncoder encoder = null)
+    {
+        if (encoder != null)
+            Encoder = encoder;
+    }
+
+    /// <summary>
     /// 连接Redis服务器
     /// </summary>
     /// <param name="host">Redis地址</param>
@@ -63,7 +78,7 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
     /// <param name="db">连接Redis数据库</param>
     public void Connect(String host, String queueName, Int32 port = 6379, String password = "", Int32 db = 0)
     {
-        _Redis = new FullRedis($"{host}:{port}", password, db) { Timeout = TimeOut };
+        _Redis = new FullRedis($"{host}:{port}", password, db) { Timeout = TimeOut, Encoder = Encoder };
         if (_Redis != null)
         {
             _Queue = _Redis.GetStream<T>(queueName);
@@ -71,6 +86,46 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
         }
         else
             throw new NullReferenceException("连接Redis服务器失败。");
+
+    }
+
+    /// <summary>
+    /// 连接Redis服务器
+    /// </summary>
+    /// <param name="connStr">连接字串</param>
+    /// <param name="queueName">列队名称</param>
+    /// <exception cref="NullReferenceException"></exception>
+    public void Connect(string connStr, String queueName)
+    {
+        _Redis = new FullRedis() { Timeout = TimeOut, Encoder = Encoder };
+        _Redis.Init(connStr);
+        if (_Redis != null)
+        {
+            _Queue = _Redis.GetStream<T>(queueName);
+            _Queue.MaxLength = QueueLen;
+        }
+        else
+            throw new NullReferenceException("连接Redis服务器失败。");
+
+    }
+
+    /// <summary>
+    /// 连接Redis服务器
+    /// </summary>
+    /// <param name="redis">Redis对像</param>
+    /// <param name="queueName">列队名称</param>
+    /// <exception cref="NullReferenceException"></exception>
+    public void Connect(FullRedis redis, String queueName)
+    {
+        if (_Redis != null)
+        {
+            _Queue = _Redis.GetStream<T>(queueName);
+            _Queue.MaxLength = QueueLen;
+        }
+        else
+            throw new NullReferenceException("连接Redis服务器失败。");
+
+
 
     }
 
