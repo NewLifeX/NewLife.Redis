@@ -23,7 +23,7 @@ class Program
         try
         {
             //TestHyperLogLog();
-            Test1();
+            Test5();
         }
         catch (Exception ex)
         {

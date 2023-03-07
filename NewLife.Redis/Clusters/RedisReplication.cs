@@ -74,7 +74,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         }
 
         // 排序，master优先
-        nodes = nodes.OrderByDescending(e => e.Slave).ThenBy(e => e.EndPoint).ToList();
+        nodes = nodes.OrderBy(e => e.Slave).ThenBy(e => e.EndPoint).ToList();
         Nodes = nodes.ToArray();
 
         foreach (var node in nodes)
