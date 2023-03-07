@@ -26,6 +26,12 @@ public class MasterInfo
     public Int32 Sentinels { get; set; }
     #endregion
 
+    #region 构造
+    /// <summary>已重载。</summary>
+    /// <returns></returns>
+    public override String ToString() => !IP.IsNullOrEmpty() ? EndPoint : base.ToString();
+    #endregion
+
     #region 方法
     /// <summary>分析字符串</summary>
     /// <param name="str"></param>

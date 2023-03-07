@@ -3,7 +3,7 @@ using Xunit;
 
 namespace XUnitTest.Clusters;
 
-public class MasterInfoTest
+public class MasterInfoTests
 {
     [Fact]
     public void Parse()

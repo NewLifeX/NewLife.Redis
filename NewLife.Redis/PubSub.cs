@@ -51,7 +51,7 @@ public class PubSub : RedisBase
     /// <param name="onMessage"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public async Task SubscribeAsync(Action<String, String> onMessage, CancellationToken cancellationToken)
+    public async Task SubscribeAsync(Action<String, String> onMessage, CancellationToken cancellationToken = default)
     {
         var client = Redis.Pool.Get();
         client.Reset();

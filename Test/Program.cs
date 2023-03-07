@@ -23,7 +23,7 @@ class Program
         try
         {
             //TestHyperLogLog();
-            Test5();
+            Test6();
         }
         catch (Exception ex)
         {
@@ -185,8 +185,20 @@ class Program
 
     }
 
-    static void Test6()
+    static async void Test6()
     {
+        var user = new User { Name = "NewLife", CreateTime = DateTime.Now };
+        var rds = new FullRedis("127.0.0.1:6002,127.0.0.1:6003", null, 0);
+        //rds.Log = XTrace.Log;
+
+        var rn = new PubSub(rds, "__sentinel__:hello");
+        await rn.SubscribeAsync((k, v) =>
+        {
+            //XTrace.WriteLine("k={0} v={1}", k, v);
+            //XTrace.WriteLine(v);
+            var inf = SentinelInfo.Parse(v);
+            XTrace.WriteLine(inf.ToJson());
+        });
     }
 
     static void TestHyperLogLog()
