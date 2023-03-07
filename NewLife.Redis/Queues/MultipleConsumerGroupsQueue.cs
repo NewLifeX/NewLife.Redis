@@ -68,7 +68,7 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
     /// </summary>
     /// <param name="ignoreErrMsg">忽略异常消息(在对消息进行解析时发生异常，依然对当前消息进行消费)</param>
     /// <param name="encoder">编码器</param>
-    public MultipleConsumerGroupsQueue(bool ignoreErrMsg, RedisJsonEncoder encoder = null)
+    public MultipleConsumerGroupsQueue(bool ignoreErrMsg = true, RedisJsonEncoder encoder = null)
     {
         if (encoder != null)
             Encoder = encoder;
