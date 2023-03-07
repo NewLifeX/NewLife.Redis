@@ -1,6 +1,4 @@
-﻿using System.Net.Sockets;
-using NewLife.Log;
-using NewLife.Threading;
+﻿using NewLife.Log;
 
 namespace NewLife.Caching.Clusters;
 
@@ -36,47 +34,35 @@ public class RedisSentinel : RedisReplication
 
         Replication = rep;
 
-        var list = new List<RedisNode>();
+        var servers = new List<String>();
         if (rep.Masters != null)
         {
             foreach (var item in rep.Masters)
             {
-                if (item.IP.IsNullOrEmpty()) continue;
-
-                var node = new RedisNode
-                {
-                    Owner = Redis,
-                    EndPoint = item.EndPoint,
-                    Slave = false,
-                };
-                list.Add(node);
+                if (!item.IP.IsNullOrEmpty()) servers.Add(item.EndPoint);
             }
         }
         if (rep.Slaves != null)
         {
             foreach (var item in rep.Slaves)
             {
-                if (item.IP.IsNullOrEmpty()) continue;
-
-                var node = new RedisNode
-                {
-                    Owner = Redis,
-                    EndPoint = item.EndPoint,
-                    Slave = true,
-                };
-                list.Add(node);
+                if (!item.IP.IsNullOrEmpty()) servers.Add(item.EndPoint);
             }
         }
 
-        foreach (var node in list)
+        var (_, nodes) = GetReplications(Redis, servers.Select(e => new Net.NetUri(e)).ToList());
+
+        // 排序，master优先
+        nodes = nodes.OrderBy(e => e.Slave).ThenBy(e => e.EndPoint).ToList();
+        Nodes = nodes.ToArray();
+
+        foreach (var node in nodes)
         {
             var name = Redis?.Name + "";
             if (!name.IsNullOrEmpty()) name = $"[{name}]";
 
             if (showLog) XTrace.WriteLine("节点：{0} {1}", node.Slave ? "slave" : "master", node.EndPoint);
         }
-
-        Nodes = list.ToArray();
     }
     #endregion
 }

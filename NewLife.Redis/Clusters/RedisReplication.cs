@@ -46,14 +46,38 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
 
         // 可能配置了多个地址，主从混合，需要探索式查找
         var servers = Redis.GetServers().ToList();
+        var (reps, nodes) = GetReplications(Redis, servers);
+        if (reps != null && reps.Count > 0) Replication = reps[0];
+
+        // 排序，master优先
+        nodes = nodes.OrderBy(e => e.Slave).ThenBy(e => e.EndPoint).ToList();
+        Nodes = nodes.ToArray();
+
+        foreach (var node in nodes)
+        {
+            var name = Redis?.Name + "";
+            if (!name.IsNullOrEmpty()) name = $"[{name}]";
+
+            if (showLog) XTrace.WriteLine("节点：{0} {1}", node.Slave ? "slave" : "master", node.EndPoint);
+        }
+    }
+
+    /// <summary>探索指定一批地址的主从复制信息</summary>
+    /// <param name="redis"></param>
+    /// <param name="servers"></param>
+    /// <returns></returns>
+    public static (IList<ReplicationInfo>, IList<RedisNode>) GetReplications(Redis redis, IList<NetUri> servers)
+    {
+        // 可能配置了多个地址，主从混合，需要探索式查找
         var hash = servers.Select(e => e.EndPoint + "").ToList();
+        var reps = new List<ReplicationInfo>();
         var nodes = new List<RedisNode>();
         for (var i = 0; i < servers.Count; i++)
         {
             var svr = servers[i];
-            var (rep, list) = GetReplication(Redis, svr);
+            var (rep, list) = GetReplication(redis, svr);
 
-            Replication ??= rep;
+            if (rep != null) reps.Add(rep);
 
             if (list != null)
             {
@@ -77,18 +101,11 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
 
         // 排序，master优先
         nodes = nodes.OrderBy(e => e.Slave).ThenBy(e => e.EndPoint).ToList();
-        Nodes = nodes.ToArray();
 
-        foreach (var node in nodes)
-        {
-            var name = Redis?.Name + "";
-            if (!name.IsNullOrEmpty()) name = $"[{name}]";
-
-            if (showLog) XTrace.WriteLine("节点：{0} {1}", node.Slave ? "slave" : "master", node.EndPoint);
-        }
+        return (reps, nodes);
     }
 
-    /// <summary>探索制定地址的主从复制信息</summary>
+    /// <summary>探索指定地址的主从复制信息</summary>
     /// <param name="redis"></param>
     /// <param name="server"></param>
     /// <returns></returns>
