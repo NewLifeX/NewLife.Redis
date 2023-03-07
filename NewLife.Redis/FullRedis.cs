@@ -36,7 +36,7 @@ public class FullRedis : Redis
     /// <summary>模式</summary>
     public String Mode { get; private set; }
 
-    /// <summary>集群</summary>
+    /// <summary>集群。包括集群、主从复制、哨兵，一旦存在则从Cluster获取节点进行连接，而不是当前实例的Pool池</summary>
     public IRedisCluster Cluster { get; set; }
     #endregion
 
@@ -194,9 +194,7 @@ public class FullRedis : Redis
 
                 // 使用新的节点
                 node = Cluster.ReselectNode(key, write, ex);
-                if (node != null) continue;
-
-                throw;
+                if (node == null) throw;
             }
             finally
             {
@@ -248,9 +246,7 @@ public class FullRedis : Redis
 
                 // 使用新的节点
                 node = Cluster.ReselectNode(key, write, ex);
-                if (node != null) continue;
-
-                throw;
+                if (node == null) throw;
             }
             finally
             {

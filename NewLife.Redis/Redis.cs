@@ -242,6 +242,29 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     private Int32 _idxLast = -1;
     private DateTime _nextTrace;
 
+    /// <summary>获取解析后的地址列表</summary>
+    /// <returns></returns>
+    public NetUri[] GetServers()
+    {
+        // 初始化服务器地址列表
+        var svrs = _servers;
+        if (svrs != null) return svrs;
+
+        var ss = Server.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        var uris = new NetUri[ss.Length];
+        for (var i = 0; i < ss.Length; i++)
+        {
+            var svr2 = ss[i];
+            if (!svr2.Contains("://")) svr2 = "tcp://" + svr2;
+
+            var uri = new NetUri(svr2);
+            if (uri.Port == 0) uri.Port = 6379;
+            uris[i] = uri;
+        }
+
+        return _servers = uris;
+    }
+
     /// <summary>创建连接客户端</summary>
     /// <returns></returns>
     protected virtual RedisClient OnCreate()
@@ -250,22 +273,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         if (server.IsNullOrEmpty()) throw new ArgumentNullException(nameof(Server));
 
         // 初始化服务器地址列表
-        var svrs = _servers;
-        if (svrs == null)
-        {
-            var ss = server.Split(',', StringSplitOptions.RemoveEmptyEntries);
-            var uris = new NetUri[ss.Length];
-            for (var i = 0; i < ss.Length; i++)
-            {
-                var svr2 = ss[i];
-                if (!svr2.Contains("://")) svr2 = "tcp://" + svr2;
-
-                var uri = new NetUri(svr2);
-                if (uri.Port == 0) uri.Port = 6379;
-                uris[i] = uri;
-            }
-            svrs = _servers = uris;
-        }
+        var svrs = GetServers();
 
         // 一定时间后，切换回来主节点
         var idx = _idxServer;

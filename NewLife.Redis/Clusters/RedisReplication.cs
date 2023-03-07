@@ -1,5 +1,6 @@
 ﻿using System.Net.Sockets;
 using NewLife.Log;
+using NewLife.Net;
 using NewLife.Threading;
 
 namespace NewLife.Caching.Clusters;
@@ -43,51 +44,133 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         var showLog = Nodes == null;
         if (showLog) XTrace.WriteLine("分析[{0}]主从节点：", Redis?.Name);
 
-        // 从第一个连接获取一次信息，仅支持一主一从或一主多从的情况
-        var rs = Redis.Execute(r => r.Execute<String>("INFO", "Replication"));
-        if (rs.IsNullOrEmpty()) return;
-
-        var inf = rs.SplitAsDictionary(":", "\r\n");
-        var rep = new ReplicationInfo();
-        rep.Load(inf);
-
-        Replication = rep;
-
-        var list = new List<RedisNode>();
-        foreach (var item in rep.Slaves)
+        // 可能配置了多个地址，主从混合，需要探索式查找
+        var servers = Redis.GetServers().ToList();
+        var hash = new HashSet<String>();
+        var nodes = new List<RedisNode>();
+        for (var i = 0; i < servers.Count; i++)
         {
-            if (item.IP.IsNullOrEmpty()) continue;
+            var svr = servers[i];
+            var (rep, list) = GetReplication(Redis, svr);
 
-            var node = new RedisNode
+            if (rep != null) Replication = rep;
+            if (list != null)
             {
-                Owner = Redis,
-                EndPoint = $"{item.IP}:{item.Port}",
-                Slave = true,
-            };
-            list.Add(node);
+                // 合并列表
+                foreach (var item in list)
+                {
+                    if (!nodes.Any(e => e.EndPoint == item.EndPoint)) nodes.Add(item);
+
+                    // 加入探索列表
+                    if (!hash.Contains(item.EndPoint))
+                    {
+                        hash.Add(item.EndPoint);
+
+                        var uri = new NetUri(item.EndPoint) { Type = NetType.Tcp };
+                        servers.Add(uri);
+                    }
+                }
+            }
         }
 
-        // Master节点
-        {
-            var node = new RedisNode
-            {
-                Owner = Redis,
-                EndPoint = Redis.Server,
-                Slave = rep.Role != "master",
-            };
+        // 排序，master优先
+        nodes = nodes.OrderByDescending(e => e.Slave).ThenBy(e => e.EndPoint).ToList();
+        Nodes = nodes.ToArray();
 
-            list.Insert(0, node);
-        }
-
-        foreach (var node in list)
+        foreach (var node in nodes)
         {
             var name = Redis?.Name + "";
             if (!name.IsNullOrEmpty()) name = $"[{name}]";
 
             if (showLog) XTrace.WriteLine("节点：{0} {1}", node.Slave ? "slave" : "master", node.EndPoint);
         }
+    }
 
-        Nodes = list.ToArray();
+    /// <summary>探索制定地址的主从复制信息</summary>
+    /// <param name="redis"></param>
+    /// <param name="server"></param>
+    /// <returns></returns>
+    public static (ReplicationInfo, IList<RedisNode>) GetReplication(Redis redis, NetUri server)
+    {
+        using var span = redis.Tracer?.NewSpan(nameof(GetReplication), server);
+
+        // 从第一个连接获取一次信息，仅支持一主一从或一主多从的情况
+        //var rs = redis.Execute(r => r.Execute<String>("INFO", "Replication"));
+        var rs = "";
+        try
+        {
+            using var client = new RedisClient(redis, server);
+            rs = client.Execute<String>("INFO", "Replication");
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            XTrace.WriteLine("探索[{0}]异常 {1}", server, ex.Message);
+        }
+        if (rs.IsNullOrEmpty()) return (null, null);
+
+        var inf = rs.SplitAsDictionary(":", "\r\n");
+        var rep = new ReplicationInfo();
+        rep.Load(inf);
+
+        var list = new List<RedisNode>();
+        if (rep.Masters != null)
+        {
+            foreach (var item in rep.Masters)
+            {
+                if (item.IP.IsNullOrEmpty() || list.Any(e => e.EndPoint == item.EndPoint)) continue;
+
+                var node = new RedisNode
+                {
+                    Owner = redis,
+                    EndPoint = item.EndPoint,
+                    Slave = false,
+                };
+                list.Add(node);
+            }
+        }
+        if (rep.Slaves != null)
+        {
+            foreach (var item in rep.Slaves)
+            {
+                if (item.IP.IsNullOrEmpty() || list.Any(e => e.EndPoint == item.EndPoint)) continue;
+
+                var node = new RedisNode
+                {
+                    Owner = redis,
+                    EndPoint = item.EndPoint,
+                    Slave = true,
+                };
+                list.Add(node);
+            }
+        }
+
+        // Master节点
+        if (!rep.MasterHost.IsNullOrEmpty())
+        {
+            var node = new RedisNode
+            {
+                Owner = redis,
+                EndPoint = rep.EndPoint,
+                Slave = rep.Role != "master",
+            };
+
+            list.Insert(0, node);
+        }
+
+        // 当前节点
+        {
+            var node = new RedisNode
+            {
+                Owner = redis,
+                EndPoint = server.EndPoint + "",
+                Slave = rep.Role != "master",
+            };
+
+            list.Insert(0, node);
+        }
+
+        return (rep, list);
     }
 
     /// <summary>根据Key选择节点</summary>

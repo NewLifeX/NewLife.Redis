@@ -16,6 +16,9 @@ public class MasterInfo
     /// <summary>端口</summary>
     public Int32 Port { get; set; }
 
+    /// <summary>节点信息</summary>
+    public String EndPoint => IP.IsNullOrEmpty() ? null : $"{IP}:{Port}";
+
     /// <summary>从机数</summary>
     public Int32 Slaves { get; set; }
 

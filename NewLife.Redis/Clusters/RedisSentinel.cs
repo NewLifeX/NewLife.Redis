@@ -46,7 +46,7 @@ public class RedisSentinel : RedisReplication
                 var node = new RedisNode
                 {
                     Owner = Redis,
-                    EndPoint = $"{item.IP}:{item.Port}",
+                    EndPoint = item.EndPoint,
                     Slave = false,
                 };
                 list.Add(node);
@@ -61,7 +61,7 @@ public class RedisSentinel : RedisReplication
                 var node = new RedisNode
                 {
                     Owner = Redis,
-                    EndPoint = $"{item.IP}:{item.Port}",
+                    EndPoint = item.EndPoint,
                     Slave = true,
                 };
                 list.Add(node);
