@@ -44,6 +44,11 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
     public Int32 QueueLen { set; get; } = 1_000_000;
 
     /// <summary>
+    /// 忽略异常消息(在对消息进行解析时发生异常，依然对当前消息进行消费)
+    /// </summary>
+    public Boolean IgnoreErrMsg { set; get; } = true;
+
+    /// <summary>
     /// 日志对像
     /// </summary>
     public ILog Log
@@ -61,11 +66,14 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
     /// <summary>
     /// 初始化
     /// </summary>
+    /// <param name="ignoreErrMsg">忽略异常消息(在对消息进行解析时发生异常，依然对当前消息进行消费)</param>
     /// <param name="encoder">编码器</param>
-    public MultipleConsumerGroupsQueue(RedisJsonEncoder encoder = null)
+    public MultipleConsumerGroupsQueue(bool ignoreErrMsg, RedisJsonEncoder encoder = null)
     {
         if (encoder != null)
             Encoder = encoder;
+
+        IgnoreErrMsg = ignoreErrMsg;
     }
 
     /// <summary>
@@ -196,27 +204,37 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
             if (_Redis == null || _Queue == null)
                 OnDisconnected("获取订阅消息时列队对像为Null。");
 
-            try
-            {
-                var msg = await _Queue.TakeMessageAsync(10);
-                if (msg != null)
-                {
 
+            var msg = await _Queue.TakeMessageAsync(10);
+            if (msg != null)
+            {
+                try
+                {
                     var data = msg.GetBody<T>();
                     _Queue.Acknowledge(msg.Id);
                     //通知订阅者
                     OnReceived(data);
-
+                }
+                catch (Exception err)
+                {
+                    
+                    if (XTrace.Debug) XTrace.WriteException(err);
+                    //多消费组中，假如当前消息解析异常，原因大多是因为新增加消息格式等原因导致
+                    //所以都可以正常忽略，如有特殊需要配置IgnoreErrMsg为false
+                    if (IgnoreErrMsg)
+                    {
+                        _Queue.Acknowledge(msg.Id);
+                    }
+                    else
+                    {
+                        _Cts.Cancel();
+                        OnStopSubscribe(err.Message);
+                        return;
+                    }
+                   
                 }
             }
-            catch (Exception err)
-            {
-                if (XTrace.Debug) XTrace.WriteException(err);
 
-                _Cts.Cancel();
-                OnStopSubscribe(err.Message);
-                return;
-            }
         }
     }
 
