@@ -29,7 +29,7 @@ public class RedisSentinelTests
 #endif
     }
 
-    [Fact]
+    [Fact(Skip = "No Cluster")]
     public void GetNodes()
     {
         var cluster = new RedisSentinel(_redis);

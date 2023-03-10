@@ -46,7 +46,7 @@ public class RedisNode : IRedisNode
             {
                 Log = rds.Log
             };
-            if (rds.Db > 0 && (rds is not FullRedis rds2 || !rds2.Mode.EqualIgnoreCase("cluster", "sentinel"))) rc.Select(rds.Db);
+            //if (rds.Db > 0 && (rds is not FullRedis rds2 || !rds2.Mode.EqualIgnoreCase("cluster", "sentinel"))) rc.Select(rds.Db);
 
             return rc;
         }

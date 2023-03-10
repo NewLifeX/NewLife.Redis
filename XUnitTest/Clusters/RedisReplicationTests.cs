@@ -26,7 +26,7 @@ public class RedisReplicationTests
 #endif
     }
 
-    [Fact]
+    [Fact(Skip = "No Cluster")]
     public void GetNodes()
     {
         var cluster = new RedisReplication(_redis);
