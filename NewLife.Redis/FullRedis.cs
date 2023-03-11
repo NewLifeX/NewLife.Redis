@@ -166,7 +166,9 @@ public class FullRedis : Redis
         // 如果不支持集群，直接返回
         if (Cluster == null) return base.Execute(key, func, write);
 
-        var node = Cluster.SelectNode(key, write) ?? throw new XException($"集群[{Name}]没有可用节点");
+        var node = Cluster.SelectNode(key, write);
+        //?? throw new XException($"集群[{Name}]没有可用节点");
+        if (node == null) return base.Execute(key, func, write);
 
         // 统计性能
         var sw = Counter?.StartCount();
@@ -219,7 +221,9 @@ public class FullRedis : Redis
         // 如果不支持集群，直接返回
         if (Cluster == null) return await base.ExecuteAsync<T>(key, func, write);
 
-        var node = Cluster.SelectNode(key, write) ?? throw new XException($"集群[{Name}]没有可用节点");
+        var node = Cluster.SelectNode(key, write);
+        //?? throw new XException($"集群[{Name}]没有可用节点");
+        if (node == null) return await base.ExecuteAsync<T>(key, func, write);
 
         // 统计性能
         var sw = Counter?.StartCount();

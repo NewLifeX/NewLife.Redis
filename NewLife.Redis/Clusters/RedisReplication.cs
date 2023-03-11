@@ -1,7 +1,5 @@
-﻿using System.Net.Sockets;
-using NewLife.Log;
+﻿using NewLife.Log;
 using NewLife.Net;
-using NewLife.Reflection;
 using NewLife.Threading;
 
 namespace NewLife.Caching.Clusters;
@@ -17,7 +15,6 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     public ReplicationInfo Replication { get; protected set; }
 
     private TimerX _timer;
-    private Int32 _idx;
     #endregion
 
     #region 构造
@@ -47,18 +44,38 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         if (showLog) XTrace.WriteLine("分析[{0}]主从节点：", Redis?.Name);
 
         // 可能配置了多个地址，主从混合，需要探索式查找
-        var servers = Redis.GetServers().ToList();
+        var servers = Redis.GetServices().ToList();
         var (reps, nodes) = GetReplications(Redis, servers);
         if (reps != null && reps.Count > 0) Replication = reps[0];
+
+        SetNodes(nodes);
+    }
+
+    /// <summary>设置节点</summary>
+    /// <param name="nodes"></param>
+    protected void SetNodes(IList<RedisNode> nodes)
+    {
+        var showLog = Nodes == null;
 
         // 排序，master优先
         nodes = nodes.OrderBy(e => e.Slave).ThenBy(e => e.EndPoint).ToList();
         Nodes = nodes.ToArray();
 
+        var uris = new List<NetUri>();
+        foreach (var node in nodes)
+        {
+            if (node.EndPoint.IsNullOrEmpty()) return;
+
+            var uri = new NetUri(node.EndPoint);
+            if (uri.Port == 0) uri.Port = 6379;
+            uris.Add(uri);
+        }
+        if (uris.Count > 0) Redis.SetSevices(uris.ToArray());
+
         var str = nodes.Join("\n", e => $"{e.EndPoint}-{e.Slave}");
         if (_lastNodes != str)
         {
-            if (!showLog) XTrace.WriteLine("分析[{0}]主从节点：", Redis?.Name);
+            if (!showLog) XTrace.WriteLine("分析[{0}]节点：", Redis?.Name);
             showLog = true;
             _lastNodes = str;
         }
@@ -119,8 +136,6 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     {
         using var span = redis.Tracer?.NewSpan(nameof(GetReplication), server);
 
-        // 从第一个连接获取一次信息，仅支持一主一从或一主多从的情况
-        //var rs = redis.Execute(r => r.Execute<String>("INFO", "Replication"));
         var rs = "";
         try
         {
@@ -180,7 +195,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
                 Slave = false,
             };
 
-            list.Insert(0, node);
+            if (!list.Any(e => e.EndPoint == node.EndPoint)) list.Insert(0, node);
         }
 
         // 当前节点
@@ -192,7 +207,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
                 Slave = rep.Role != "master",
             };
 
-            list.Insert(0, node);
+            if (!list.Any(e => e.EndPoint == node.EndPoint)) list.Insert(0, node);
         }
 
         return (rep, list);
@@ -202,31 +217,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     /// <param name="key">键</param>
     /// <param name="write">可写</param>
     /// <returns></returns>
-    public virtual IRedisNode SelectNode(String key, Boolean write)
-    {
-        if (key.IsNullOrEmpty()) return null;
-
-        var now = DateTime.Now;
-        var ns = Nodes?.Where(e => e.NextTime < now).ToArray();
-        if (ns == null || ns.Length == 0) return null;
-
-        // 先找主节点
-        foreach (var item in ns)
-        {
-            if (!item.Slave) return item;
-        }
-
-        // 如果不是写入，也可以使用从节点
-        if (!write)
-        {
-            foreach (var item in ns)
-            {
-                if (item.Slave) return item;
-            }
-        }
-
-        return null;
-    }
+    public virtual IRedisNode SelectNode(String key, Boolean write) => null;
 
     /// <summary>根据异常重选节点</summary>
     /// <param name="key">键</param>
@@ -234,26 +225,6 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     /// <param name="node"></param>
     /// <param name="exception"></param>
     /// <returns></returns>
-    public virtual IRedisNode ReselectNode(String key, Boolean write, IRedisNode node, Exception exception)
-    {
-        // 屏蔽旧节点一段时间
-        var now = DateTime.Now;
-        var redisNode = node as RedisNode;
-
-        var ns = Nodes?.Where(e => e.NextTime < now).ToArray();
-        if (ns != null && redisNode != null) ns = ns.Where(e => e.EndPoint != redisNode.EndPoint).ToArray();
-        if (ns == null || ns.Length == 0) return null;
-
-        // 读取指令网络异常时，换一个节点
-        if (exception is SocketException or IOException)
-        {
-            // 屏蔽旧节点一段时间
-            if (redisNode != null) redisNode.NextTime = now.AddSeconds(Redis.ShieldingTime);
-
-            if (!write) return ns[Interlocked.Increment(ref _idx) % ns.Length];
-        }
-
-        return null;
-    }
+    public virtual IRedisNode ReselectNode(String key, Boolean write, IRedisNode node, Exception exception) => null;
     #endregion
 }

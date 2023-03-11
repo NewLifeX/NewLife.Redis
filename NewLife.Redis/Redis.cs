@@ -247,7 +247,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
     /// <summary>获取解析后的地址列表</summary>
     /// <returns></returns>
-    public NetUri[] GetServers()
+    public NetUri[] GetServices()
     {
         // 初始化服务器地址列表
         var svrs = _servers;
@@ -268,6 +268,10 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         return _servers = uris;
     }
 
+    /// <summary>设置服务端地址列表</summary>
+    /// <param name="services"></param>
+    public void SetSevices(NetUri[] services) => _servers = services;
+
     /// <summary>创建连接客户端</summary>
     /// <returns></returns>
     protected virtual RedisClient OnCreate()
@@ -276,7 +280,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         if (server.IsNullOrEmpty()) throw new ArgumentNullException(nameof(Server));
 
         // 初始化服务器地址列表
-        var svrs = GetServers();
+        var svrs = GetServices();
 
         // 一定时间后，切换回来主节点
         var idx = _idxServer;
