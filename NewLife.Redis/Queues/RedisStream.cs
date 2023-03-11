@@ -816,5 +816,79 @@ XREAD count 3 streams stream_key 0-0
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns></returns>
     public async Task ConsumeAsync(Action<T> onMessage, CancellationToken cancellationToken = default) => await ConsumeAsync((m, k, t) => { onMessage(m); return Task.FromResult(0); }, cancellationToken);
+
+    /// <summary>队列消费大循环，处理消息后自动确认</summary>
+    /// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
+    /// <param name="batchSize">批大小。默认100</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns></returns>
+    public async Task ConsumeAsync(Func<T[], Message[], CancellationToken, Task> onMessage, Int32 batchSize = 100, CancellationToken cancellationToken = default)
+    {
+        await Task.Yield();
+
+        // 自动创建消费组
+        SetGroup(Group);
+
+        // 主题
+        var topic = Key;
+        if (topic.IsNullOrEmpty()) topic = GetType().Name;
+
+        // 超时时间，用于阻塞等待
+        var timeout = BlockTime;
+        if (batchSize <= 0) batchSize = 100;
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            // 大循环之前，打断性能追踪调用链
+            DefaultSpan.Current = null;
+
+            ISpan span = null;
+            try
+            {
+                // 异步阻塞消费
+                var mqMsgs = await TakeMessagesAsync(batchSize, timeout, cancellationToken);
+                if (mqMsgs != null && mqMsgs.Count > 0)
+                {
+                    // 埋点
+                    span = Redis.Tracer?.NewSpan($"redismq:{topic}:Consumes", mqMsgs);
+
+                    var bodys = mqMsgs[0].Body;
+                    for (var i = 0; i < bodys.Length; i++)
+                        if (bodys[i].EqualIgnoreCase("traceParent") && i + 1 < bodys.Length) span.Detach(bodys[i + 1]);
+
+                    // 解码
+                    var msgs = mqMsgs.Select(e => e.GetBody<T>()).ToArray();
+
+                    // 处理消息
+                    await onMessage(msgs, mqMsgs.ToArray(), cancellationToken);
+
+                    // 确认消息
+                    Acknowledge(mqMsgs.Select(e => e.Id).ToArray());
+                }
+                else
+                    // 没有消息，歇一会
+                    await Task.Delay(1000, cancellationToken);
+            }
+            catch (ThreadAbortException) { break; }
+            catch (ThreadInterruptedException) { break; }
+            catch (Exception ex)
+            {
+                if (cancellationToken.IsCancellationRequested) break;
+
+                span?.SetError(ex, null);
+            }
+            finally
+            {
+                span?.Dispose();
+            }
+        }
+    }
+
+    /// <summary>队列消费大循环，批量处理消息后自动确认</summary>
+    /// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
+    /// <param name="batchSize">批大小。默认100</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns></returns>
+    public async Task ConsumeAsync(Action<T[]> onMessage, Int32 batchSize = 100, CancellationToken cancellationToken = default) => await ConsumeAsync((m, k, t) => { onMessage(m); return Task.FromResult(0); }, batchSize, cancellationToken);
     #endregion
 }
