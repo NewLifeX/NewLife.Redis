@@ -1,5 +1,4 @@
-﻿using System.Data;
-using NewLife.Caching;
+﻿using NewLife.Caching;
 using NewLife.Caching.Queues;
 using NewLife.Log;
 using NewLife.Serialization;

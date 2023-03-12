@@ -12,11 +12,13 @@ internal class MemoryQueue
         // 独立线程消费
         var source = new CancellationTokenSource();
         Task.Run(() => Consume(queue, source.Token));
+        Thread.Sleep(100);
 
         // 发布消息
         Public(queue);
 
         source.Cancel();
+        Thread.Sleep(100);
     }
 
     private static void Public(BlockingCollection<Area> queue)
@@ -39,13 +41,19 @@ internal class MemoryQueue
 
     private static void Consume(BlockingCollection<Area> queue, CancellationToken token)
     {
-        while (!token.IsCancellationRequested)
+        XTrace.WriteLine("Start Consume");
+        try
         {
-            var msg = queue.Take(token);
-            if (msg != null)
+            while (!token.IsCancellationRequested)
             {
-                XTrace.WriteLine("Consume {0} {1}", msg.Code, msg.Name);
+                var msg = queue.Take(token);
+                if (msg != null)
+                {
+                    XTrace.WriteLine("Consume {0} {1}", msg.Code, msg.Name);
+                }
             }
         }
+        catch (OperationCanceledException) { }
+        XTrace.WriteLine("Finish Consume");
     }
 }
