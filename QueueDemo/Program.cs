@@ -24,7 +24,7 @@ class Program
 
         //内存队列
         Console.WriteLine();
-        Console.WriteLine("内存队列");
+        Console.WriteLine("内存队列 BlockingCollection");
         MemoryQueue.Start();
 
         //普通队列
