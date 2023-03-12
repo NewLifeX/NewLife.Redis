@@ -35,13 +35,13 @@ public class RedisDelayQueue<T> : QueueBase, IProducerConsumer<T>
     #region 核心方法
     /// <summary>添加延迟消息</summary>
     /// <param name="value"></param>
-    /// <param name="delay"></param>
+    /// <param name="delay">延迟时间。单位秒</param>
     /// <returns></returns>
     public Int32 Add(T value, Int32 delay)
     {
         using var span = Redis.Tracer?.NewSpan($"redismq:{TraceName}:Add", value);
 
-        var target = DateTime.Now.ToUniversalTime().ToInt() + delay;
+        var target = DateTime.UtcNow.ToInt() + delay;
         var rs = 0;
         for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
         {
@@ -59,7 +59,7 @@ public class RedisDelayQueue<T> : QueueBase, IProducerConsumer<T>
         return rs;
     }
 
-    /// <summary>批量生产</summary>
+    /// <summary>批量生产，延迟时间来自Delay属性</summary>
     /// <param name="values"></param>
     /// <returns></returns>
     public Int32 Add(params T[] values)
@@ -68,7 +68,7 @@ public class RedisDelayQueue<T> : QueueBase, IProducerConsumer<T>
 
         using var span = Redis.Tracer?.NewSpan($"redismq:{TraceName}:Add", values);
 
-        var target = DateTime.Now.ToUniversalTime().ToInt() + Delay;
+        var target = DateTime.UtcNow.ToInt() + Delay;
         var rs = 0;
         for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
         {
@@ -102,7 +102,7 @@ public class RedisDelayQueue<T> : QueueBase, IProducerConsumer<T>
 
         while (true)
         {
-            var score = DateTime.Now.ToUniversalTime().ToInt();
+            var score = DateTime.UtcNow.ToInt();
             var rs = _sort.RangeByScore(0, score, 0, 1);
             if (rs != null && rs.Length > 0 && TryPop(rs[0])) return rs[0];
 
@@ -129,7 +129,7 @@ public class RedisDelayQueue<T> : QueueBase, IProducerConsumer<T>
 
         while (!cancellationToken.IsCancellationRequested)
         {
-            var score = DateTime.Now.ToUniversalTime().ToInt();
+            var score = DateTime.UtcNow.ToInt();
             var rs = await _sort.RangeByScoreAsync(0, score, 0, 1, cancellationToken);
             if (rs != null && rs.Length > 0 && TryPop(rs[0])) return rs[0];
 
@@ -157,7 +157,7 @@ public class RedisDelayQueue<T> : QueueBase, IProducerConsumer<T>
 
         //RetryAck();
 
-        var score = DateTime.Now.ToUniversalTime().ToInt();
+        var score = DateTime.UtcNow.ToInt();
         var rs = _sort.RangeByScore(0, score, 0, count);
         if (rs == null || rs.Length == 0) yield break;
 
@@ -213,7 +213,7 @@ public class RedisDelayQueue<T> : QueueBase, IProducerConsumer<T>
             try
             {
                 // 异步阻塞消费
-                var score = DateTime.Now.ToUniversalTime().ToInt();
+                var score = DateTime.UtcNow.ToInt();
                 var msgs = await _sort.RangeByScoreAsync(0, score, 0, 10, cancellationToken);
                 if (msgs != null && msgs.Length > 0)
                 {

@@ -52,8 +52,9 @@ class Program
         var mq = new MultipleConsumerGroupsQueue<CommandInfo<object>>();
         mq.ConsumeGroupExistErrMsgKeyWord = "exist"; //不同版本的redis错误消息关键词可能不一样，这里注意设置合适的关键词
         mq.Connect(connStr, "BCGCommandQueue");
-        mq.Received += (data) => { 
-            XTrace.WriteLine($"[Redis多消费组可重复消费的队列]收到列队消息：{data.Data.ToJson()}"); 
+        mq.Received += (data) =>
+        {
+            XTrace.WriteLine($"[Redis多消费组可重复消费的队列]收到列队消息：{data.Data.ToJson()}");
         };
         mq.StopSubscribe += (msg) =>
         {

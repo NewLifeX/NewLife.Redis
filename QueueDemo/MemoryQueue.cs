@@ -36,7 +36,7 @@ internal class MemoryQueue
         area = new Area { Code = 440100, Name = "广州市" };
         XTrace.WriteLine("Public {0} {1}", area.Code, area.Name);
         queue.Add(area);
-        Thread.Sleep(1000);
+        //Thread.Sleep(1000);
     }
 
     private static void Consume(BlockingCollection<Area> queue, CancellationToken token)

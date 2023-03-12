@@ -26,12 +26,19 @@ class EasyQueue
     {
         var queue = redis.GetQueue<Area>(topic);
 
-        queue.Add(new Area { Code = 110000, Name = "北京市" });
+        var area = new Area { Code = 110000, Name = "北京市" };
+        XTrace.WriteLine("Public {0} {1}", area.Code, area.Name);
+        queue.Add(area);
         Thread.Sleep(1000);
-        queue.Add(new Area { Code = 310000, Name = "上海市" });
+
+        area = new Area { Code = 310000, Name = "上海市" };
+        XTrace.WriteLine("Public {0} {1}", area.Code, area.Name);
+        queue.Add(area);
         Thread.Sleep(1000);
-        queue.Add(new Area { Code = 440100, Name = "广州市" });
-        Thread.Sleep(1000);
+
+        area = new Area { Code = 440100, Name = "广州市" };
+        XTrace.WriteLine("Public {0} {1}", area.Code, area.Name);
+        queue.Add(area);
     }
 
     private static async Task Consume(IProducerConsumer<Area> queue, CancellationToken token)
