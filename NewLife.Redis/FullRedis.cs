@@ -140,13 +140,13 @@ public class FullRedis : Redis
             }
             else if (mode.EqualIgnoreCase("sentinel"))
             {
-                var cluster = new RedisSentinel(this);
+                var cluster = new RedisSentinel(this) { SetHostServer = true };
                 cluster.StartMonitor();
                 Cluster = cluster;
             }
             else if (mode.EqualIgnoreCase("standalone") && (connected_slaves.ToInt() > 0 || role == "slave"))
             {
-                var cluster = new RedisReplication(this);
+                var cluster = new RedisReplication(this) { SetHostServer = true };
                 cluster.StartMonitor();
                 Cluster = cluster;
             }

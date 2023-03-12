@@ -14,6 +14,9 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     /// <summary>主从信息</summary>
     public ReplicationInfo Replication { get; protected set; }
 
+    /// <summary>是否根据解析得到的节点列表去设置外部Redis的节点地址</summary>
+    public Boolean SetHostServer { get; set; }
+
     private TimerX _timer;
     #endregion
 
@@ -33,15 +36,15 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         GetNodes();
 
         // 定时刷新集群节点列表
-        if (Nodes != null) _timer = new TimerX(s => GetNodes(), null, 60_000, 60_000) { Async = true };
+        if (SetHostServer && Nodes != null) _timer = new TimerX(s => GetNodes(), null, 60_000, 60_000) { Async = true };
     }
 
     private String _lastNodes;
     /// <summary>分析主从节点</summary>
-    public virtual void GetNodes()
+    public virtual IList<RedisNode> GetNodes()
     {
         var showLog = Nodes == null;
-        if (showLog) XTrace.WriteLine("分析[{0}]主从节点：", Redis?.Name);
+        if (showLog) WriteLog("分析[{0}]主从节点：", Redis?.Name);
 
         // 可能配置了多个地址，主从混合，需要探索式查找
         var servers = Redis.GetServices().ToList();
@@ -49,6 +52,8 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         if (reps != null && reps.Count > 0) Replication = reps[0];
 
         SetNodes(nodes);
+
+        return nodes;
     }
 
     /// <summary>设置节点</summary>
@@ -61,27 +66,30 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         nodes = nodes.OrderBy(e => e.Slave).ThenBy(e => e.EndPoint).ToList();
         Nodes = nodes.ToArray();
 
-        var uris = new List<NetUri>();
-        foreach (var node in nodes)
+        if (SetHostServer)
         {
-            if (node.EndPoint.IsNullOrEmpty()) return;
+            var uris = new List<NetUri>();
+            foreach (var node in nodes)
+            {
+                if (node.EndPoint.IsNullOrEmpty()) return;
 
-            var uri = new NetUri(node.EndPoint);
-            if (uri.Port == 0) uri.Port = 6379;
-            uris.Add(uri);
+                var uri = new NetUri(node.EndPoint);
+                if (uri.Port == 0) uri.Port = 6379;
+                uris.Add(uri);
+            }
+            if (uris.Count > 0) Redis.SetSevices(uris.ToArray());
         }
-        if (uris.Count > 0) Redis.SetSevices(uris.ToArray());
 
         var str = nodes.Join("\n", e => $"{e.EndPoint}-{e.Slave}");
         if (_lastNodes != str)
         {
-            if (!showLog) XTrace.WriteLine("分析[{0}]节点：", Redis?.Name);
+            WriteLog("得到[{0}]节点：", Redis?.Name);
             showLog = true;
             _lastNodes = str;
         }
         foreach (var node in nodes)
         {
-            if (showLog) XTrace.WriteLine("节点：{0} {1}", node.Slave ? "slave" : "master", node.EndPoint);
+            if (showLog) WriteLog("节点：{0} {1}", node.Slave ? "slave" : "master", node.EndPoint);
         }
     }
 
@@ -226,5 +234,15 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     /// <param name="exception"></param>
     /// <returns></returns>
     public virtual IRedisNode ReselectNode(String key, Boolean write, IRedisNode node, Exception exception) => null;
+    #endregion
+
+    #region 辅助
+    /// <summary>日志</summary>
+    public ILog Log { get; set; } = XTrace.Log;
+
+    /// <summary>写日志</summary>
+    /// <param name="format"></param>
+    /// <param name="args"></param>
+    public void WriteLog(String format, params Object[] args) => Log?.Info(format, args);
     #endregion
 }

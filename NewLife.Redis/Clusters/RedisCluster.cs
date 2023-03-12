@@ -51,7 +51,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
     public void ParseNodes(String nodes)
     {
         var showLog = Nodes == null;
-        if (showLog) XTrace.WriteLine("分析[{0}]集群节点：", Redis?.Name);
+        if (showLog) WriteLog("分析[{0}]集群节点：", Redis?.Name);
 
         var list = new List<ClusterNode>();
         foreach (var item in nodes.Split("\r", "\n"))
@@ -75,7 +75,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
         var str = list.Join("\n", n => n + " " + n?.Slots.Join(","));
         if (str != _lastNodes)
         {
-            if (!showLog) XTrace.WriteLine("分析[{0}]集群节点：", Redis?.Name);
+            if (!showLog) WriteLog("分析[{0}]集群节点：", Redis?.Name);
             showLog = true;
             _lastNodes = str;
         }
@@ -85,7 +85,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
 
         foreach (var node in list)
         {
-            if (showLog) XTrace.WriteLine("节点：{0} {1} {2}", node, node.Flags, node.Slots.Join(" "));
+            if (showLog) WriteLog("节点：{0} {1} {2}", node, node.Flags, node.Slots.Join(" "));
 
             if (node.Slaves != null)
             {
@@ -312,5 +312,15 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
 
         return true;
     }
+    #endregion
+
+    #region 辅助
+    /// <summary>日志</summary>
+    public ILog Log { get; set; } = XTrace.Log;
+
+    /// <summary>写日志</summary>
+    /// <param name="format"></param>
+    /// <param name="args"></param>
+    public void WriteLog(String format, params Object[] args) => Log?.Info(format, args);
     #endregion
 }
