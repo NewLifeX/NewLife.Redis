@@ -138,7 +138,7 @@ public class FullRedis : Redis
                 cluster.StartMonitor();
                 Cluster = cluster;
             }
-            if (mode.EqualIgnoreCase("sentinel"))
+            else if (mode.EqualIgnoreCase("sentinel"))
             {
                 var cluster = new RedisSentinel(this);
                 cluster.StartMonitor();
@@ -377,7 +377,7 @@ public class FullRedis : Redis
         while (count > 0)
         {
             var p = model.Position;
-            var rs = Execute(null, r => r.Execute<Object[]>("SCAN", p, "MATCH", model.Pattern + "", "COUNT", count));
+            var rs = Execute(r => r.Execute<Object[]>("SCAN", p, "MATCH", model.Pattern + "", "COUNT", count));
             if (rs == null || rs.Length != 2) break;
 
             model.Position = (rs[0] as Packet).ToStr().ToInt();
@@ -464,7 +464,7 @@ public class FullRedis : Redis
     /// <param name="destination">元素后写入的新列表名称</param>
     /// <param name="secTimeout">设置的阻塞时长，单位为秒。设置前请确认该值不能超过FullRedis.Timeout 否则会出现异常</param>
     /// <returns></returns>
-    public virtual T BRPOPLPUSH<T>(String source, String destination, Int32 secTimeout) => Execute(null, rc => rc.Execute<T>("BRPOPLPUSH", source, destination, secTimeout), true);
+    public virtual T BRPOPLPUSH<T>(String source, String destination, Int32 secTimeout) => Execute(source, rc => rc.Execute<T>("BRPOPLPUSH", source, destination, secTimeout), true);
 
     /// <summary>从列表头部弹出一个元素</summary>
     /// <typeparam name="T"></typeparam>
@@ -491,7 +491,7 @@ public class FullRedis : Redis
             else
                 sb.Append($" {item}");
         }
-        var rs = Execute(null, rc => rc.Execute<String[]>("BRPOP", sb.ToString(), secTimeout), true);
+        var rs = Execute(keys[0], rc => rc.Execute<String[]>("BRPOP", sb.ToString(), secTimeout), true);
         if (rs == null || rs.Length != 2) return null;
         return new Tuple<String, T>(rs[0], rs[1].ToJsonEntity<T>());
     }
@@ -526,7 +526,7 @@ public class FullRedis : Redis
             else
                 sb.Append($" {item}");
         }
-        var rs = Execute(null, rc => rc.Execute<String[]>("BLPOP", sb.ToString(), secTimeout), true);
+        var rs = Execute(keys[0], rc => rc.Execute<String[]>("BLPOP", sb.ToString(), secTimeout), true);
         if (rs == null || rs.Length != 2) return null;
         return new Tuple<String, T>(rs[0], rs[1].ToJsonEntity<T>()); //.ChangeType<T>());
     }

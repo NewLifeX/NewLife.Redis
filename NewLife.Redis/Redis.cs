@@ -343,7 +343,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         }
     }
 
-    /// <summary>执行命令</summary>
+    /// <summary>执行命令，经过管道。FullRedis中还会考虑Cluster分流</summary>
     /// <typeparam name="TResult">返回类型</typeparam>
     /// <param name="key">命令key，用于选择集群节点</param>
     /// <param name="func">回调函数</param>
@@ -457,7 +457,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         }
     }
 
-    /// <summary>异步执行命令</summary>
+    /// <summary>异步执行命令，经过管道。FullRedis中还会考虑Cluster分流</summary>
     /// <typeparam name="TResult">返回类型</typeparam>
     /// <param name="key">命令key，用于选择集群节点</param>
     /// <param name="func">回调函数</param>
@@ -605,7 +605,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
     #region 基础操作
     /// <summary>缓存个数</summary>
-    public override Int32 Count => Execute(null, rds => rds.Execute<Int32>("DBSIZE"));
+    public override Int32 Count => Execute(rds => rds.Execute<Int32>("DBSIZE"));
 
     /// <summary>获取所有键，限制10000项，超额请使用FullRedis.Search</summary>
     public override ICollection<String> Keys
@@ -614,7 +614,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         {
             if (Count > 10000) throw new InvalidOperationException("数量过大时，禁止获取所有键，请使用FullRedis.Search");
 
-            return Execute(null, rds => rds.Execute<String[]>("KEYS", "*"));
+            return Execute(rds => rds.Execute<String[]>("KEYS", "*"));
         }
     }
 
@@ -624,8 +624,8 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     public virtual IDictionary<String, String> GetInfo(Boolean all = false)
     {
         var rs = all ?
-            Execute(null, rds => rds.Execute("INFO", "all") as Packet) :
-            Execute(null, rds => rds.Execute("INFO") as Packet);
+            Execute(rds => rds.Execute("INFO", "all") as Packet) :
+            Execute(rds => rds.Execute("INFO") as Packet);
         if (rs == null || rs.Count == 0) return null;
 
         var inf = rs.ToStr();
@@ -669,7 +669,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     }
 
     /// <summary>清空所有缓存项</summary>
-    public override void Clear() => Execute(null, rds => rds.Execute<String>("FLUSHDB"), true);
+    public override void Clear() => Execute(rds => rds.Execute<String>("FLUSHDB"));
 
     /// <summary>是否存在</summary>
     /// <param name="key">键</param>
