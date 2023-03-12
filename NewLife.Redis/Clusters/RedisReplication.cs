@@ -33,13 +33,19 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     /// <summary>开始监控节点</summary>
     public void StartMonitor()
     {
-        GetNodes();
+        //GetNodes();
+
+        if (SetHostServer)
+        {
+            // 异步刷新节点信息，最多等待100秒
+            var task = Task.Run(GetNodes);
+            task.Wait(100);
+        }
 
         // 定时刷新集群节点列表
-        if (SetHostServer && Nodes != null) _timer = new TimerX(s => GetNodes(), null, 60_000, 60_000) { Async = true };
+        _timer ??= new TimerX(s => GetNodes(), null, 60_000, 60_000) { Async = true };
     }
 
-    private String _lastNodes;
     /// <summary>分析主从节点</summary>
     public virtual IList<RedisNode> GetNodes()
     {
@@ -56,6 +62,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         return nodes;
     }
 
+    private String _lastNodes;
     /// <summary>设置节点</summary>
     /// <param name="nodes"></param>
     protected void SetNodes(IList<RedisNode> nodes)

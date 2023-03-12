@@ -1,5 +1,4 @@
 ﻿using System.Net.Sockets;
-using System.Text;
 using NewLife.Log;
 using NewLife.Threading;
 
