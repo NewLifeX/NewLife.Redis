@@ -750,6 +750,7 @@ XREAD count 3 streams stream_key 0-0
     /// <returns></returns>
     public async Task ConsumeAsync(Func<T, Message, CancellationToken, Task> onMessage, CancellationToken cancellationToken = default)
     {
+        // 打断状态机，后续逻辑在其它线程执行。使用者可能直接调用ConsumeAsync且没有使用Task.Run
         await Task.Yield();
 
         // 自动创建消费组
@@ -767,7 +768,6 @@ XREAD count 3 streams stream_key 0-0
             // 大循环之前，打断性能追踪调用链
             DefaultSpan.Current = null;
 
-            //Message mqMsg = null;
             ISpan span = null;
             try
             {
@@ -778,6 +778,7 @@ XREAD count 3 streams stream_key 0-0
                     // 埋点
                     span = Redis.Tracer?.NewSpan($"redismq:{topic}:Consume", mqMsg);
 
+                    // 串联上下游调用链
                     var bodys = mqMsg.Body;
                     for (var i = 0; i < bodys.Length; i++)
                         if (bodys[i].EqualIgnoreCase("traceParent") && i + 1 < bodys.Length) span.Detach(bodys[i + 1]);
@@ -802,7 +803,6 @@ XREAD count 3 streams stream_key 0-0
                 if (cancellationToken.IsCancellationRequested) break;
 
                 span?.SetError(ex, null);
-                //XTrace.Log?.Error("[{0}/{1}]消息处理异常：{2} {3}", topic, mqMsg?.Id, mqMsg?.ToJson(), ex);
             }
             finally
             {
@@ -815,7 +815,11 @@ XREAD count 3 streams stream_key 0-0
     /// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns></returns>
-    public async Task ConsumeAsync(Action<T> onMessage, CancellationToken cancellationToken = default) => await ConsumeAsync((m, k, t) => { onMessage(m); return Task.FromResult(0); }, cancellationToken);
+    public async Task ConsumeAsync(Action<T> onMessage, CancellationToken cancellationToken = default) => await ConsumeAsync((m, k, t) =>
+    {
+        onMessage(m);
+        return Task.FromResult(0);
+    }, cancellationToken);
 
     /// <summary>队列消费大循环，处理消息后自动确认</summary>
     /// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
@@ -824,6 +828,7 @@ XREAD count 3 streams stream_key 0-0
     /// <returns></returns>
     public async Task ConsumeAsync(Func<T[], Message[], CancellationToken, Task> onMessage, Int32 batchSize = 100, CancellationToken cancellationToken = default)
     {
+        // 打断状态机，后续逻辑在其它线程执行。使用者可能直接调用ConsumeAsync且没有使用Task.Run
         await Task.Yield();
 
         // 自动创建消费组
@@ -852,6 +857,7 @@ XREAD count 3 streams stream_key 0-0
                     // 埋点
                     span = Redis.Tracer?.NewSpan($"redismq:{topic}:Consumes", mqMsgs);
 
+                    // 串联上下游调用链。取第一个消息
                     var bodys = mqMsgs[0].Body;
                     for (var i = 0; i < bodys.Length; i++)
                         if (bodys[i].EqualIgnoreCase("traceParent") && i + 1 < bodys.Length) span.Detach(bodys[i + 1]);
@@ -889,6 +895,10 @@ XREAD count 3 streams stream_key 0-0
     /// <param name="batchSize">批大小。默认100</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns></returns>
-    public async Task ConsumeAsync(Action<T[]> onMessage, Int32 batchSize = 100, CancellationToken cancellationToken = default) => await ConsumeAsync((m, k, t) => { onMessage(m); return Task.FromResult(0); }, batchSize, cancellationToken);
+    public async Task ConsumeAsync(Action<T[]> onMessage, Int32 batchSize = 100, CancellationToken cancellationToken = default) => await ConsumeAsync((m, k, t) =>
+    {
+        onMessage(m);
+        return Task.FromResult(0);
+    }, batchSize, cancellationToken);
     #endregion
 }
