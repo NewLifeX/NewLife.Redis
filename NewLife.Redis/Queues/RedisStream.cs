@@ -326,10 +326,9 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
     /// <returns></returns>
     public Int32 Acknowledge(params String[] keys)
     {
-        var rs = 0;
-        foreach (var item in keys)
-            rs += Ack(Group, item);
-        return rs;
+        if (keys == null || keys.Length == 0) return 0;
+
+        return Ack(Group, keys);
     }
     #endregion
 
@@ -414,6 +413,19 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
     /// <param name="id">消息Id</param>
     /// <returns></returns>
     public Int32 Ack(String group, String id) => Execute(rc => rc.Execute<Int32>("XACK", Key, group, id), true);
+
+    /// <summary>批量确认消息</summary>
+    /// <param name="group">消费组名称</param>
+    /// <param name="ids">消息Id</param>
+    /// <returns></returns>
+    public Int32 Ack(String group, String[] ids)
+    {
+        var args = new List<Object> { Key, group };
+        foreach (var item in ids)
+            args.Add(item);
+
+        return Execute(rc => rc.Execute<Int32>("XACK", args.ToArray()), true);
+    }
 
     /// <summary>改变待处理消息的所有权，抢夺他人未确认消息</summary>
     /// <param name="group">消费组名称</param>
@@ -821,7 +833,8 @@ XREAD count 3 streams stream_key 0-0
         return Task.FromResult(0);
     }, cancellationToken);
 
-    /// <summary>队列消费大循环，处理消息后自动确认</summary>
+    /// <summary>队列批量消费大循环，处理消息后自动确认</summary>
+    /// <remarks>批量消费最大的问题是部分消费成功，需要用户根据实际情况妥善处理</remarks>
     /// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
     /// <param name="batchSize">批大小。默认100</param>
     /// <param name="cancellationToken">取消令牌</param>
@@ -890,7 +903,8 @@ XREAD count 3 streams stream_key 0-0
         }
     }
 
-    /// <summary>队列消费大循环，批量处理消息后自动确认</summary>
+    /// <summary>队列批量消费大循环，批量处理消息后自动确认</summary>
+    /// <remarks>批量消费最大的问题是部分消费成功，需要用户根据实际情况妥善处理</remarks>
     /// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
     /// <param name="batchSize">批大小。默认100</param>
     /// <param name="cancellationToken">取消令牌</param>
