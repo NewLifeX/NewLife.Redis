@@ -765,12 +765,14 @@ XREAD count 3 streams stream_key 0-0
         // 打断状态机，后续逻辑在其它线程执行。使用者可能直接调用ConsumeAsync且没有使用Task.Run
         await Task.Yield();
 
-        // 自动创建消费组
-        SetGroup(Group);
-
         // 主题
         var topic = Key;
         if (topic.IsNullOrEmpty()) topic = GetType().Name;
+
+        XTrace.WriteLine("开始消费[{0}]，BlockTime={1}", topic, BlockTime);
+
+        // 自动创建消费组
+        SetGroup(Group);
 
         // 超时时间，用于阻塞等待
         var timeout = BlockTime;
@@ -821,6 +823,8 @@ XREAD count 3 streams stream_key 0-0
                 span?.Dispose();
             }
         }
+
+        XTrace.WriteLine("消费[{0}]结束", topic);
     }
 
     /// <summary>队列消费大循环，处理消息后自动确认</summary>
@@ -844,9 +848,6 @@ XREAD count 3 streams stream_key 0-0
         // 打断状态机，后续逻辑在其它线程执行。使用者可能直接调用ConsumeAsync且没有使用Task.Run
         await Task.Yield();
 
-        // 自动创建消费组
-        SetGroup(Group);
-
         // 主题
         var topic = Key;
         if (topic.IsNullOrEmpty()) topic = GetType().Name;
@@ -854,6 +855,11 @@ XREAD count 3 streams stream_key 0-0
         // 超时时间，用于阻塞等待
         var timeout = BlockTime;
         if (batchSize <= 0) batchSize = 100;
+
+        XTrace.WriteLine("开始批量消费[{0}]，BlockTime={1}，BatchSize={2}", topic, BlockTime, batchSize);
+
+        // 自动创建消费组
+        SetGroup(Group);
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -901,6 +907,8 @@ XREAD count 3 streams stream_key 0-0
                 span?.Dispose();
             }
         }
+
+        XTrace.WriteLine("批量消费[{0}]结束", topic);
     }
 
     /// <summary>队列批量消费大循环，批量处理消息后自动确认</summary>
