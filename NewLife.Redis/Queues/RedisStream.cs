@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using NewLife.Caching.Common;
 using NewLife.Data;
 using NewLife.Log;
@@ -345,25 +346,37 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
             _nextRetry = now.AddSeconds(RetryInterval);
             var retry = RetryInterval * 1000;
 
+            var tracer = Redis.Tracer;
+            var span = tracer?.NewSpan($"redismq:{Key}:RetryAck");
+
             // 拿到死信，重新放入队列
             String id = null;
-            while (true)
+            var times = 10;
+            while (times-- > 0)
             {
                 var list = Pending(Group, id, null, 100);
                 if (list.Length == 0) break;
+
+                span?.AppendTag(list);
 
                 foreach (var item in list)
                     if (item.Idle > retry)
                         if (item.Delivery >= MaxRetry)
                         {
-                            XTrace.WriteLine("[{0}]删除多次失败死信：{1}", Group, item.ToJson());
+                            var msg = item.ToJson();
+                            tracer?.NewError($"redismq:{Key}:Delete", msg);
+
+                            XTrace.WriteLine("[{0}]删除多次失败死信：{1}", Group, msg);
                             //Delete(item.Id);
                             Claim(Group, Consumer, item.Id, retry);
                             Ack(Group, item.Id);
                         }
                         else
                         {
-                            XTrace.WriteLine("[{0}]定时回滚：{1}", Group, item.ToJson());
+                            var msg = item.ToJson();
+                            tracer?.NewError($"redismq:{Key}:Rollback", msg);
+
+                            XTrace.WriteLine("[{0}]定时回滚：{1}", Group, msg);
                             // 抢夺消息，所有者更改为当前消费者，Idle从零开始计算。这些消息需要尽快得到处理，否则会再次过期
                             Claim(Group, Consumer, item.Id, retry);
 
@@ -910,6 +923,17 @@ XREAD count 3 streams stream_key 0-0
 
         XTrace.WriteLine("批量消费[{0}]结束", topic);
     }
+
+    /// <summary>队列批量消费大循环，批量处理消息后自动确认</summary>
+    /// <remarks>批量消费最大的问题是部分消费成功，需要用户根据实际情况妥善处理</remarks>
+    /// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
+    /// <param name="batchSize">批大小。默认100</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns></returns>
+    public async Task ConsumeAsync(Func<T[], Task> onMessage, Int32 batchSize = 100, CancellationToken cancellationToken = default) => await ConsumeAsync(async (m, k, t) =>
+    {
+        await onMessage(m);
+    }, batchSize, cancellationToken);
 
     /// <summary>队列批量消费大循环，批量处理消息后自动确认</summary>
     /// <remarks>批量消费最大的问题是部分消费成功，需要用户根据实际情况妥善处理</remarks>
