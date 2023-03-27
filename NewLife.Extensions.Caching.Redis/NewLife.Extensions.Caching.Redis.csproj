@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
+    <TargetFrameworks>net461;netstandard2.0;netstandard2.1</TargetFrameworks>
     <AssemblyTitle>新生命Redis缓存组件</AssemblyTitle>
     <Description>Redis缓存扩展库，便于注入Redis</Description>
     <Company>新生命开发团队</Company>
