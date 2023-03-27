@@ -13,7 +13,7 @@ namespace XUnitTest;
 [Collection("Basic")]
 public class BasicTest
 {
-    public FullRedis _redis { get; set; }
+    private readonly FullRedis _redis;
 
     public BasicTest()
     {

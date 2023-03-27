@@ -832,10 +832,7 @@ public class RedisClient : DisposeBase
     public Int32 PipelineCommands => _ps == null ? 0 : _ps.Count;
 
     /// <summary>开始管道模式</summary>
-    public virtual void StartPipeline()
-    {
-        if (_ps == null) _ps = new List<Command>();
-    }
+    public virtual void StartPipeline() => _ps ??= new List<Command>();
 
     /// <summary>结束管道模式</summary>
     /// <param name="requireResult">要求结果</param>
@@ -865,7 +862,7 @@ public class RedisClient : DisposeBase
         }
 
         // 设置数据标签
-        if (span != null) span.SetTag(cmds);
+        span?.SetTag(cmds);
 
         // 整体发出
         if (ms.Length > 0) ms.WriteTo(ns);
