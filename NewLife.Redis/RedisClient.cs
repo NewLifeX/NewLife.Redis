@@ -519,7 +519,7 @@ public class RedisClient : DisposeBase
     private Int32 _selected = -1;
     private void CheckSelect(String cmd)
     {
-        if (_selected >= 0 && _selected != Host.Db) return;
+        if (_selected == Host.Db) return;
         if (cmd.EqualIgnoreCase("Auth", "Select", "Info")) return;
 
         if (Host.Db > 0 && (Host is not FullRedis rds || !rds.Mode.EqualIgnoreCase("cluster", "sentinel"))) Select(Host.Db);
