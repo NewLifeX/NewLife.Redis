@@ -1,8 +1,7 @@
-﻿using System;
-using System.Diagnostics;
-using NewLife.Caching.Common;
+﻿using NewLife.Caching.Common;
 using NewLife.Data;
 using NewLife.Log;
+using NewLife.Security;
 using NewLife.Serialization;
 
 namespace NewLife.Caching.Queues;
@@ -61,7 +60,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
     /// <summary>实例化队列</summary>
     /// <param name="redis"></param>
     /// <param name="key"></param>
-    public RedisStream(Redis redis, String key) : base(redis, key) => Consumer = $"{Environment.MachineName}@{Process.GetCurrentProcess().Id}";
+    public RedisStream(Redis redis, String key) : base(redis, key) => Consumer = $"{Environment.MachineName}@{Rand.NextString(8)}";
     #endregion
 
     #region 核心生产消费
