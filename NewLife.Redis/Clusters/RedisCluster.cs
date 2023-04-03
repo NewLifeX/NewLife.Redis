@@ -162,7 +162,11 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
             // 取出地址，找到新的节点
             var endpoint = msg.Substring(" ");
             if (!endpoint.IsNullOrEmpty())
+            {
+                span?.AppendTag(endpoint);
+
                 return Map(endpoint, key);
+            }
         }
 
         // 读取指令网络异常时，换一个节点

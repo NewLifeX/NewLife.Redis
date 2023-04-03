@@ -37,23 +37,30 @@ public class RedisQueue<T> : QueueBase, IProducerConsumer<T>
     public Int32 Add(T value)
     {
         using var span = Redis.Tracer?.NewSpan($"redismq:{TraceName}:Add", value);
-
-        var val = AttachTraceId ? Redis.AttachTraceId(value) : value;
-        var rs = 0;
-        for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
+        try
         {
-            // 返回插入后的LIST长度。Redis执行命令不会失败，因此正常插入不应该返回0，如果返回了0或者服务，可能是中间代理出了问题
-            rs = Execute(rc => rc.Execute<Int32>("LPUSH", Key, val), true);
-            if (rs > 0) return rs;
+            var val = AttachTraceId ? Redis.AttachTraceId(value) : value;
+            var rs = 0;
+            for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
+            {
+                // 返回插入后的LIST长度。Redis执行命令不会失败，因此正常插入不应该返回0，如果返回了0或者服务，可能是中间代理出了问题
+                rs = Execute(rc => rc.Execute<Int32>("LPUSH", Key, val), true);
+                if (rs > 0) return rs;
 
-            span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
+                span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
 
-            if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
+                if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
+            }
+
+            ValidWhenSendFailed(span);
+
+            return rs;
         }
-
-        ValidWhenSendFailed(span);
-
-        return rs;
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
     }
 
     /// <summary>批量生产添加</summary>
@@ -62,29 +69,38 @@ public class RedisQueue<T> : QueueBase, IProducerConsumer<T>
     public Int32 Add(params T[] values)
     {
         using var span = Redis.Tracer?.NewSpan($"redismq:{TraceName}:Add", values);
-
-        var args = new List<Object> { Key };
-        foreach (var item in values)
-            if (AttachTraceId)
-                args.Add(Redis.AttachTraceId(item));
-            else
-                args.Add(item);
-
-        var rs = 0;
-        for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
+        try
         {
-            // 返回插入后的LIST长度。Redis执行命令不会失败，因此正常插入不应该返回0，如果返回了0或者服务，可能是中间代理出了问题
-            rs = Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
-            if (rs > 0) return rs;
+            var args = new List<Object> { Key };
+            foreach (var item in values)
+            {
+                if (AttachTraceId)
+                    args.Add(Redis.AttachTraceId(item));
+                else
+                    args.Add(item);
+            }
 
-            span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
+            var rs = 0;
+            for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
+            {
+                // 返回插入后的LIST长度。Redis执行命令不会失败，因此正常插入不应该返回0，如果返回了0或者服务，可能是中间代理出了问题
+                rs = Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
+                if (rs > 0) return rs;
 
-            if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
+                span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
+
+                if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
+            }
+
+            ValidWhenSendFailed(span);
+
+            return rs;
         }
-
-        ValidWhenSendFailed(span);
-
-        return rs;
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
     }
 
     /// <summary>消费获取，支持阻塞</summary>

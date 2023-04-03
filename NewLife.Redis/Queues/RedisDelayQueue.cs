@@ -40,23 +40,30 @@ public class RedisDelayQueue<T> : QueueBase, IProducerConsumer<T>
     public Int32 Add(T value, Int32 delay)
     {
         using var span = Redis.Tracer?.NewSpan($"redismq:{TraceName}:Add", value);
-
-        var target = DateTime.UtcNow.ToInt() + delay;
-        var rs = 0;
-        for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
+        try
         {
-            // 添加到有序集合的成员数量，不包括已经存在更新分数的成员
-            rs = _sort.Add(value, target);
-            if (rs >= 0) return rs;
+            var target = DateTime.UtcNow.ToInt() + delay;
+            var rs = 0;
+            for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
+            {
+                // 添加到有序集合的成员数量，不包括已经存在更新分数的成员
+                rs = _sort.Add(value, target);
+                if (rs >= 0) return rs;
 
-            span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
+                span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
 
-            if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
+                if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
+            }
+
+            ValidWhenSendFailed(span);
+
+            return rs;
         }
-
-        ValidWhenSendFailed(span);
-
-        return rs;
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
     }
 
     /// <summary>批量生产，延迟时间来自Delay属性</summary>
@@ -67,22 +74,29 @@ public class RedisDelayQueue<T> : QueueBase, IProducerConsumer<T>
         if (values == null || values.Length == 0) return 0;
 
         using var span = Redis.Tracer?.NewSpan($"redismq:{TraceName}:Add", values);
-
-        var target = DateTime.UtcNow.ToInt() + Delay;
-        var rs = 0;
-        for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
+        try
         {
-            rs = _sort.Add(values, target);
-            if (rs > 0) return rs;
+            var target = DateTime.UtcNow.ToInt() + Delay;
+            var rs = 0;
+            for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
+            {
+                rs = _sort.Add(values, target);
+                if (rs > 0) return rs;
 
-            span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
+                span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
 
-            if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
+                if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
+            }
+
+            ValidWhenSendFailed(span);
+
+            return rs;
         }
-
-        ValidWhenSendFailed(span);
-
-        return rs;
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
     }
 
     /// <summary>删除项</summary>
@@ -223,7 +237,9 @@ public class RedisDelayQueue<T> : QueueBase, IProducerConsumer<T>
                     // 逐个删除，多线程争夺可能失败
                     var list = new List<T>();
                     for (var i = 0; i < msgs.Length; i++)
+                    {
                         if (Remove(msgs[i]) > 0) list.Add(msgs[i]);
+                    }
 
                     // 转移消息
                     if (list.Count > 0) queue.Add(list.ToArray());

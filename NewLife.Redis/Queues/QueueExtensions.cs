@@ -188,11 +188,13 @@ public static class QueueExtensions
 
                     // 消息标识
                     foreach (var item in ids)
+                    {
                         if (dic.TryGetValue(item, out var id))
                         {
                             msgId = id + "";
                             if (!msgId.IsNullOrEmpty()) break;
                         }
+                    }
 
                     // 处理消息
                     await onMessage(msg, mqMsg, cancellationToken);

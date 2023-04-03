@@ -102,53 +102,64 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
     private String AddInternal(T value, String msgId, Boolean trim, Boolean retryOnFailed)
     {
         using var span = Redis.Tracer?.NewSpan($"redismq:{TraceName}:Add", value);
-
-        var args = new List<Object> { Key };
-        if (trim)
+        try
         {
-            args.Add("maxlen");
-            args.Add("~");
-            args.Add(MaxLength);
-        }
-
-        // *号表示服务器自动生成ID
-        args.Add(msgId.IsNullOrEmpty() ? "*" : msgId);
-
-        // 数组和复杂对象字典，分开处理
-        if (Type.GetTypeCode(value.GetType()) != TypeCode.Object)
-        {
-            //throw new ArgumentOutOfRangeException(nameof(value), "消息体必须是复杂对象！");
-            args.Add(PrimitiveKey);
-            args.Add(value);
-        }
-        else if (value.GetType().IsArray)
-            foreach (var item in value as Array)
-                args.Add(item);
-        else
-        {
-            // 在消息体内注入TraceId，用于构建调用链
-            var val = AttachTraceId ? Redis.AttachTraceId(value) : value;
-            foreach (var item in val.ToDictionary())
+            var args = new List<Object> { Key };
+            if (trim)
             {
-                args.Add(item.Key);
-                args.Add(item.Value);
+                args.Add("maxlen");
+                args.Add("~");
+                args.Add(MaxLength);
             }
-        }
 
-        var rs = "";
-        for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
+            // *号表示服务器自动生成ID
+            args.Add(msgId.IsNullOrEmpty() ? "*" : msgId);
+
+            // 数组和复杂对象字典，分开处理
+            if (Type.GetTypeCode(value.GetType()) != TypeCode.Object)
+            {
+                //throw new ArgumentOutOfRangeException(nameof(value), "消息体必须是复杂对象！");
+                args.Add(PrimitiveKey);
+                args.Add(value);
+            }
+            else if (value.GetType().IsArray)
+            {
+                foreach (var item in value as Array)
+                {
+                    args.Add(item);
+                }
+            }
+            else
+            {
+                // 在消息体内注入TraceId，用于构建调用链
+                var val = AttachTraceId ? Redis.AttachTraceId(value) : value;
+                foreach (var item in val.ToDictionary())
+                {
+                    args.Add(item.Key);
+                    args.Add(item.Value);
+                }
+            }
+
+            var rs = "";
+            for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
+            {
+                rs = Execute(rc => rc.Execute<String>("XADD", args.ToArray()), true);
+                if (!retryOnFailed || !rs.IsNullOrEmpty()) return rs;
+
+                span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
+
+                if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
+            }
+
+            ValidWhenSendFailed(span);
+
+            return rs;
+        }
+        catch (Exception ex)
         {
-            rs = Execute(rc => rc.Execute<String>("XADD", args.ToArray()), true);
-            if (!retryOnFailed || !rs.IsNullOrEmpty()) return rs;
-
-            span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
-
-            if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
+            span?.SetError(ex, null);
+            throw;
         }
-
-        ValidWhenSendFailed(span);
-
-        return rs;
     }
 
     /// <summary>批量生产添加</summary>
@@ -807,7 +818,9 @@ XREAD count 3 streams stream_key 0-0
                     // 串联上下游调用链
                     var bodys = mqMsg.Body;
                     for (var i = 0; i < bodys.Length; i++)
+                    {
                         if (bodys[i].EqualIgnoreCase("traceParent") && i + 1 < bodys.Length) span.Detach(bodys[i + 1]);
+                    }
 
                     // 解码
                     var msg = mqMsg.GetBody<T>();
@@ -891,7 +904,9 @@ XREAD count 3 streams stream_key 0-0
                     // 串联上下游调用链。取第一个消息
                     var bodys = mqMsgs[0].Body;
                     for (var i = 0; i < bodys.Length; i++)
+                    {
                         if (bodys[i].EqualIgnoreCase("traceParent") && i + 1 < bodys.Length) span.Detach(bodys[i + 1]);
+                    }
 
                     // 解码
                     var msgs = mqMsgs.Select(e => e.GetBody<T>()).ToArray();

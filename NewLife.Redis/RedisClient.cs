@@ -645,8 +645,15 @@ public class RedisClient : DisposeBase
     public virtual Object Execute(String cmd, params Object[] args)
     {
         using var span = cmd.IsNullOrEmpty() ? null : Host.Tracer?.NewSpan($"redis:{Host.Name}:{cmd}", args);
-
-        return ExecuteCommand(cmd, args?.Select(e => Host.Encoder.Encode(e)).ToArray(), args);
+        try
+        {
+            return ExecuteCommand(cmd, args?.Select(e => Host.Encoder.Encode(e)).ToArray(), args);
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
     }
 
     /// <summary>执行命令。返回基本类型、对象、对象数组</summary>
@@ -718,8 +725,15 @@ public class RedisClient : DisposeBase
     public virtual async Task<Object> ExecuteAsync(String cmd, Object[] args, CancellationToken cancellationToken = default)
     {
         using var span = cmd.IsNullOrEmpty() ? null : Host.Tracer?.NewSpan($"redis:{Host.Name}:{cmd}", args);
-
-        return await ExecuteCommandAsync(cmd, args?.Select(e => Host.Encoder.Encode(e)).ToArray(), args, cancellationToken);
+        try
+        {
+            return await ExecuteCommandAsync(cmd, args?.Select(e => Host.Encoder.Encode(e)).ToArray(), args, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
     }
 
     /// <summary>异步执行命令。返回基本类型、对象、对象数组</summary>
@@ -846,37 +860,44 @@ public class RedisClient : DisposeBase
         if (ns == null) return null;
 
         using var span = Host.Tracer?.NewSpan($"redis:{Host.Name}:Pipeline", null);
-
-        // 验证登录
-        CheckLogin(null);
-        CheckSelect(null);
-
-        // 整体打包所有命令
-        var ms = Pool.MemoryStream.Get();
-        var cmds = new List<String>(ps.Count);
-        foreach (var item in ps)
+        try
         {
-            cmds.Add(item.Name);
-            GetRequest(ms, item.Name, item.Args.Select(e => Host.Encoder.Encode(e)).ToArray(), item.Args);
+            // 验证登录
+            CheckLogin(null);
+            CheckSelect(null);
+
+            // 整体打包所有命令
+            var ms = Pool.MemoryStream.Get();
+            var cmds = new List<String>(ps.Count);
+            foreach (var item in ps)
+            {
+                cmds.Add(item.Name);
+                GetRequest(ms, item.Name, item.Args.Select(e => Host.Encoder.Encode(e)).ToArray(), item.Args);
+            }
+
+            // 设置数据标签
+            span?.SetTag(cmds);
+
+            // 整体发出
+            if (ms.Length > 0) ms.WriteTo(ns);
+            ms.Put();
+
+            if (!requireResult) return new Object[ps.Count];
+
+            // 获取响应
+            var list = GetResponse(ns, ps.Count);
+            for (var i = 0; i < list.Count; i++)
+            {
+                if (TryChangeType(list[i], ps[i].Type, out var target) && target != null) list[i] = target;
+            }
+
+            return list.ToArray();
         }
-
-        // 设置数据标签
-        span?.SetTag(cmds);
-
-        // 整体发出
-        if (ms.Length > 0) ms.WriteTo(ns);
-        ms.Put();
-
-        if (!requireResult) return new Object[ps.Count];
-
-        // 获取响应
-        var list = GetResponse(ns, ps.Count);
-        for (var i = 0; i < list.Count; i++)
+        catch (Exception ex)
         {
-            if (TryChangeType(list[i], ps[i].Type, out var target) && target != null) list[i] = target;
+            span?.SetError(ex, null);
+            throw;
         }
-
-        return list.ToArray();
     }
 
     private class Command
