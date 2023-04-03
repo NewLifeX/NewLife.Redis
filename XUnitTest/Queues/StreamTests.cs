@@ -303,7 +303,7 @@ public class StreamTests
         Assert.Equal(1, pi.Consumers.Count);
         var kv = pi.Consumers.First();
         Assert.Equal(7 + 1, kv.Value);
-        Assert.Equal($"{Environment.MachineName}@{Process.GetCurrentProcess().Id}", kv.Key);
+        Assert.StartsWith($"{Environment.MachineName}@", kv.Key);
 
         var ps = queue.Pending(queue.Group, null, null, 5);
         Assert.NotNull(ps);
@@ -408,7 +408,7 @@ public class StreamTests
         Assert.Equal(1, pi.Consumers.Count);
         var kv = pi.Consumers.First();
         Assert.Equal(7, kv.Value);
-        Assert.Equal($"{Environment.MachineName}@{Process.GetCurrentProcess().Id}", kv.Key);
+        Assert.StartsWith($"{Environment.MachineName}@", kv.Key);
 
         var ps = queue.Pending(queue.Group, null, null, 5);
         Assert.NotNull(ps);

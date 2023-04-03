@@ -1,7 +1,10 @@
-﻿using System.Text;
+﻿using System.Collections.Concurrent;
+using System.Net;
+using System.Text;
 using NewLife.Caching.Clusters;
 using NewLife.Caching.Models;
 using NewLife.Caching.Queues;
+using NewLife.Collections;
 using NewLife.Data;
 using NewLife.Log;
 using NewLife.Serialization;
@@ -158,6 +161,20 @@ public class FullRedis : Redis
         }
     }
 
+    private ConcurrentDictionary<String, IPool<RedisClient>> _pools = new();
+    /// <summary>获取指定节点的连接池</summary>
+    /// <param name="node"></param>
+    /// <returns></returns>
+    public IPool<RedisClient> GetPool(IRedisNode node)
+    {
+        return _pools.GetOrAdd(node.EndPoint, k =>
+        {
+            WriteLog("使用Redis节点：{0}", k);
+
+            return CreatePool(() => new RedisClient(this, k) { Name = k.Replace(':', '-') });
+        });
+    }
+
     /// <summary>重载执行，支持集群</summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="key"></param>
@@ -181,7 +198,7 @@ public class FullRedis : Redis
         var i = 0;
         do
         {
-            var pool = node.Pool;
+            var pool = GetPool(node);
 
             // 每次重试都需要重新从池里借出连接
             var client = pool.Get();
@@ -236,7 +253,7 @@ public class FullRedis : Redis
         var i = 0;
         do
         {
-            var pool = node.Pool;
+            var pool = GetPool(node);
 
             // 每次重试都需要重新从池里借出连接
             var client = pool.Get();

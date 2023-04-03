@@ -229,7 +229,9 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     {
         public Redis Instance { get; set; }
 
-        protected override RedisClient OnCreate() => Instance.OnCreate();
+        public Func<RedisClient> Callback { get; set; }
+
+        protected override RedisClient OnCreate() => Callback();
 
         protected override Boolean OnGet(RedisClient value)
         {
@@ -316,7 +318,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         return rc;
     }
 
-    private MyPool _Pool;
+    private IPool<RedisClient> _Pool;
     /// <summary>连接池</summary>
     public IPool<RedisClient> Pool
     {
@@ -327,20 +329,30 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             {
                 if (_Pool != null) return _Pool;
 
-                var pool = new MyPool
-                {
-                    Name = Name + "Pool",
-                    Instance = this,
-                    Min = 10,
-                    Max = 100000,
-                    IdleTime = 30,
-                    AllIdleTime = 300,
-                    Log = Log,
-                };
-
-                return _Pool = pool;
+                return _Pool = CreatePool(OnCreate);
             }
         }
+    }
+
+    /// <summary>创建连接池</summary>
+    /// <param name="onCreate"></param>
+    /// <returns></returns>
+    protected virtual IPool<RedisClient> CreatePool(Func<RedisClient> onCreate)
+    {
+        var pool = new MyPool
+        {
+            Name = Name + "Pool",
+            Instance = this,
+            Min = 10,
+            Max = 100000,
+            IdleTime = 30,
+            AllIdleTime = 300,
+            Log = ClientLog,
+
+            Callback = onCreate,
+        };
+
+        return pool;
     }
 
     /// <summary>执行命令，经过管道。FullRedis中还会考虑Cluster分流</summary>

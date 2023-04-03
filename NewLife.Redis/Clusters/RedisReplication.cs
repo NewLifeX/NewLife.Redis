@@ -1,4 +1,5 @@
-﻿using NewLife.Log;
+﻿using System.Net.Sockets;
+using NewLife.Log;
 using NewLife.Net;
 using NewLife.Threading;
 
@@ -154,7 +155,11 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         var rs = "";
         try
         {
-            using var client = new RedisClient(redis, server) { Timeout = 5_000 };
+            using var client = new RedisClient(redis, server)
+            {
+                Name = $"{server.Address}-{server.Port}",
+                Timeout = 5_000
+            };
             rs = client.Execute<String>("INFO", "Replication");
         }
         catch (Exception ex)
@@ -232,7 +237,32 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     /// <param name="key">键</param>
     /// <param name="write">可写</param>
     /// <returns></returns>
-    public virtual IRedisNode SelectNode(String key, Boolean write) => null;
+    public virtual IRedisNode SelectNode(String key, Boolean write)
+    {
+        if (key.IsNullOrEmpty()) return null;
+
+        // 选择有效节点，剔除被屏蔽节点和未连接节点
+        var now = DateTime.Now;
+        var ns = Nodes?.Where(e => e.NextTime < now).ToArray();
+
+        if (ns != null && ns.Length != 0)
+        {
+            // 找主节点
+            foreach (var node in ns)
+            {
+                if (!node.Slave) return node;
+            }
+
+            if (!write)
+            {
+                // 找从节点
+                return ns[0];
+            }
+        }
+
+        throw new XException($"主从[{Redis.Name}]没有可用节点（key={key}）");
+        //return null;
+    }
 
     /// <summary>根据异常重选节点</summary>
     /// <param name="key">键</param>
@@ -240,7 +270,26 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     /// <param name="node"></param>
     /// <param name="exception"></param>
     /// <returns></returns>
-    public virtual IRedisNode ReselectNode(String key, Boolean write, IRedisNode node, Exception exception) => null;
+    public virtual IRedisNode ReselectNode(String key, Boolean write, IRedisNode node, Exception exception)
+    {
+        using var span = Redis.Tracer?.NewSpan("redis:ReselectNode", new { key, (node as RedisNode)?.EndPoint });
+
+        // 屏蔽旧节点一段时间
+        var now = DateTime.Now;
+
+        // 读取指令网络异常时，换一个节点
+        if (exception is SocketException or IOException)
+        {
+            // 屏蔽旧节点一段时间
+            if (node is RedisNode redisNode)
+            {
+                redisNode.NextTime = now.AddSeconds(Redis.ShieldingTime);
+                span?.AppendTag($"屏蔽 {redisNode.EndPoint} 到 {redisNode.NextTime.ToFullString()}");
+            }
+        }
+
+        return SelectNode(key, write);
+    }
     #endregion
 
     #region 辅助

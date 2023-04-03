@@ -1,5 +1,4 @@
 ﻿using NewLife.Collections;
-using NewLife.Log;
 using NewLife.Net;
 
 namespace NewLife.Caching.Clusters;
@@ -18,7 +17,7 @@ public class RedisNode : IRedisNode
     public Boolean Slave { get; set; }
 
     /// <summary>下一次时间。节点出错时，将禁用一段时间</summary>
-    public DateTime NextTime { get;set;}
+    public DateTime NextTime { get; set; }
     #endregion
 
     #region 构造
@@ -44,6 +43,7 @@ public class RedisNode : IRedisNode
 
             var rc = new RedisClient(rds, uri)
             {
+                Name = $"{uri.Address}-{uri.Port}",
                 Log = rds.ClientLog
             };
             //if (rds.Db > 0 && (rds is not FullRedis rds2 || !rds2.Mode.EqualIgnoreCase("cluster", "sentinel"))) rc.Select(rds.Db);
@@ -60,68 +60,68 @@ public class RedisNode : IRedisNode
         }
     }
 
-    private MyPool _Pool;
-    /// <summary>连接池</summary>
-    public IPool<RedisClient> Pool
-    {
-        get
-        {
-            if (_Pool != null) return _Pool;
-            lock (this)
-            {
-                if (_Pool != null) return _Pool;
+    //private MyPool _Pool;
+    ///// <summary>连接池</summary>
+    //public IPool<RedisClient> Pool
+    //{
+    //    get
+    //    {
+    //        if (_Pool != null) return _Pool;
+    //        lock (this)
+    //        {
+    //            if (_Pool != null) return _Pool;
 
-                var pool = new MyPool
-                {
-                    Name = Owner.Name + "Pool",
-                    Node = this,
-                    Min = 2,
-                    Max = 1000,
-                    IdleTime = 20,
-                    AllIdleTime = 120,
-                    Log = Owner.Log,
-                };
+    //            var pool = new MyPool
+    //            {
+    //                Name = Owner.Name + "Pool",
+    //                Node = this,
+    //                Min = 10,
+    //                Max = 100000,
+    //                IdleTime = 30,
+    //                AllIdleTime = 300,
+    //                Log = Owner.ClientLog,
+    //            };
 
-                Owner.WriteLog("使用Redis节点：{0}", EndPoint);
+    //            Owner.WriteLog("使用Redis节点：{0}", EndPoint);
 
-                return _Pool = pool;
-            }
-        }
-    }
+    //            return _Pool = pool;
+    //        }
+    //    }
+    //}
 
-    /// <summary>执行命令</summary>
-    /// <typeparam name="TResult">返回类型</typeparam>
-    /// <param name="func">回调函数</param>
-    /// <param name="write">是否写入操作</param>
-    /// <returns></returns>
-    public virtual TResult Execute<TResult>(Func<RedisClient, TResult> func, Boolean write = false)
-    {
-        // 统计性能
-        var sw = Owner.Counter?.StartCount();
+    ///// <summary>执行命令</summary>
+    ///// <typeparam name="TResult">返回类型</typeparam>
+    ///// <param name="func">回调函数</param>
+    ///// <param name="write">是否写入操作</param>
+    ///// <returns></returns>
+    //public virtual TResult Execute<TResult>(Func<RedisClient, TResult> func, Boolean write = false)
+    //{
+    //    // 统计性能
+    //    var sw = Owner.Counter?.StartCount();
 
-        var i = 0;
-        do
-        {
-            // 每次重试都需要重新从池里借出连接
-            var client = Pool.Get();
-            try
-            {
-                client.Reset();
-                var rs = func(client);
+    //    var i = 0;
+    //    do
+    //    {
+    //        // 每次重试都需要重新从池里借出连接
+    //        var client = Pool.Get();
+    //        try
+    //        {
+    //            client.Reset();
+    //            var rs = func(client);
 
-                Owner.Counter?.StopCount(sw);
+    //            Owner.Counter?.StopCount(sw);
 
-                return rs;
-            }
-            catch (InvalidDataException)
-            {
-                if (i++ >= Owner.Retry) throw;
-            }
-            finally
-            {
-                Pool.Put(client);
-            }
-        } while (true);
-    }
+    //            return rs;
+    //        }
+    //        catch (InvalidDataException)
+    //        {
+    //            if (i++ >= Owner.Retry) throw;
+    //        }
+    //        finally
+    //        {
+    //            Pool.Put(client);
+    //        }
+    //    } while (true);
+    //}
     #endregion
 }
