@@ -120,36 +120,41 @@ public class FullRedis : Redis
     private void InitCluster()
     {
         if (_initCluster) return;
-        _initCluster = true;
-
-        // 访问一次info信息，解析工作模式，以判断是否集群
-        var info = Info;
-        if (info != null)
+        lock (this)
         {
-            if (info.TryGetValue("redis_mode", out var mode)) Mode = mode;
-            // 主从复制时，仅master有connected_slaves，因此Server地址必须把master节点放在第一位
-            info.TryGetValue("role", out var role);
-            info.TryGetValue("connected_slaves", out var connected_slaves);
+            if (_initCluster) return;
 
-            // 集群模式初始化节点
-            if (mode == "cluster")
+            // 访问一次info信息，解析工作模式，以判断是否集群
+            var info = Info;
+            if (info != null)
             {
-                var cluster = new RedisCluster(this);
-                cluster.StartMonitor();
-                Cluster = cluster;
+                if (info.TryGetValue("redis_mode", out var mode)) Mode = mode;
+                // 主从复制时，仅master有connected_slaves，因此Server地址必须把master节点放在第一位
+                info.TryGetValue("role", out var role);
+                info.TryGetValue("connected_slaves", out var connected_slaves);
+
+                // 集群模式初始化节点
+                if (mode == "cluster")
+                {
+                    var cluster = new RedisCluster(this);
+                    cluster.StartMonitor();
+                    Cluster = cluster;
+                }
+                else if (mode.EqualIgnoreCase("sentinel"))
+                {
+                    var cluster = new RedisSentinel(this) { SetHostServer = true };
+                    cluster.StartMonitor();
+                    Cluster = cluster;
+                }
+                else if (mode.EqualIgnoreCase("standalone") && (connected_slaves.ToInt() > 0 || role == "slave"))
+                {
+                    var cluster = new RedisReplication(this) { SetHostServer = true };
+                    cluster.StartMonitor();
+                    Cluster = cluster;
+                }
             }
-            else if (mode.EqualIgnoreCase("sentinel"))
-            {
-                var cluster = new RedisSentinel(this) { SetHostServer = true };
-                cluster.StartMonitor();
-                Cluster = cluster;
-            }
-            else if (mode.EqualIgnoreCase("standalone") && (connected_slaves.ToInt() > 0 || role == "slave"))
-            {
-                var cluster = new RedisReplication(this) { SetHostServer = true };
-                cluster.StartMonitor();
-                Cluster = cluster;
-            }
+
+            _initCluster = true;
         }
     }
 

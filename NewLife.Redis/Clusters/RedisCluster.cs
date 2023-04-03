@@ -150,6 +150,8 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
     /// <returns></returns>
     public IRedisNode ReselectNode(String key, Boolean write, IRedisNode node, Exception exception)
     {
+        using var span = Redis.Tracer?.NewSpan("redis:ReselectNode", new { key, (node as RedisNode)?.EndPoint });
+
         // 屏蔽旧节点一段时间
         var now = DateTime.Now;
 

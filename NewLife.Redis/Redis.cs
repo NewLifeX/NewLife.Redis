@@ -298,7 +298,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
         if (idx != _idxLast)
         {
-            WriteLog("使用Redis节点：{0}", svrs[idx % svrs.Length]);
+            WriteLog("使用Redis服务器：{0}", svrs[idx % svrs.Length]);
 
             _idxLast = idx;
         }
@@ -309,7 +309,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
         var rc = new RedisClient(this, svr)
         {
-            Log = Log
+            Log = ClientLog
         };
         //if (rds.Db > 0) rc.Select(rds.Db);
 
@@ -970,6 +970,9 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     #region 日志
     /// <summary>日志</summary>
     public ILog Log { get; set; } = Logger.Null;
+
+    /// <summary>客户端命令日志</summary>
+    public ILog ClientLog { get; set; } = Logger.Null;
 
     /// <summary>写日志</summary>
     /// <param name="format"></param>

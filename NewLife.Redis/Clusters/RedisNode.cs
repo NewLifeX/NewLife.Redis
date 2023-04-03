@@ -44,7 +44,7 @@ public class RedisNode : IRedisNode
 
             var rc = new RedisClient(rds, uri)
             {
-                Log = rds.Log
+                Log = rds.ClientLog
             };
             //if (rds.Db > 0 && (rds is not FullRedis rds2 || !rds2.Mode.EqualIgnoreCase("cluster", "sentinel"))) rc.Select(rds.Db);
 
