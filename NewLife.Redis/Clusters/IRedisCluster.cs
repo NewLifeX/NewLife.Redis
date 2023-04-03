@@ -16,4 +16,8 @@ public interface IRedisCluster
     /// <param name="exception"></param>
     /// <returns></returns>
     IRedisNode ReselectNode(String key, Boolean write, IRedisNode node, Exception exception);
+
+    /// <summary>重置节点。设置成功状态</summary>
+    /// <param name="node"></param>
+    void ResetNode(IRedisNode node);
 }

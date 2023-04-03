@@ -169,6 +169,10 @@ public class RedisSentinel : RedisBase, IRedisCluster, IDisposable
     /// <param name="exception"></param>
     /// <returns></returns>
     public virtual IRedisNode ReselectNode(String key, Boolean write, IRedisNode node, Exception exception) => null;
+
+    /// <summary>重置节点。设置成功状态</summary>
+    /// <param name="node"></param>
+    public virtual void ResetNode(IRedisNode node) { }
     #endregion
 
     #region 辅助

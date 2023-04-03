@@ -16,6 +16,9 @@ public class RedisNode : IRedisNode
     /// <summary>是否从节点</summary>
     public Boolean Slave { get; set; }
 
+    /// <summary>连续错误次数。达到阈值后屏蔽该节点</summary>
+    public Int32 Error { get; set; }
+
     /// <summary>下一次时间。节点出错时，将禁用一段时间</summary>
     public DateTime NextTime { get; set; }
     #endregion

@@ -209,6 +209,8 @@ public class FullRedis : Redis
 
                 Counter?.StopCount(sw);
 
+                Cluster.ResetNode(node);
+
                 return rs;
             }
             catch (InvalidDataException)

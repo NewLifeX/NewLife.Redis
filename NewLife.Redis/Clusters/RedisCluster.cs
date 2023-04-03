@@ -179,10 +179,12 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
         if (exception is SocketException or IOException)
         {
             // 屏蔽旧节点一段时间
-            if (node is RedisNode redisNode)
+            if (node is RedisNode redisNode && redisNode.Error++ > Redis.Retry)
             {
                 redisNode.NextTime = now.AddSeconds(Redis.ShieldingTime);
-                span?.AppendTag($"屏蔽 {redisNode.EndPoint} 到 {redisNode.NextTime.ToFullString()}");
+                msg = $"屏蔽 {redisNode.EndPoint} 到 {redisNode.NextTime.ToFullString()}";
+                span?.AppendTag(msg);
+                Redis.WriteLog(msg);
             }
         }
 
@@ -205,6 +207,13 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
         }
 
         return node;
+    }
+
+    /// <summary>重置节点。设置成功状态</summary>
+    /// <param name="node"></param>
+    public virtual void ResetNode(IRedisNode node)
+    {
+        if (node is RedisNode redisNode) redisNode.Error = 0;
     }
 
     /// <summary>向集群添加新节点</summary>
