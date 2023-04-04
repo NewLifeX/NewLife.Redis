@@ -123,15 +123,16 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
 
         // 选择有效节点，剔除被屏蔽节点和未连接节点
         var now = DateTime.Now;
-        var ns = Nodes?.Where(e => e.NextTime < now && e.LinkState == 1).ToArray();
+        var ns = Nodes?.Where(e => e.LinkState == 1).ToArray();
 
         var slot = key.GetBytes().Crc16() % 16384;
+        ns = ns?.Where(e => e.Contain(slot)).ToArray();
         if (ns != null && ns.Length != 0)
         {
             // 找主节点
             foreach (var node in ns)
             {
-                if (!node.Slave && node.Contain(slot)) return node;
+                if (!node.Slave && node.NextTime < now) return node;
             }
 
             if (!write)
@@ -139,8 +140,20 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
                 // 找从节点
                 foreach (var node in ns)
                 {
-                    if (node.Contain(slot)) return node;
+                    if (node.NextTime < now) return node;
                 }
+            }
+
+            // 无视屏蔽情况，再来一次
+            foreach (var node in ns)
+            {
+                if (!node.Slave) return node;
+            }
+
+            if (!write)
+            {
+                // 找从节点
+                return ns[0];
             }
         }
 
