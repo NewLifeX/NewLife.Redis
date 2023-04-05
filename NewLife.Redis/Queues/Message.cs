@@ -33,7 +33,8 @@ public class Message
         // 字节数组转实体对象
         var entry = Activator.CreateInstance<T>();
         for (var i = 0; i < vs.Length - 1; i += 2)
-            if (vs[i] != null && properties.TryGetValue(vs[i], out var pi))
+        {
+            if (vs[i] != null && properties.TryGetValue(vs[i], out var pi) && pi.CanWrite)
             {
                 // 复杂类型序列化为json字符串
                 var val = vs[i + 1];
@@ -52,6 +53,8 @@ public class Message
 
                 pi.SetValue(entry, v, null);
             }
+        }
+
         return entry;
     }
 }
