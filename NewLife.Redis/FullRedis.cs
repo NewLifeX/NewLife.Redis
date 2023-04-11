@@ -155,6 +155,22 @@ public class FullRedis : Redis
                     cluster.StartMonitor();
                     Cluster = cluster;
                 }
+                // 特别支持kvrocks（底层RockDB）
+                else if (mode.IsNullOrEmpty() && role.EqualIgnoreCase("master", "slave"))
+                {
+                    try
+                    {
+                        var cluster = new RedisCluster(this);
+                        cluster.StartMonitor();
+                        Cluster = cluster;
+                    }
+                    catch
+                    {
+                        var cluster = new RedisReplication(this) { SetHostServer = true };
+                        cluster.StartMonitor();
+                        Cluster = cluster;
+                    }
+                }
             }
 
             _initCluster = true;
