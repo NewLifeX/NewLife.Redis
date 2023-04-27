@@ -62,7 +62,7 @@ class DelayQueue
                     queue.Acknowledge(mqMsg);
                 }
             }
-            catch (Exception e) { }
+            catch (Exception ex) { }
         }
 
         XTrace.WriteLine("Finish Consume");
