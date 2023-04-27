@@ -55,7 +55,7 @@ class EasyQueue
                     XTrace.WriteLine("Consume {0} {1}", msg.Code, msg.Name);
                 }
             }
-            catch (OperationCanceledException) { }
+            catch (Exception ex) { }
         }
 
         XTrace.WriteLine("Finish Consume");
