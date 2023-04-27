@@ -60,7 +60,7 @@ class AckQueue
                     queue.Acknowledge(mqMsg);
                 }
             }
-            catch (OperationCanceledException) { }
+            catch (Exception e) { }
         }
 
         XTrace.WriteLine("Finish Consume");
