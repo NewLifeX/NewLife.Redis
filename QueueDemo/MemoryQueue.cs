@@ -42,9 +42,10 @@ internal class MemoryQueue
     private static void Consume(BlockingCollection<Area> queue, CancellationToken token)
     {
         XTrace.WriteLine("Start Consume");
-        try
+
+        while (!token.IsCancellationRequested)
         {
-            while (!token.IsCancellationRequested)
+            try
             {
                 var msg = queue.Take(token);
                 if (msg != null)
@@ -52,8 +53,9 @@ internal class MemoryQueue
                     XTrace.WriteLine("Consume {0} {1}", msg.Code, msg.Name);
                 }
             }
+            catch (OperationCanceledException) { }
         }
-        catch (OperationCanceledException) { }
+
         XTrace.WriteLine("Finish Consume");
     }
 }
