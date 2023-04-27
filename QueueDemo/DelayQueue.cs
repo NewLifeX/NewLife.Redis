@@ -48,9 +48,10 @@ class DelayQueue
         var queue = redis.GetDelayQueue<String>(topic);
 
         XTrace.WriteLine("Start Consume");
-        try
+
+        while (!token.IsCancellationRequested)
         {
-            while (!token.IsCancellationRequested)
+            try
             {
                 var mqMsg = await queue.TakeOneAsync(10, token);
                 if (mqMsg != null)
@@ -61,8 +62,9 @@ class DelayQueue
                     queue.Acknowledge(mqMsg);
                 }
             }
+            catch (Exception e) { }
         }
-        catch (OperationCanceledException) { }
+
         XTrace.WriteLine("Finish Consume");
     }
 }
