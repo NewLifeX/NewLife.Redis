@@ -44,9 +44,10 @@ class EasyQueue
     private static async Task Consume(IProducerConsumer<Area> queue, CancellationToken token)
     {
         XTrace.WriteLine("Start Consume");
-        try
+
+        while (!token.IsCancellationRequested)
         {
-            while (!token.IsCancellationRequested)
+            try
             {
                 var msg = await queue.TakeOneAsync(10, token);
                 if (msg != null)
@@ -54,8 +55,9 @@ class EasyQueue
                     XTrace.WriteLine("Consume {0} {1}", msg.Code, msg.Name);
                 }
             }
+            catch (OperationCanceledException) { }
         }
-        catch (OperationCanceledException) { }
+
         XTrace.WriteLine("Finish Consume");
     }
 }
