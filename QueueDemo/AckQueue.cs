@@ -1,4 +1,4 @@
-﻿using NewLife.Caching;
+using NewLife.Caching;
 using NewLife.Log;
 using NewLife.Serialization;
 
@@ -46,9 +46,10 @@ class AckQueue
         var queue = redis.GetReliableQueue<String>(topic);
 
         XTrace.WriteLine("Start Consume");
-        try
+
+        while (!token.IsCancellationRequested)
         {
-            while (!token.IsCancellationRequested)
+            try
             {
                 var mqMsg = await queue.TakeOneAsync(10, token);
                 if (mqMsg != null)
@@ -59,8 +60,9 @@ class AckQueue
                     queue.Acknowledge(mqMsg);
                 }
             }
+            catch (OperationCanceledException) { }
         }
-        catch (OperationCanceledException) { }
+
         XTrace.WriteLine("Finish Consume");
     }
 }
