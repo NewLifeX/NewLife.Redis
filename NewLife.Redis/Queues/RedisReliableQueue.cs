@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+
 using NewLife.Caching.Common;
 using NewLife.Log;
 using NewLife.Security;
@@ -203,17 +204,17 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
 
             var rs = rds.StopPipeline(true);
             foreach (var item in rs)
-                if (!Equals(item, default(T)))
-                {
-                    _Status.Consumes++;
-                    yield return (T)item;
-                }
+            {
+                if (item is null || Equals(item, default(T))) { break; }
+                _Status.Consumes++;
+                yield return (T)item;
+            }
         }
         else
             for (var i = 0; i < count; i++)
             {
                 var value = Execute(rc => rc.Execute<T>("RPOPLPUSH", Key, AckKey), true);
-                if (Equals(value, default(T))) break;
+                if (value is null || Equals(value, default(T))) break;
 
                 _Status.Consumes++;
                 yield return value;

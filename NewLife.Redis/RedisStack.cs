@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+
 using NewLife.Data;
 
 namespace NewLife.Caching
@@ -62,6 +63,8 @@ namespace NewLife.Caching
                 var rs = rds.StopPipeline(true);
                 foreach (var item in rs)
                 {
+                    if (item is null || Equals(item, default(T))) { break; }
+
                     yield return (T)item;
                 }
             }
@@ -70,7 +73,7 @@ namespace NewLife.Caching
                 for (var i = 0; i < count; i++)
                 {
                     var value = Execute(rc => rc.Execute<T>("RPOP", Key), true);
-                    if (Equals(value, default(T))) break;
+                    if (value is null || Equals(value, default(T))) break;
 
                     yield return value;
                 }
