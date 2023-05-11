@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using NewLife.Caching;
+using NewLife.Log;
 using NewLife.Security;
 using Xunit;
 
@@ -18,8 +19,10 @@ public class SortedSetTests
 
         _redis = new FullRedis();
         _redis.Init(config);
+        _redis.Log = XTrace.Log;
+
 #if DEBUG
-        _redis.Log = NewLife.Log.XTrace.Log;
+        _redis.ClientLog = XTrace.Log;
 #endif
     }
 

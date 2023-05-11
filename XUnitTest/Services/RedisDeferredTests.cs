@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using NewLife.Caching;
 using NewLife.Caching.Services;
+using NewLife.Log;
 using NewLife.Security;
 using Xunit;
 
@@ -19,10 +20,12 @@ public class RedisDeferredTests
 
         _redis = new FullRedis();
         _redis.Init(config);
-#if DEBUG
-        _redis.Log = NewLife.Log.XTrace.Log;
-#endif
         _redis.Expire = 10 * 60;
+        _redis.Log = XTrace.Log;
+
+#if DEBUG
+        _redis.ClientLog = XTrace.Log;
+#endif
     }
 
     [Fact]

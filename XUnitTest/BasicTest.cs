@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using NewLife;
 using NewLife.Caching;
+using NewLife.Log;
 using Xunit;
 
 // 所有测试用例放入一个汇编级集合，除非单独指定Collection特性
@@ -22,9 +23,10 @@ public class BasicTest
         _redis = new FullRedis();
         _redis.Init(config);
         _redis.Db = 2;
+        _redis.Log = XTrace.Log;
 
 #if DEBUG
-        _redis.Log = NewLife.Log.XTrace.Log;
+        _redis.ClientLog = XTrace.Log;
 #endif
     }
 

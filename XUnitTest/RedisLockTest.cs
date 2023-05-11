@@ -20,8 +20,10 @@ public class RedisLockTest
 
         _redis = new Redis();
         _redis.Init(config);
-#if DEBUG
         _redis.Log = XTrace.Log;
+
+#if DEBUG
+        _redis.ClientLog = XTrace.Log;
 #endif
     }
     [TestOrder(50)]

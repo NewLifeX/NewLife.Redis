@@ -22,8 +22,10 @@ public class StreamTests
 
         _redis = new FullRedis();
         _redis.Init(config);
-#if DEBUG
         _redis.Log = XTrace.Log;
+
+#if DEBUG
+        _redis.ClientLog = XTrace.Log;
 #endif
     }
 
@@ -375,8 +377,9 @@ public class StreamTests
     {
         var key = "stream_Claim";
         var rds = _redis.CreateSub(9);
-#if DEBUG
         rds.Log = XTrace.Log;
+#if DEBUG
+        rds.ClientLog = XTrace.Log;
 #endif
 
         // 删除已有

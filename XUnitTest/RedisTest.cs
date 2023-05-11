@@ -28,8 +28,10 @@ public class RedisTest
 
         _redis = new Redis();
         _redis.Init(config);
-#if DEBUG
         _redis.Log = XTrace.Log;
+
+#if DEBUG
+        _redis.ClientLog = XTrace.Log;
 #endif
     }
 
@@ -426,8 +428,9 @@ public class RedisTest
 
         var redis = new Redis();
         redis.Init(config);
-#if DEBUG
         redis.Log = XTrace.Log;
+#if DEBUG
+        redis.ClientLog = XTrace.Log;
 #endif
 
         var ic = redis;

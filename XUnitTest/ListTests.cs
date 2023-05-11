@@ -19,8 +19,10 @@ public class ListTests
 
         _redis = new FullRedis();
         _redis.Init(config);
+        _redis.Log = XTrace.Log;
+
 #if DEBUG
-        _redis.Log = NewLife.Log.XTrace.Log;
+        _redis.ClientLog = XTrace.Log;
 #endif
     }
 

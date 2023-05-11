@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NewLife.Caching;
 using NewLife.Caching.Queues;
+using NewLife.Log;
 using NewLife.Security;
 using Xunit;
 
@@ -22,8 +23,10 @@ public class QueueTests
 
         _redis = new FullRedis();
         _redis.Init(config);
+        _redis.Log = XTrace.Log;
+
 #if DEBUG
-        _redis.Log = NewLife.Log.XTrace.Log;
+        _redis.ClientLog = XTrace.Log;
 #endif
     }
 

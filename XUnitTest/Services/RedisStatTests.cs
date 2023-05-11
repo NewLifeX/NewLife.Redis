@@ -22,8 +22,10 @@ public class StatTests
 
         _redis = new FullRedis();
         _redis.Init(config);
-#if DEBUG
         _redis.Log = XTrace.Log;
+
+#if DEBUG
+        _redis.ClientLog = XTrace.Log;
 #endif
     }
 
