@@ -158,7 +158,8 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
             using var client = new RedisClient(redis, server)
             {
                 Name = $"{server.Address}-{server.Port}",
-                Timeout = 5_000
+                Timeout = 5_000,
+                Log = redis.ClientLog,
             };
             rs = client.Execute<String>("INFO", "Replication");
         }

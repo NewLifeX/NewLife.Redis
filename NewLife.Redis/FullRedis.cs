@@ -188,7 +188,7 @@ public class FullRedis : Redis
         {
             WriteLog("使用Redis节点：{0}", k);
 
-            return CreatePool(() => new RedisClient(this, k) { Name = k.Replace(':', '-') });
+            return CreatePool(() => new RedisClient(this, k) { Name = k.Replace(':', '-'), Log = ClientLog });
         });
     }
 

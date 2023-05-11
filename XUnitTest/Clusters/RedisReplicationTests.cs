@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using NewLife.Caching;
+﻿using NewLife.Caching;
 using NewLife.Caching.Clusters;
+using NewLife.Log;
 using Xunit;
 
 namespace XUnitTest.Clusters;
@@ -20,9 +16,10 @@ public class RedisReplicationTests
         _redis = new FullRedis();
         _redis.Init(config);
         _redis.Db = 2;
+        _redis.Log = XTrace.Log;
 
 #if DEBUG
-        _redis.Log = NewLife.Log.XTrace.Log;
+        _redis.ClientLog = XTrace.Log;
 #endif
     }
 

@@ -1,5 +1,6 @@
 ﻿using NewLife.Caching;
 using NewLife.Caching.Clusters;
+using NewLife.Log;
 using Xunit;
 
 namespace XUnitTest.Clusters;
@@ -18,9 +19,10 @@ public class RedisSentinelTests
         _redis = new FullRedis();
         _redis.Init(config);
         //_redis.Db = 2;
+        _redis.Log = XTrace.Log;
 
 #if DEBUG
-        _redis.Log = NewLife.Log.XTrace.Log;
+        _redis.ClientLog = XTrace.Log;
 #endif
     }
 
