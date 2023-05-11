@@ -25,7 +25,7 @@ namespace NewLife.Caching
         /// <param name="longitude"></param>
         /// <param name="latitude"></param>
         /// <returns></returns>
-        public Int32 Add(String name, Double longitude, Double latitude) => Execute(rc => rc.Execute<Int32>("GEOADD", Key, longitude, latitude, name), true);
+        public Int32 Add(String name, Double longitude, Double latitude) => Execute((rc, k) => rc.Execute<Int32>("GEOADD", Key, longitude, latitude, name), true);
 
         /// <summary>添加</summary>
         /// <param name="items"></param>
@@ -39,7 +39,7 @@ namespace NewLife.Caching
                 args.Add(item.Latitude);
                 args.Add(item.Name);
             }
-            return Execute(rc => rc.Execute<Int32>("GEOADD", args.ToArray()), true);
+            return Execute((rc, k) => rc.Execute<Int32>("GEOADD", args.ToArray()), true);
         }
 
         /// <summary>两点距离</summary>
@@ -50,8 +50,8 @@ namespace NewLife.Caching
         public Double GetDistance(String from, String to, String unit = null)
         {
             return unit.IsNullOrEmpty() ?
-                Execute(rc => rc.Execute<Double>("GEODIST", Key, from, to), false) :
-                Execute(rc => rc.Execute<Double>("GEODIST", Key, from, to, unit), false);
+                Execute((rc, k) => rc.Execute<Double>("GEODIST", Key, from, to), false) :
+                Execute((rc, k) => rc.Execute<Double>("GEODIST", Key, from, to, unit), false);
         }
 
         /// <summary>获取一批点的坐标</summary>
@@ -65,7 +65,7 @@ namespace NewLife.Caching
                 args.Add(item);
             }
 
-            var rs = Execute(rc => rc.Execute<Object[]>("GEOPOS", args.ToArray()), false);
+            var rs = Execute((rc, k) => rc.Execute<Object[]>("GEOPOS", args.ToArray()), false);
             if (rs == null || rs.Length == 0) return null;
 
             var list = new List<GeoInfo>();
@@ -108,7 +108,7 @@ namespace NewLife.Caching
                 args.Add(item);
             }
 
-            return Execute(rc => rc.Execute<String[]>("GEOHASH", args.ToArray()), false);
+            return Execute((rc, k) => rc.Execute<String[]>("GEOHASH", args.ToArray()), false);
         }
 
         /// <summary>以给定的经纬度为中心， 返回键包含的位置元素当中， 与中心的距离不超过给定最大距离的所有位置元素</summary>
@@ -123,8 +123,8 @@ namespace NewLife.Caching
             if (unit.IsNullOrEmpty()) unit = "m";
 
             var rs = count > 0 ?
-               Execute(rc => rc.Execute<Object[]>("GEORADIUS", Key, longitude, latitude, radius, unit, "WITHDIST", "WITHCOORD", "ASC", "COUNT", count), false) :
-               Execute(rc => rc.Execute<Object[]>("GEORADIUS", Key, longitude, latitude, radius, unit, "WITHDIST", "WITHCOORD", "ASC"), false);
+               Execute((rc, k) => rc.Execute<Object[]>("GEORADIUS", Key, longitude, latitude, radius, unit, "WITHDIST", "WITHCOORD", "ASC", "COUNT", count), false) :
+               Execute((rc, k) => rc.Execute<Object[]>("GEORADIUS", Key, longitude, latitude, radius, unit, "WITHDIST", "WITHCOORD", "ASC"), false);
             if (rs == null || rs.Length == 0) return null;
 
             var list = new List<GeoInfo>();
@@ -159,8 +159,8 @@ namespace NewLife.Caching
             if (unit.IsNullOrEmpty()) unit = "m";
 
             var rs = count > 0 ?
-                Execute(rc => rc.Execute<Object[]>("GEORADIUSBYMEMBER", Key, member, radius, unit, "WITHDIST", "WITHCOORD", "ASC", "COUNT", count), false) :
-                Execute(rc => rc.Execute<Object[]>("GEORADIUSBYMEMBER", Key, member, radius, unit, "WITHDIST", "WITHCOORD", "ASC"), false);
+                Execute((rc, k) => rc.Execute<Object[]>("GEORADIUSBYMEMBER", Key, member, radius, unit, "WITHDIST", "WITHCOORD", "ASC", "COUNT", count), false) :
+                Execute((rc, k) => rc.Execute<Object[]>("GEORADIUSBYMEMBER", Key, member, radius, unit, "WITHDIST", "WITHCOORD", "ASC"), false);
             if (rs == null || rs.Length == 0) return null;
 
             var list = new List<GeoInfo>();

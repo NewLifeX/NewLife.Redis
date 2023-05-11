@@ -13,7 +13,7 @@ namespace NewLife.Caching
     {
         #region 属性
         /// <summary>个数</summary>
-        public Int32 Count => Execute(r => r.Execute<Int32>("LLEN", Key));
+        public Int32 Count => Execute((r, k) => r.Execute<Int32>("LLEN", Key));
 
         /// <summary>是否为空</summary>
         public Boolean IsEmpty => Count == 0;
@@ -39,7 +39,7 @@ namespace NewLife.Caching
             {
                 args.Add(item);
             }
-            return Execute(rc => rc.Execute<Int32>("RPUSH", args.ToArray()), true);
+            return Execute((rc, k) => rc.Execute<Int32>("RPUSH", args.ToArray()), true);
         }
 
         /// <summary>批量消费获取</summary>
@@ -57,7 +57,7 @@ namespace NewLife.Caching
 
                 for (var i = 0; i < count; i++)
                 {
-                    Execute(rc => rc.Execute<T>("RPOP", Key), true);
+                    Execute((rc, k) => rc.Execute<T>("RPOP", Key), true);
                 }
 
                 var rs = rds.StopPipeline(true);
@@ -72,7 +72,7 @@ namespace NewLife.Caching
             {
                 for (var i = 0; i < count; i++)
                 {
-                    var value = Execute(rc => rc.Execute<T>("RPOP", Key), true);
+                    var value = Execute((rc, k) => rc.Execute<T>("RPOP", Key), true);
                     if (value is null || Equals(value, default(T))) break;
 
                     yield return value;
@@ -85,9 +85,9 @@ namespace NewLife.Caching
         /// <returns></returns>
         public T TakeOne(Int32 timeout = -1)
         {
-            if (timeout < 0) return Execute(rc => rc.Execute<T>("RPOP", Key), true);
+            if (timeout < 0) return Execute((rc, k) => rc.Execute<T>("RPOP", Key), true);
 
-            var rs = Execute(rc => rc.Execute<Packet[]>("BRPOP", Key, timeout), true);
+            var rs = Execute((rc, k) => rc.Execute<Packet[]>("BRPOP", Key, timeout), true);
             return rs == null || rs.Length < 2 ? default : (T)Redis.Encoder.Decode(rs[1], typeof(T));
         }
 
@@ -97,9 +97,9 @@ namespace NewLife.Caching
         /// <returns></returns>
         public async Task<T> TakeOneAsync(Int32 timeout = 0, CancellationToken cancellationToken = default)
         {
-            if (timeout < 0) return await ExecuteAsync(rc => rc.ExecuteAsync<T>("RPOP", Key), true);
+            if (timeout < 0) return await ExecuteAsync((rc, k) => rc.ExecuteAsync<T>("RPOP", Key), true);
 
-            var rs = await ExecuteAsync(rc => rc.ExecuteAsync<Packet[]>("BRPOP", new Object[] { Key, timeout }, cancellationToken), true);
+            var rs = await ExecuteAsync((rc, k) => rc.ExecuteAsync<Packet[]>("BRPOP", new Object[] { Key, timeout }, cancellationToken), true);
             return rs == null || rs.Length < 2 ? default : (T)Redis.Encoder.Decode(rs[1], typeof(T));
         }
 

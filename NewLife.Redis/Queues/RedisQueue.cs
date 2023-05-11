@@ -17,7 +17,7 @@ public class RedisQueue<T> : QueueBase, IProducerConsumer<T>
     public Int32 MinPipeline { get; set; } = 3;
 
     /// <summary>个数</summary>
-    public Int32 Count => Execute(r => r.Execute<Int32>("LLEN", Key));
+    public Int32 Count => Execute((r, k) => r.Execute<Int32>("LLEN", Key));
 
     /// <summary>是否为空</summary>
     public Boolean IsEmpty => Count == 0;
@@ -44,7 +44,7 @@ public class RedisQueue<T> : QueueBase, IProducerConsumer<T>
             for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
             {
                 // 返回插入后的LIST长度。Redis执行命令不会失败，因此正常插入不应该返回0，如果返回了0或者服务，可能是中间代理出了问题
-                rs = Execute(rc => rc.Execute<Int32>("LPUSH", Key, val), true);
+                rs = Execute((rc, k) => rc.Execute<Int32>("LPUSH", Key, val), true);
                 if (rs > 0) return rs;
 
                 span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
@@ -84,7 +84,7 @@ public class RedisQueue<T> : QueueBase, IProducerConsumer<T>
             for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
             {
                 // 返回插入后的LIST长度。Redis执行命令不会失败，因此正常插入不应该返回0，如果返回了0或者服务，可能是中间代理出了问题
-                rs = Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
+                rs = Execute((rc, k) => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
                 if (rs > 0) return rs;
 
                 span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
@@ -108,11 +108,11 @@ public class RedisQueue<T> : QueueBase, IProducerConsumer<T>
     /// <returns></returns>
     public T TakeOne(Int32 timeout = -1)
     {
-        if (timeout < 0) return Execute(rc => rc.Execute<T>("RPOP", Key), true);
+        if (timeout < 0) return Execute((rc, k) => rc.Execute<T>("RPOP", Key), true);
 
         if (timeout > 0 && Redis.Timeout < timeout * 1000) Redis.Timeout = (timeout + 1) * 1000;
 
-        var rs = Execute(rc => rc.Execute<Packet[]>("BRPOP", Key, timeout), true);
+        var rs = Execute((rc, k) => rc.Execute<Packet[]>("BRPOP", Key, timeout), true);
         return rs == null || rs.Length < 2 ? default : (T)Redis.Encoder.Decode(rs[1], typeof(T));
     }
 
@@ -122,11 +122,11 @@ public class RedisQueue<T> : QueueBase, IProducerConsumer<T>
     /// <returns></returns>
     public async Task<T> TakeOneAsync(Int32 timeout = 0, CancellationToken cancellationToken = default)
     {
-        if (timeout < 0) return await ExecuteAsync(rc => rc.ExecuteAsync<T>("RPOP", Key), true);
+        if (timeout < 0) return await ExecuteAsync((rc, k) => rc.ExecuteAsync<T>("RPOP", Key), true);
 
         if (timeout > 0 && Redis.Timeout < timeout * 1000) Redis.Timeout = (timeout + 1) * 1000;
 
-        var rs = await ExecuteAsync(rc => rc.ExecuteAsync<Packet[]>("BRPOP", new Object[] { Key, timeout }, cancellationToken), true);
+        var rs = await ExecuteAsync((rc, k) => rc.ExecuteAsync<Packet[]>("BRPOP", new Object[] { Key, timeout }, cancellationToken), true);
         return rs == null || rs.Length < 2 ? default : (T)Redis.Encoder.Decode(rs[1], typeof(T));
     }
 
@@ -149,7 +149,7 @@ public class RedisQueue<T> : QueueBase, IProducerConsumer<T>
             rds.StartPipeline();
 
             for (var i = 0; i < count; i++)
-                Execute(rc => rc.Execute<T>("RPOP", Key), true);
+                Execute((rc, k) => rc.Execute<T>("RPOP", Key), true);
 
             var rs = rds.StopPipeline(true);
             foreach (var item in rs)
@@ -158,7 +158,7 @@ public class RedisQueue<T> : QueueBase, IProducerConsumer<T>
         else
             for (var i = 0; i < count; i++)
             {
-                var value = Execute(rc => rc.Execute<T>("RPOP", Key), true);
+                var value = Execute((rc, k) => rc.Execute<T>("RPOP", Key), true);
                 if (Equals(value, default(T))) break;
 
                 yield return value;

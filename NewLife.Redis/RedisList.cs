@@ -22,18 +22,18 @@ namespace NewLife.Caching
         /// <returns></returns>
         public T this[Int32 index]
         {
-            get => Execute(r => r.Execute<T>("LINDEX", Key, index));
-            set => Execute(r => r.Execute<String>("LSET", Key, index, value), true);
+            get => Execute((r, k) => r.Execute<T>("LINDEX", Key, index));
+            set => Execute((r, k) => r.Execute<String>("LSET", Key, index, value), true);
         }
 
         /// <summary>个数</summary>
-        public Int32 Count => Execute(r => r.Execute<Int32>("LLEN", Key));
+        public Int32 Count => Execute((r, k) => r.Execute<Int32>("LLEN", Key));
 
         Boolean ICollection<T>.IsReadOnly => false;
 
         /// <summary>添加元素在后面</summary>
         /// <param name="item"></param>
-        public void Add(T item) => Execute(r => r.Execute<Int32>("RPUSH", Key, item), true);
+        public void Add(T item) => Execute((r, k) => r.Execute<Int32>("RPUSH", Key, item), true);
 
         /// <summary>批量添加</summary>
         /// <param name="values"></param>
@@ -134,7 +134,7 @@ namespace NewLife.Caching
             {
                 args.Add(item);
             }
-            return Execute(rc => rc.Execute<Int32>("RPUSH", args.ToArray()), true);
+            return Execute((rc, k) => rc.Execute<Int32>("RPUSH", args.ToArray()), true);
         }
 
         /// <summary>左边批量添加，返回队列元素总数</summary>
@@ -150,16 +150,16 @@ namespace NewLife.Caching
             {
                 args.Add(item);
             }
-            return Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
+            return Execute((rc, k) => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
         }
 
         /// <summary>移除并返回最右边一个元素</summary>
         /// <returns></returns>
-        public T RPOP() => Execute(rc => rc.Execute<T>("RPOP", Key), true);
+        public T RPOP() => Execute((rc, k) => rc.Execute<T>("RPOP", Key), true);
 
         /// <summary>移除并返回最左边一个元素</summary>
         /// <returns></returns>
-        public T LPOP() => Execute(rc => rc.Execute<T>("LPOP", Key), true);
+        public T LPOP() => Execute((rc, k) => rc.Execute<T>("LPOP", Key), true);
 
         /// <summary>移除并返回最右边一个元素，并插入目标列表左边，原子操作</summary>
         /// <remarks>
@@ -167,7 +167,7 @@ namespace NewLife.Caching
         /// </remarks>
         /// <param name="destKey">目标列表</param>
         /// <returns></returns>
-        public T RPOPLPUSH(String destKey) => Execute(rc => rc.Execute<T>("RPOPLPUSH", Key, destKey), true);
+        public T RPOPLPUSH(String destKey) => Execute((rc, k) => rc.Execute<T>("RPOPLPUSH", Key, destKey), true);
 
         /// <summary>移除并返回最右边一个元素，并插入目标列表左边，原子操作</summary>
         /// <remarks>
@@ -176,25 +176,25 @@ namespace NewLife.Caching
         /// <param name="destKey">目标列表</param>
         /// <param name="timeout">超时时间，默认0秒永远阻塞；负数表示直接返回，不阻塞。</param>
         /// <returns></returns>
-        public T BRPOPLPUSH(String destKey, Int32 timeout) => Execute(rc => rc.Execute<T>("BRPOPLPUSH", Key, destKey, timeout), true);
+        public T BRPOPLPUSH(String destKey, Int32 timeout) => Execute((rc, k) => rc.Execute<T>("BRPOPLPUSH", Key, destKey, timeout), true);
 
         /// <summary>在指定元素之前插入</summary>
         /// <param name="pivot"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public Int32 LInsertBefore(T pivot, T value) => Execute(r => r.Execute<Int32>($"LINSERT", Key, "BEFORE", pivot, value), true);
+        public Int32 LInsertBefore(T pivot, T value) => Execute((r, k) => r.Execute<Int32>($"LINSERT", Key, "BEFORE", pivot, value), true);
 
         /// <summary>返回指定范围的列表</summary>
         /// <param name="pivot"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public Int32 LInsertAfter(T pivot, T value) => Execute(r => r.Execute<Int32>($"LINSERT", Key, "AFTER", pivot, value), true);
+        public Int32 LInsertAfter(T pivot, T value) => Execute((r, k) => r.Execute<Int32>($"LINSERT", Key, "AFTER", pivot, value), true);
 
         /// <summary>返回指定范围的列表</summary>
         /// <param name="start"></param>
         /// <param name="stop"></param>
         /// <returns></returns>
-        public T[] LRange(Int32 start, Int32 stop) => Execute(r => r.Execute<T[]>("LRANGE", Key, start, stop));
+        public T[] LRange(Int32 start, Int32 stop) => Execute((r, k) => r.Execute<T[]>("LRANGE", Key, start, stop));
 
         /// <summary>获取所有元素</summary>
         /// <returns></returns>
@@ -207,13 +207,13 @@ namespace NewLife.Caching
         /// <param name="start">由0开始计数，-1 表示列表里的最后一个元素</param>
         /// <param name="stop">由0开始计数，-1 表示列表里的最后一个元素</param>
         /// <returns></returns>
-        public Boolean LTrim(Int32 start, Int32 stop) => Execute(r => r.Execute<String>("LTRIM", Key, start, stop), true) == "OK";
+        public Boolean LTrim(Int32 start, Int32 stop) => Execute((r, k) => r.Execute<String>("LTRIM", Key, start, stop), true) == "OK";
 
         /// <summary>从存于 key 的列表里移除前 count 次出现的值为 value 的元素</summary>
         /// <param name="count"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public Int32 LRem(Int32 count, T value) => Execute(r => r.Execute<Int32>("LREM", Key, count, value), true);
+        public Int32 LRem(Int32 count, T value) => Execute((r, k) => r.Execute<Int32>("LREM", Key, count, value), true);
         #endregion
     }
 }

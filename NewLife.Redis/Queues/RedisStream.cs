@@ -15,7 +15,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
 {
     #region 属性
     /// <summary>个数</summary>
-    public Int32 Count => Execute(r => r.Execute<Int32>("XLEN", Key));
+    public Int32 Count => Execute((r, k) => r.Execute<Int32>("XLEN", Key));
 
     /// <summary>是否为空</summary>
     public Boolean IsEmpty => Count == 0;
@@ -143,7 +143,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
             var rs = "";
             for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
             {
-                rs = Execute(rc => rc.Execute<String>("XADD", args.ToArray()), true);
+                rs = Execute((rc, k) => rc.Execute<String>("XADD", args.ToArray()), true);
                 if (!retryOnFailed || !rs.IsNullOrEmpty()) return rs;
 
                 span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
@@ -418,7 +418,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
     /// <summary>删除指定消息</summary>
     /// <param name="id">消息Id</param>
     /// <returns></returns>
-    public Int32 Delete(String id) => Execute(rc => rc.Execute<Int32>("XDEL", Key, id), true);
+    public Int32 Delete(String id) => Execute((rc, k) => rc.Execute<Int32>("XDEL", Key, id), true);
 
     /// <summary>裁剪队列到指定大小</summary>
     /// <param name="maxLen">最大长度。为了提高效率，最大长度并没有那么精准</param>
@@ -427,15 +427,15 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
     public Int32 Trim(Int32 maxLen, Boolean accurate = false)
     {
         return accurate
-            ? Execute(rc => rc.Execute<Int32>("XTRIM", Key, "MAXLEN", maxLen), true)
-            : Execute(rc => rc.Execute<Int32>("XTRIM", Key, "MAXLEN", "~", maxLen), true);
+            ? Execute((rc, k) => rc.Execute<Int32>("XTRIM", Key, "MAXLEN", maxLen), true)
+            : Execute((rc, k) => rc.Execute<Int32>("XTRIM", Key, "MAXLEN", "~", maxLen), true);
     }
 
     /// <summary>确认消息</summary>
     /// <param name="group">消费组名称</param>
     /// <param name="id">消息Id</param>
     /// <returns></returns>
-    public Int32 Ack(String group, String id) => Execute(rc => rc.Execute<Int32>("XACK", Key, group, id), true);
+    public Int32 Ack(String group, String id) => Execute((rc, k) => rc.Execute<Int32>("XACK", Key, group, id), true);
 
     /// <summary>批量确认消息</summary>
     /// <param name="group">消费组名称</param>
@@ -447,7 +447,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
         foreach (var item in ids)
             args.Add(item);
 
-        return Execute(rc => rc.Execute<Int32>("XACK", args.ToArray()), true);
+        return Execute((rc, k) => rc.Execute<Int32>("XACK", args.ToArray()), true);
     }
 
     /// <summary>改变待处理消息的所有权，抢夺他人未确认消息</summary>
@@ -456,7 +456,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
     /// <param name="id">消息Id</param>
     /// <param name="msIdle">空闲时间。默认3600_000</param>
     /// <returns></returns>
-    public Object[] Claim(String group, String consumer, String id, Int32 msIdle = 3_600_000) => Execute(rc => rc.Execute<Object[]>("XCLAIM", Key, group, consumer, msIdle, id), true);
+    public Object[] Claim(String group, String consumer, String id, Int32 msIdle = 3_600_000) => Execute((rc, k) => rc.Execute<Object[]>("XCLAIM", Key, group, consumer, msIdle, id), true);
 
     /// <summary>获取区间消息</summary>
     /// <param name="startId"></param>
@@ -469,8 +469,8 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
         if (endId.IsNullOrEmpty()) endId = "+";
 
         var rs = count > 0 ?
-            Execute(rc => rc.Execute<Object[]>("XRANGE", Key, startId, endId, "COUNT", count), false) :
-            Execute(rc => rc.Execute<Object[]>("XRANGE", Key, startId, endId), false);
+            Execute((rc, k) => rc.Execute<Object[]>("XRANGE", Key, startId, endId, "COUNT", count), false) :
+            Execute((rc, k) => rc.Execute<Object[]>("XRANGE", Key, startId, endId), false);
         if (rs == null) return null;
 
         return Parse(rs);
@@ -504,7 +504,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
         args.Add(Key);
         args.Add(startId);
 
-        var rs = Execute(rc => rc.Execute<Object[]>("XREAD", args.ToArray()), true);
+        var rs = Execute((rc, k) => rc.Execute<Object[]>("XREAD", args.ToArray()), true);
         if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
             /*
 XREAD count 3 streams stream_key 0-0
@@ -561,7 +561,7 @@ XREAD count 3 streams stream_key 0-0
         args.Add(Key);
         args.Add(startId);
 
-        var rs = await ExecuteAsync(rc => rc.ExecuteAsync<Object[]>("XREAD", args.ToArray(), cancellationToken), true);
+        var rs = await ExecuteAsync((rc, k) => rc.ExecuteAsync<Object[]>("XREAD", args.ToArray(), cancellationToken), true);
         if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
             if (vs[1] is Object[] vs2) return Parse(vs2);
 
@@ -590,7 +590,7 @@ XREAD count 3 streams stream_key 0-0
     {
         if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
 
-        var rs = Execute(rc => rc.Execute<Object[]>("XPENDING", Key, group), false);
+        var rs = Execute((rc, k) => rc.Execute<Object[]>("XPENDING", Key, group), false);
         if (rs == null) return null;
 
         var pi = new PendingInfo();
@@ -612,8 +612,8 @@ XREAD count 3 streams stream_key 0-0
         if (endId.IsNullOrEmpty()) endId = "+";
 
         var rs = count > 0 ?
-            Execute(rc => rc.Execute<Object[]>("XPENDING", Key, group, startId, endId, count), false) :
-            Execute(rc => rc.Execute<Object[]>("XPENDING", Key, group, startId, endId), false);
+            Execute((rc, k) => rc.Execute<Object[]>("XPENDING", Key, group, startId, endId, count), false) :
+            Execute((rc, k) => rc.Execute<Object[]>("XPENDING", Key, group, startId, endId), false);
 
         var list = new List<PendingItem>();
         foreach (Object[] item in rs)
@@ -637,7 +637,7 @@ XREAD count 3 streams stream_key 0-0
         if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
         if (startId.IsNullOrEmpty()) startId = "0";
 
-        return Execute(rc => rc.Execute<String>("XGROUP", "CREATE", Key, group, startId, "MKSTREAM"), true) == "OK";
+        return Execute((rc, k) => rc.Execute<String>("XGROUP", "CREATE", Key, group, startId, "MKSTREAM"), true) == "OK";
     }
 
     /// <summary>销毁消费组</summary>
@@ -647,7 +647,7 @@ XREAD count 3 streams stream_key 0-0
     {
         if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
 
-        return Execute(rc => rc.Execute<Int32>("XGROUP", "DESTROY", Key, group), true);
+        return Execute((rc, k) => rc.Execute<Int32>("XGROUP", "DESTROY", Key, group), true);
     }
 
     /// <summary>销毁消费者</summary>
@@ -658,7 +658,7 @@ XREAD count 3 streams stream_key 0-0
     {
         if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
 
-        return Execute(rc => rc.Execute<Int32>("XGROUP", "DELCONSUMER", Key, group, consumer), true);
+        return Execute((rc, k) => rc.Execute<Int32>("XGROUP", "DELCONSUMER", Key, group, consumer), true);
     }
 
     /// <summary>设置消费组Id</summary>
@@ -670,7 +670,7 @@ XREAD count 3 streams stream_key 0-0
         if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
         if (startId.IsNullOrEmpty()) startId = "$";
 
-        return Execute(rc => rc.Execute<String>("XGROUP", "SETID", Key, group, startId), true) == "OK";
+        return Execute((rc, k) => rc.Execute<String>("XGROUP", "SETID", Key, group, startId), true) == "OK";
     }
 
     /// <summary>消费组消费</summary>
@@ -693,8 +693,8 @@ XREAD count 3 streams stream_key 0-0
 
         //var id = FromLastOffset ? "$" : ">";
         var rs = count > 0 ?
-            Execute(rc => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "COUNT", count, "STREAMS", Key, id), true) :
-            Execute(rc => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "STREAMS", Key, id), true);
+            Execute((rc, k) => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "COUNT", count, "STREAMS", Key, id), true) :
+            Execute((rc, k) => rc.Execute<Object[]>("XREADGROUP", "GROUP", group, consumer, "STREAMS", Key, id), true);
         if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
             if (vs[1] is Object[] vs2) return Parse(vs2);
 
@@ -719,8 +719,8 @@ XREAD count 3 streams stream_key 0-0
         if (id.IsNullOrEmpty()) id = ">";
 
         var rs = count > 0 ?
-            await ExecuteAsync(rc => rc.ExecuteAsync<Object[]>("XREADGROUP", new Object[] { "GROUP", group, consumer, "BLOCK", block, "COUNT", count, "STREAMS", Key, id }, cancellationToken), true) :
-            await ExecuteAsync(rc => rc.ExecuteAsync<Object[]>("XREADGROUP", new Object[] { "GROUP", group, consumer, "BLOCK", block, "STREAMS", Key, id }, cancellationToken), true);
+            await ExecuteAsync((rc, k) => rc.ExecuteAsync<Object[]>("XREADGROUP", new Object[] { "GROUP", group, consumer, "BLOCK", block, "COUNT", count, "STREAMS", Key, id }, cancellationToken), true) :
+            await ExecuteAsync((rc, k) => rc.ExecuteAsync<Object[]>("XREADGROUP", new Object[] { "GROUP", group, consumer, "BLOCK", block, "STREAMS", Key, id }, cancellationToken), true);
         if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
             if (vs[1] is Object[] vs2) return Parse(vs2);
 
@@ -733,7 +733,7 @@ XREAD count 3 streams stream_key 0-0
     /// <returns></returns>
     public StreamInfo GetInfo()
     {
-        var rs = Execute(rc => rc.Execute<Object[]>("XINFO", "STREAM", Key), false);
+        var rs = Execute((rc, k) => rc.Execute<Object[]>("XINFO", "STREAM", Key), false);
         if (rs == null) return null;
 
         var info = new StreamInfo();
@@ -746,7 +746,7 @@ XREAD count 3 streams stream_key 0-0
     /// <returns></returns>
     public GroupInfo[] GetGroups()
     {
-        var rs = Execute(rc => rc.Execute<Object[]>("XINFO", "GROUPS", Key), false);
+        var rs = Execute((rc, k) => rc.Execute<Object[]>("XINFO", "GROUPS", Key), false);
         if (rs == null) return null;
 
         var gs = new GroupInfo[rs.Length];
@@ -764,7 +764,7 @@ XREAD count 3 streams stream_key 0-0
     /// <returns></returns>
     public ConsumerInfo[] GetConsumers(String group)
     {
-        var rs = Execute(rc => rc.Execute<Object[]>("XINFO", "CONSUMERS", Key, group), false);
+        var rs = Execute((rc, k) => rc.Execute<Object[]>("XINFO", "CONSUMERS", Key, group), false);
         if (rs == null) return null;
 
         var cs = new ConsumerInfo[rs.Length];

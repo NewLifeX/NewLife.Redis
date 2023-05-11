@@ -21,34 +21,34 @@ namespace NewLife.Caching
 
         #region 字典接口
         /// <summary>个数</summary>
-        public Int32 Count => Execute(r => r.Execute<Int32>("HLEN", Key));
+        public Int32 Count => Execute((r, k) => r.Execute<Int32>("HLEN", Key));
 
         Boolean ICollection<KeyValuePair<TKey, TValue>>.IsReadOnly => false;
 
         /// <summary>获取所有键</summary>
-        public ICollection<TKey> Keys => Execute(r => r.Execute<TKey[]>("HKEYS", Key));
+        public ICollection<TKey> Keys => Execute((r, k) => r.Execute<TKey[]>("HKEYS", Key));
 
         /// <summary>获取所有值</summary>
-        public ICollection<TValue> Values => Execute(r => r.Execute<TValue[]>("HVALS", Key));
+        public ICollection<TValue> Values => Execute((r, k) => r.Execute<TValue[]>("HVALS", Key));
 
         /// <summary>获取 或 设置 指定键的值</summary>
         /// <param name="key"></param>
         /// <returns></returns>
         public TValue this[TKey key]
         {
-            get => Execute(r => r.Execute<TValue>("HGET", Key, key));
-            set => Execute(r => r.Execute<Int32>("HSET", Key, key, value), true);
+            get => Execute((r, k) => r.Execute<TValue>("HGET", Key, key));
+            set => Execute((r, k) => r.Execute<Int32>("HSET", Key, key, value), true);
         }
 
         /// <summary>是否包含指定键</summary>
         /// <param name="key"></param>
         /// <returns></returns>
-        public Boolean ContainsKey(TKey key) => Execute(r => r.Execute<Int32>("HEXISTS", Key, key)) > 0;
+        public Boolean ContainsKey(TKey key) => Execute((r, k) => r.Execute<Int32>("HEXISTS", Key, key)) > 0;
 
         /// <summary>添加</summary>
         /// <param name="key"></param>
         /// <param name="value"></param>
-        public void Add(TKey key, TValue value) => Execute(r => r.Execute<Int32>("HSET", Key, key, value), true);
+        public void Add(TKey key, TValue value) => Execute((r, k) => r.Execute<Int32>("HSET", Key, key, value), true);
 
         /// <summary>删除</summary>
         /// <param name="key"></param>
@@ -63,7 +63,7 @@ namespace NewLife.Caching
         {
             value = default(TValue);
 
-            var pk = Execute(r => r.Execute<Packet>("HGET", Key, key));
+            var pk = Execute((r, k) => r.Execute<Packet>("HGET", Key, key));
             if (pk == null || pk.Total == 0) return false;
 
             value = FromBytes<TValue>(pk);
@@ -109,7 +109,7 @@ namespace NewLife.Caching
                 args.Add(item);
             }
 
-            return Execute(r => r.Execute<Int32>("HDEL", args.ToArray()), true);
+            return Execute((r, k) => r.Execute<Int32>("HDEL", args.ToArray()), true);
         }
 
         /// <summary>只在 key 指定的哈希集中不存在指定的字段时，设置字段的值</summary>
@@ -126,7 +126,7 @@ namespace NewLife.Caching
                 args.Add(item);
             }
 
-            return Execute(r => r.Execute<TValue[]>("HMGET", args.ToArray()));
+            return Execute((r, k) => r.Execute<TValue[]>("HMGET", args.ToArray()));
         }
 
         /// <summary>批量插入</summary>
@@ -144,14 +144,14 @@ namespace NewLife.Caching
                 args.Add(item.Value);
             }
 
-            return Execute(r => r.Execute<String>("HMSET", args.ToArray()) == "OK", true);
+            return Execute((r, k) => r.Execute<String>("HMSET", args.ToArray()) == "OK", true);
         }
 
         /// <summary>获取所有名值对</summary>
         /// <returns></returns>
         public IDictionary<TKey, TValue> GetAll()
         {
-            var rs = Execute(r => r.Execute<Packet[]>("HGETALL", Key));
+            var rs = Execute((r, k) => r.Execute<Packet[]>("HGETALL", Key));
 
             var dic = new Dictionary<TKey, TValue>();
             for (var i = 0; i < rs.Length; i++)
@@ -168,24 +168,24 @@ namespace NewLife.Caching
         /// <param name="field"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public Int64 HIncrBy(TKey field, Int64 value) => Execute(r => r.Execute<Int64>("HINCRBY", Key, field, value), true);
+        public Int64 HIncrBy(TKey field, Int64 value) => Execute((r, k) => r.Execute<Int64>("HINCRBY", Key, field, value), true);
 
         /// <summary>增加指定字段值</summary>
         /// <param name="field"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public Double HIncrBy(TKey field, Double value) => Execute(r => r.Execute<Double>("HINCRBY", Key, field, value), true);
+        public Double HIncrBy(TKey field, Double value) => Execute((r, k) => r.Execute<Double>("HINCRBY", Key, field, value), true);
 
         /// <summary>只在 key 指定的哈希集中不存在指定的字段时，设置字段的值</summary>
         /// <param name="field"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public Int32 HSetNX(TKey field, TValue value) => Execute(r => r.Execute<Int32>("HSETNX", Key, field, value), true);
+        public Int32 HSetNX(TKey field, TValue value) => Execute((r, k) => r.Execute<Int32>("HSETNX", Key, field, value), true);
 
         /// <summary>返回hash指定field的value的字符串长度</summary>
         /// <param name="field"></param>
         /// <returns></returns>
-        public Int32 HStrLen(TKey field) => Execute(r => r.Execute<Int32>("HSTRLEN", Key, field));
+        public Int32 HStrLen(TKey field) => Execute((r, k) => r.Execute<Int32>("HSTRLEN", Key, field));
 
         /// <summary>模糊搜索，支持?和*</summary>
         /// <param name="model">搜索模型</param>
@@ -196,7 +196,7 @@ namespace NewLife.Caching
             while (count > 0)
             {
                 var p = model.Position;
-                var rs = Execute(r => r.Execute<Object[]>("HSCAN", Key, p, "MATCH", model.Pattern + "", "COUNT", count));
+                var rs = Execute((r, k) => r.Execute<Object[]>("HSCAN", Key, p, "MATCH", model.Pattern + "", "COUNT", count));
                 if (rs == null || rs.Length != 2) break;
 
                 model.Position = (rs[0] as Packet).ToStr().ToInt();

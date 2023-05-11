@@ -55,7 +55,7 @@ class Program
         ic.Set("name", "大石头");
         Console.WriteLine(ic.Get<String>("name"));
 
-        var ks = ic.Execute(null, c => c.Execute<String[]>("KEYS", "*"));
+        var ks = ic.Execute(null, (c,k) => c.Execute<String[]>("KEYS", "*"));
         var keys = ic.Keys;
 
         ic.Set("time", DateTime.Now, 1);

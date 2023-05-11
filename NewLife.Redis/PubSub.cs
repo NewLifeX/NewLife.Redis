@@ -87,7 +87,7 @@ public class PubSub : RedisBase
     /// <summary>发布消息</summary>
     /// <param name="message">消息内容</param>
     /// <returns>返回接收到消息的客户端个数</returns>
-    public Int32 Publish(String message) => Execute(rc => rc.Execute<Int32>("PUBLISH", Key, message), true);
+    public Int32 Publish(String message) => Execute((rc, k) => rc.Execute<Int32>("PUBLISH", Key, message), true);
 
     ///// <summary>自省</summary>
     ///// <returns></returns>

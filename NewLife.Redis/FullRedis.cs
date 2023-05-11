@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
+
 using NewLife.Caching.Clusters;
 using NewLife.Caching.Models;
 using NewLife.Caching.Queues;
@@ -197,7 +198,7 @@ public class FullRedis : Redis
     /// <param name="func"></param>
     /// <param name="write">是否写入操作</param>
     /// <returns></returns>
-    public override T Execute<T>(String key, Func<RedisClient, T> func, Boolean write = false)
+    public override T Execute<T>(String key, Func<RedisClient, string, T> func, Boolean write = false)
     {
         InitCluster();
 
@@ -221,7 +222,7 @@ public class FullRedis : Redis
             try
             {
                 client.Reset();
-                var rs = func(client);
+                var rs = func(client, key);
 
                 Counter?.StopCount(sw);
 
@@ -254,7 +255,7 @@ public class FullRedis : Redis
     /// <param name="func"></param>
     /// <param name="write">是否写入操作</param>
     /// <returns></returns>
-    public override async Task<T> ExecuteAsync<T>(String key, Func<RedisClient, Task<T>> func, Boolean write = false)
+    public override async Task<T> ExecuteAsync<T>(String key, Func<RedisClient, string, Task<T>> func, Boolean write = false)
     {
         InitCluster();
 
@@ -278,7 +279,7 @@ public class FullRedis : Redis
             try
             {
                 client.Reset();
-                var rs = await func(client);
+                var rs = await func(client, key);
 
                 Counter?.StopCount(sw);
 
@@ -327,13 +328,13 @@ public class FullRedis : Redis
     /// <typeparam name="T"></typeparam>
     /// <param name="topic">消息队列主题</param>
     /// <returns></returns>
-    public RedisReliableQueue<T> GetReliableQueue<T>(String topic) => new(this, topic);
+    public virtual RedisReliableQueue<T> GetReliableQueue<T>(String topic) => new(this, topic);
 
     /// <summary>获取延迟队列</summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="topic">消息队列主题</param>
     /// <returns></returns>
-    public RedisDelayQueue<T> GetDelayQueue<T>(String topic) => new(this, topic);
+    public virtual RedisDelayQueue<T> GetDelayQueue<T>(String topic) => new(this, topic);
 
     /// <summary>获取栈</summary>
     /// <typeparam name="T"></typeparam>
@@ -351,13 +352,13 @@ public class FullRedis : Redis
     /// <typeparam name="T"></typeparam>
     /// <param name="topic">消息队列主题</param>
     /// <returns></returns>
-    public RedisStream<T> GetStream<T>(String topic) => new(this, topic);
+    public virtual RedisStream<T> GetStream<T>(String topic) => new(this, topic);
 
     /// <summary>获取有序集合</summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="key"></param>
     /// <returns></returns>
-    public RedisSortedSet<T> GetSortedSet<T>(String key) => new(this, key);
+    public virtual RedisSortedSet<T> GetSortedSet<T>(String key) => new(this, key);
     #endregion
 
     #region 字符串操作
@@ -365,26 +366,26 @@ public class FullRedis : Redis
     /// <param name="key"></param>
     /// <param name="value"></param>
     /// <returns>返回字符串长度</returns>
-    public virtual Int32 Append(String key, String value) => Execute(key, r => r.Execute<Int32>("APPEND", key, value), true);
+    public virtual Int32 Append(String key, String value) => Execute(key, (r, k) => r.Execute<Int32>("APPEND", k, value), true);
 
     /// <summary>获取字符串区间</summary>
     /// <param name="key"></param>
     /// <param name="start"></param>
     /// <param name="end"></param>
     /// <returns></returns>
-    public virtual String GetRange(String key, Int32 start, Int32 end) => Execute(key, r => r.Execute<String>("GETRANGE", key, start, end));
+    public virtual String GetRange(String key, Int32 start, Int32 end) => Execute(key, (r, k) => r.Execute<String>("GETRANGE", k, start, end));
 
     /// <summary>设置字符串区间</summary>
     /// <param name="key"></param>
     /// <param name="offset"></param>
     /// <param name="value"></param>
     /// <returns></returns>
-    public virtual String SetRange(String key, Int32 offset, String value) => Execute(key, r => r.Execute<String>("SETRANGE", key, offset, value), true);
+    public virtual String SetRange(String key, Int32 offset, String value) => Execute(key, (r, k) => r.Execute<String>("SETRANGE", k, offset, value), true);
 
     /// <summary>字符串长度</summary>
     /// <param name="key"></param>
     /// <returns></returns>
-    public virtual Int32 StrLen(String key) => Execute(key, r => r.Execute<Int32>("STRLEN", key));
+    public virtual Int32 StrLen(String key) => Execute(key, (r, k) => r.Execute<Int32>("STRLEN", k));
     #endregion
 
     #region 高级操作
@@ -397,7 +398,7 @@ public class FullRedis : Redis
     {
         var cmd = overwrite ? "RENAME" : "RENAMENX";
 
-        var rs = Execute(key, r => r.Execute<String>(cmd, key, newKey), true);
+        var rs = Execute(key, (r, k) => r.Execute<String>(cmd, k, newKey), true);
         if (rs.IsNullOrEmpty()) return false;
 
         return rs == "OK" || rs.ToInt() > 0;
@@ -443,7 +444,7 @@ public class FullRedis : Redis
     /// <summary>获取指定键的数据结构类型，如stream</summary>
     /// <param name="key"></param>
     /// <returns></returns>
-    public virtual String TYPE(String key) => Execute(key, rc => rc.Execute<String>("TYPE", key), false);
+    public virtual String TYPE(String key) => Execute(key, (rc, k) => rc.Execute<String>("TYPE", k), false);
 
     /// <summary>向列表末尾插入</summary>
     /// <typeparam name="T"></typeparam>
@@ -460,7 +461,7 @@ public class FullRedis : Redis
         {
             args.Add(item);
         }
-        return Execute(key, rc => rc.Execute<Int32>("RPUSH", args.ToArray()), true);
+        return Execute(key, (rc, k) => rc.Execute<Int32>("RPUSH", args.ToArray()), true);
     }
 
     /// <summary>向列表头部插入</summary>
@@ -478,14 +479,14 @@ public class FullRedis : Redis
         {
             args.Add(item);
         }
-        return Execute(key, rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
+        return Execute(key, (rc, k) => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
     }
 
     /// <summary>从列表末尾弹出一个元素</summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="key"></param>
     /// <returns></returns>
-    public virtual T RPOP<T>(String key) => Execute(key, rc => rc.Execute<T>("RPOP", key), true);
+    public virtual T RPOP<T>(String key) => Execute(key, (rc, k) => rc.Execute<T>("RPOP", k), true);
 
     /// <summary>从列表末尾弹出一个元素并插入到另一个列表头部</summary>
     /// <remarks>适用于做安全队列</remarks>
@@ -493,7 +494,7 @@ public class FullRedis : Redis
     /// <param name="source">源列表名称</param>
     /// <param name="destination">元素后写入的新列表名称</param>
     /// <returns></returns>
-    public virtual T RPOPLPUSH<T>(String source, String destination) => Execute(source, rc => rc.Execute<T>("RPOPLPUSH", source, destination), true);
+    public virtual T RPOPLPUSH<T>(String source, String destination) => Execute(source, (rc, k) => rc.Execute<T>("RPOPLPUSH", k, destination), true);
 
     /// <summary>
     /// 从列表中弹出一个值，将弹出的元素插入到另外一个列表中并返回它； 如果列表没有元素会阻塞列表直到等待超时或发现可弹出元素为止。
@@ -504,13 +505,13 @@ public class FullRedis : Redis
     /// <param name="destination">元素后写入的新列表名称</param>
     /// <param name="secTimeout">设置的阻塞时长，单位为秒。设置前请确认该值不能超过FullRedis.Timeout 否则会出现异常</param>
     /// <returns></returns>
-    public virtual T BRPOPLPUSH<T>(String source, String destination, Int32 secTimeout) => Execute(source, rc => rc.Execute<T>("BRPOPLPUSH", source, destination, secTimeout), true);
+    public virtual T BRPOPLPUSH<T>(String source, String destination, Int32 secTimeout) => Execute(source, (rc, k) => rc.Execute<T>("BRPOPLPUSH", k, destination, secTimeout), true);
 
     /// <summary>从列表头部弹出一个元素</summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="key"></param>
     /// <returns></returns>
-    public virtual T LPOP<T>(String key) => Execute(key, rc => rc.Execute<T>("LPOP", key), true);
+    public virtual T LPOP<T>(String key) => Execute(key, (rc, k) => rc.Execute<T>("LPOP", k), true);
 
     /// <summary>从列表末尾弹出一个元素，阻塞</summary>
     /// <remarks>
@@ -531,7 +532,7 @@ public class FullRedis : Redis
             else
                 sb.Append($" {item}");
         }
-        var rs = Execute(keys[0], rc => rc.Execute<String[]>("BRPOP", sb.ToString(), secTimeout), true);
+        var rs = Execute(keys[0], (rc, k) => rc.Execute<String[]>("BRPOP", sb.ToString(), secTimeout), true);
         if (rs == null || rs.Length != 2) return null;
         return new Tuple<String, T>(rs[0], rs[1].ToJsonEntity<T>());
     }
@@ -566,7 +567,7 @@ public class FullRedis : Redis
             else
                 sb.Append($" {item}");
         }
-        var rs = Execute(keys[0], rc => rc.Execute<String[]>("BLPOP", sb.ToString(), secTimeout), true);
+        var rs = Execute(keys[0], (rc, k) => rc.Execute<String[]>("BLPOP", sb.ToString(), secTimeout), true);
         if (rs == null || rs.Length != 2) return null;
         return new Tuple<String, T>(rs[0], rs[1].ToJsonEntity<T>()); //.ChangeType<T>());
     }
@@ -597,7 +598,7 @@ public class FullRedis : Redis
         {
             args.Add(item);
         }
-        return Execute(key, rc => rc.Execute<Int32>("SADD", args.ToArray()), true);
+        return Execute(key, (rc, k) => rc.Execute<Int32>("SADD", args.ToArray()), true);
     }
 
     /// <summary>向集合删除多个元素</summary>
@@ -615,42 +616,42 @@ public class FullRedis : Redis
         {
             args.Add(item);
         }
-        return Execute(key, rc => rc.Execute<Int32>("SREM", args.ToArray()), true);
+        return Execute(key, (rc, k) => rc.Execute<Int32>("SREM", args.ToArray()), true);
     }
 
     /// <summary>获取所有元素</summary>
     /// <param name="key"></param>
     /// <returns></returns>
-    public virtual T[] SMEMBERS<T>(String key) => Execute(key, r => r.Execute<T[]>("SMEMBERS", key));
+    public virtual T[] SMEMBERS<T>(String key) => Execute(key, (r, k) => r.Execute<T[]>("SMEMBERS", k));
 
     /// <summary>返回集合元素个数</summary>
     /// <param name="key"></param>
     /// <returns></returns>
-    public virtual Int32 SCARD(String key) => Execute(key, rc => rc.Execute<Int32>("SCARD", key));
+    public virtual Int32 SCARD(String key) => Execute(key, (rc, k) => rc.Execute<Int32>("SCARD", k));
 
     /// <summary>成员 member 是否是存储的集合 key的成员</summary>
     /// <param name="key"></param>
     /// <param name="member"></param>
     /// <returns></returns>
-    public virtual Int32 SISMEMBER<T>(String key, T member) => Execute(key, rc => rc.Execute<Int32>("SISMEMBER", key, member));
+    public virtual Int32 SISMEMBER<T>(String key, T member) => Execute(key, (rc, k) => rc.Execute<Int32>("SISMEMBER", k, member));
 
     /// <summary>将member从source集合移动到destination集合中</summary>
     /// <param name="key"></param>
     /// <param name="dest"></param>
     /// <param name="member"></param>
     /// <returns></returns>
-    public virtual T[] SMOVE<T>(String key, String dest, T member) => Execute(key, r => r.Execute<T[]>("SMOVE", key, dest, member), true);
+    public virtual T[] SMOVE<T>(String key, String dest, T member) => Execute(key, (r, k) => r.Execute<T[]>("SMOVE", k, dest, member), true);
 
     /// <summary>随机获取多个</summary>
     /// <param name="key"></param>
     /// <param name="count"></param>
     /// <returns></returns>
-    public virtual T[] SRANDMEMBER<T>(String key, Int32 count) => Execute(key, r => r.Execute<T[]>("SRANDMEMBER", key, count));
+    public virtual T[] SRANDMEMBER<T>(String key, Int32 count) => Execute(key, (r, k) => r.Execute<T[]>("SRANDMEMBER", k, count));
 
     /// <summary>随机获取并弹出</summary>
     /// <param name="key"></param>
     /// <param name="count"></param>
     /// <returns></returns>
-    public virtual T[] SPOP<T>(String key, Int32 count) => Execute(key, r => r.Execute<T[]>("SPOP", key, count), true);
+    public virtual T[] SPOP<T>(String key, Int32 count) => Execute(key, (r, k) => r.Execute<T[]>("SPOP", k, count), true);
     #endregion
 }

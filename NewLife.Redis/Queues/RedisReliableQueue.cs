@@ -49,7 +49,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
     public Int32 MinPipeline { get; set; } = 3;
 
     /// <summary>个数</summary>
-    public Int32 Count => Execute(r => r.Execute<Int32>("LLEN", Key));
+    public Int32 Count => Execute((r, k) => r.Execute<Int32>("LLEN", Key));
 
     /// <summary>是否为空</summary>
     public Boolean IsEmpty => Count == 0;
@@ -121,7 +121,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
             for (var i = 0; i <= RetryTimesWhenSendFailed; i++)
             {
                 // 返回插入后的LIST长度。Redis执行命令不会失败，因此正常插入不应该返回0，如果返回了0或者空，可能是中间代理出了问题
-                rs = Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
+                rs = Execute((rc, k) => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
                 if (rs > 0) return rs;
 
                 span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
@@ -151,8 +151,8 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
         if (timeout > 0 && Redis.Timeout < timeout * 1000) Redis.Timeout = (timeout + 1) * 1000;
 
         var rs = timeout >= 0 ?
-            Execute(rc => rc.Execute<T>("BRPOPLPUSH", Key, AckKey, timeout), true) :
-            Execute(rc => rc.Execute<T>("RPOPLPUSH", Key, AckKey), true);
+            Execute((rc, k) => rc.Execute<T>("BRPOPLPUSH", Key, AckKey, timeout), true) :
+            Execute((rc, k) => rc.Execute<T>("RPOPLPUSH", Key, AckKey), true);
 
         if (rs != null) _Status.Consumes++;
 
@@ -170,8 +170,8 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
         if (timeout > 0 && Redis.Timeout < timeout * 1000) Redis.Timeout = (timeout + 1) * 1000;
 
         var rs = timeout < 0 ?
-            await ExecuteAsync(rc => rc.ExecuteAsync<T>("RPOPLPUSH", new Object[] { Key, AckKey }, cancellationToken), true) :
-            await ExecuteAsync(rc => rc.ExecuteAsync<T>("BRPOPLPUSH", new Object[] { Key, AckKey, timeout }, cancellationToken), true);
+            await ExecuteAsync((rc, k) => rc.ExecuteAsync<T>("RPOPLPUSH", new Object[] { Key, AckKey }, cancellationToken), true) :
+            await ExecuteAsync((rc, k) => rc.ExecuteAsync<T>("BRPOPLPUSH", new Object[] { Key, AckKey, timeout }, cancellationToken), true);
 
         if (rs != null) _Status.Consumes++;
 
@@ -200,7 +200,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
             rds.StartPipeline();
 
             for (var i = 0; i < count; i++)
-                Execute(rc => rc.Execute<T>("RPOPLPUSH", Key, AckKey), true);
+                Execute((rc, k) => rc.Execute<T>("RPOPLPUSH", Key, AckKey), true);
 
             var rs = rds.StopPipeline(true);
             foreach (var item in rs)
@@ -213,7 +213,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
         else
             for (var i = 0; i < count; i++)
             {
-                var value = Execute(rc => rc.Execute<T>("RPOPLPUSH", Key, AckKey), true);
+                var value = Execute((rc, k) => rc.Execute<T>("RPOPLPUSH", Key, AckKey), true);
                 if (value is null || Equals(value, default(T))) break;
 
                 _Status.Consumes++;
@@ -236,7 +236,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
             rds.StartPipeline();
 
             foreach (var item in keys)
-                Execute(r => r.Execute<Int32>("LREM", AckKey, 1, item), true);
+                Execute((r, k) => r.Execute<Int32>("LREM", AckKey, 1, item), true);
 
             var rs2 = rds.StopPipeline(true);
             foreach (var item in rs2)
@@ -244,7 +244,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
         }
         else
             foreach (var item in keys)
-                rs += Execute(r => r.Execute<Int32>("LREM", AckKey, 1, item), true);
+                rs += Execute((r, k) => r.Execute<Int32>("LREM", AckKey, 1, item), true);
 
         return rs;
     }
@@ -300,7 +300,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
         var args = new List<Object> { Key };
         foreach (var item in messages)
             args.Add(item.Key);
-        var rs = Execute(rc => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
+        var rs = Execute((rc, k) => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
 
         return rs;
     }
@@ -318,8 +318,8 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
 
         // 取出消息键
         var msgId = timeout < 0 ?
-            await ExecuteAsync(rc => rc.ExecuteAsync<String>("RPOPLPUSH", Key, AckKey), true) :
-            await ExecuteAsync(rc => rc.ExecuteAsync<String>("BRPOPLPUSH", Key, AckKey, timeout), true);
+            await ExecuteAsync((rc, k) => rc.ExecuteAsync<String>("RPOPLPUSH", Key, AckKey), true) :
+            await ExecuteAsync((rc, k) => rc.ExecuteAsync<String>("BRPOPLPUSH", Key, AckKey, timeout), true);
         if (msgId.IsNullOrEmpty()) return default;
 
         _Status.Consumes++;
@@ -354,7 +354,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
 
         for (var i = 0; i < count; i++)
         {
-            var value = Execute(rc => rc.Execute<String>("RPOP", AckKey), true);
+            var value = Execute((rc, k) => rc.Execute<String>("RPOP", AckKey), true);
             //if (Equals(value, default(T))) break;
             if (value == null) break;
 
@@ -383,7 +383,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
         var list = new List<String>();
         while (true)
         {
-            var value = Execute(rc => rc.Execute<String>("RPOPLPUSH", ackKey, key), true);
+            var value = Execute((rc, k) => rc.Execute<String>("RPOPLPUSH", ackKey, key), true);
             if (value == null) break;
 
             list.Add(value);

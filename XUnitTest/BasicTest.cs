@@ -49,7 +49,7 @@ public class BasicTest
     [Fact(DisplayName = "信息测试", Timeout = 1000)]
     public void InfoTest()
     {
-        var inf = _redis.Execute(null, client => client.Execute<String>("info"));
+        var inf = _redis.Execute(null, (client, k) => client.Execute<String>("info"));
         Assert.NotNull(inf);
     }
 

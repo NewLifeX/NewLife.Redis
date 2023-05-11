@@ -65,7 +65,7 @@ public class RedisStat : DisposeBase
     /// <param name="key"></param>
     /// <param name="field"></param>
     /// <param name="value"></param>
-    public void Increment(String key, String field, Int32 value) => _redis.Execute(key, c => c.Execute<Int32>("HINCRBY", key, field, value), true);
+    public void Increment(String key, String field, Int32 value) => _redis.Execute(key, (c, k) => c.Execute<Int32>("HINCRBY", k, field, value), true);
 
     /// <summary>放入延迟队列</summary>
     /// <param name="key"></param>
@@ -90,7 +90,7 @@ public class RedisStat : DisposeBase
         if (!_redis.Rename(key, newKey, false)) return;
 
         _redis.Remove($"exists:{key}");
-        var rs = _redis.Execute(newKey, r => r.Execute<Packet[]>("HGETALL", newKey));
+        var rs = _redis.Execute(newKey, (r,k) => r.Execute<Packet[]>("HGETALL", k));
 
         var dic = new Dictionary<String, Int32>();
         for (var i = 0; i < rs.Length; i++)

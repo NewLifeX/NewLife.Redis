@@ -2,6 +2,7 @@
 using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
+
 using NewLife.Collections;
 using NewLife.Configuration;
 using NewLife.Data;
@@ -361,7 +362,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <param name="func">回调函数</param>
     /// <param name="write">是否写入操作</param>
     /// <returns></returns>
-    public virtual TResult Execute<TResult>(String key, Func<RedisClient, TResult> func, Boolean write = false)
+    public virtual TResult Execute<TResult>(String key, Func<RedisClient, string, TResult> func, Boolean write = false)
     {
         // 写入或完全管道模式时，才处理管道操作
         if (write || FullPipeline)
@@ -371,7 +372,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             if (rds == null && AutoPipeline > 0) rds = StartPipeline();
             if (rds != null)
             {
-                var rs = func(rds);
+                var rs = func(rds, key);
 
                 // 命令数足够，自动提交
                 if (AutoPipeline > 0 && rds.PipelineCommands >= AutoPipeline)
@@ -400,7 +401,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             try
             {
                 client.Reset();
-                return func(client);
+                return func(client, key);
             }
             catch (InvalidDataException)
             {
@@ -475,7 +476,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <param name="func">回调函数</param>
     /// <param name="write">是否写入操作</param>
     /// <returns></returns>
-    public virtual async Task<TResult> ExecuteAsync<TResult>(String key, Func<RedisClient, Task<TResult>> func, Boolean write = false)
+    public virtual async Task<TResult> ExecuteAsync<TResult>(String key, Func<RedisClient, string, Task<TResult>> func, Boolean write = false)
     {
         // 写入或完全管道模式时，才处理管道操作
         if (write || FullPipeline)
@@ -485,7 +486,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             if (rds == null && AutoPipeline > 0) rds = StartPipeline();
             if (rds != null)
             {
-                var rs = await func(rds);
+                var rs = await func(rds, key);
 
                 // 命令数足够，自动提交
                 if (AutoPipeline > 0 && rds.PipelineCommands >= AutoPipeline)
@@ -513,7 +514,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             try
             {
                 client.Reset();
-                return await func(client);
+                return await func(client, key);
             }
             catch (InvalidDataException)
             {
@@ -654,9 +655,9 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
         var rs = "";
         if (expire <= 0)
-            rs = Execute(key, rds => rds.Execute<String>("SET", key, value), true);
+            rs = Execute(key, (rds, k) => rds.Execute<String>("SET", k, value), true);
         else
-            rs = Execute(key, rds => rds.Execute<String>("SETEX", key, expire, value), true);
+            rs = Execute(key, (rds, k) => rds.Execute<String>("SETEX", k, expire, value), true);
 
         if (rs == "OK") return true;
         if (rs.IsNullOrEmpty()) return false;
@@ -669,7 +670,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
     /// <summary>获取单体</summary>
     /// <param name="key">键</param>
-    public override T Get<T>(String key) => Execute(key, rds => rds.Execute<T>("GET", key));
+    public override T Get<T>(String key) => Execute(key, (rds, k) => rds.Execute<T>("GET", k));
 
     /// <summary>批量移除缓存项</summary>
     /// <param name="keys">键集合</param>
@@ -677,7 +678,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     {
         if (keys == null || !keys.Any()) return 0;
 
-        return Execute(keys.FirstOrDefault(), rds => rds.Execute<Int32>("DEL", keys), true);
+        return Execute(keys.FirstOrDefault(), (rds, k) => rds.Execute<Int32>("DEL", keys), true);
     }
 
     /// <summary>清空所有缓存项</summary>
@@ -685,19 +686,19 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
     /// <summary>是否存在</summary>
     /// <param name="key">键</param>
-    public override Boolean ContainsKey(String key) => Execute(key, rds => rds.Execute<Int32>("EXISTS", key) > 0);
+    public override Boolean ContainsKey(String key) => Execute(key, (rds, k) => rds.Execute<Int32>("EXISTS", k) > 0);
 
     /// <summary>设置缓存项有效期</summary>
     /// <param name="key">键</param>
     /// <param name="expire">过期时间</param>
-    public override Boolean SetExpire(String key, TimeSpan expire) => Execute(key, rds => rds.Execute<String>("EXPIRE", key, (Int32)expire.TotalSeconds) == "1", true);
+    public override Boolean SetExpire(String key, TimeSpan expire) => Execute(key, (rds, k) => rds.Execute<String>("EXPIRE", k, (Int32)expire.TotalSeconds) == "1", true);
 
     /// <summary>获取缓存项有效期</summary>
     /// <param name="key">键</param>
     /// <returns></returns>
     public override TimeSpan GetExpire(String key)
     {
-        var sec = Execute(key, rds => rds.Execute<Int32>("TTL", key));
+        var sec = Execute(key, (rds, k) => rds.Execute<Int32>("TTL", k));
         return TimeSpan.FromSeconds(sec);
     }
     #endregion
@@ -707,7 +708,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <typeparam name="T"></typeparam>
     /// <param name="keys"></param>
     /// <returns></returns>
-    public override IDictionary<String, T> GetAll<T>(IEnumerable<String> keys) => Execute(keys.FirstOrDefault(), rds => rds.GetAll<T>(keys));
+    public override IDictionary<String, T> GetAll<T>(IEnumerable<String> keys) => Execute(keys.FirstOrDefault(), (rds, k) => rds.GetAll<T>(keys));
 
     /// <summary>批量设置缓存项</summary>
     /// <typeparam name="T"></typeparam>
@@ -729,7 +730,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             return;
         }
 
-        Execute(values.FirstOrDefault().Key, rds => rds.SetAll(values), true);
+        Execute(values.FirstOrDefault().Key, (rds, k) => rds.SetAll(values), true);
 
         // 使用管道批量设置过期时间
         if (expire > 0)
@@ -788,7 +789,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         if (expire < 0) expire = Expire;
 
         // 没有有效期，直接使用SETNX
-        if (expire <= 0) return Execute(key, rds => rds.Execute<Int32>("SETNX", key, value), true) > 0;
+        if (expire <= 0) return Execute(key, (rds, k) => rds.Execute<Int32>("SETNX", k, value), true) > 0;
 
         // 带有有效期，需要判断版本是否支持
         var inf = Info;
@@ -799,7 +800,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         if (inf != null && inf.TryGetValue("redis_version", out var ver) && ver.CompareTo("2.6.12") >= 0)
         {
             //!!! 重构Redis.Add实现，早期的SETNX支持设置过期时间，后来不支持了，并且连资料都找不到了，改用2.6.12新版 SET key value EX expire NX
-            var result = Execute(key, rds => rds.Execute<String>("SET", key, value, "EX", expire, "NX"), true);
+            var result = Execute(key, (rds, k) => rds.Execute<String>("SET", k, value, "EX", expire, "NX"), true);
             if (result.IsNullOrEmpty()) return false;
             if (result == "OK") return true;
 
@@ -810,7 +811,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         }
 
         // 旧版本不支持SETNX带过期时间，需要分为前后两条指令
-        var rs = Execute(key, rds => rds.Execute<Int32>("SETNX", key, value), true);
+        var rs = Execute(key, (rds, k) => rds.Execute<Int32>("SETNX", k, value), true);
         if (rs > 0) SetExpire(key, TimeSpan.FromSeconds(expire));
 
         return rs > 0;
@@ -821,7 +822,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <param name="key">键</param>
     /// <param name="value">值</param>
     /// <returns></returns>
-    public override T Replace<T>(String key, T value) => Execute(key, rds => rds.Execute<T>("GETSET", key, value), true);
+    public override T Replace<T>(String key, T value) => Execute(key, (rds, k) => rds.Execute<T>("GETSET", k, value), true);
 
     /// <summary>尝试获取指定键，返回是否包含值。有可能缓存项刚好是默认值，或者只是反序列化失败</summary>
     /// <remarks>
@@ -834,9 +835,9 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     public override Boolean TryGetValue<T>(String key, out T value)
     {
         T v1 = default;
-        var rs1 = Execute(key, rds =>
+        var rs1 = Execute(key, (rds, k) =>
         {
-            var rs2 = rds.TryExecute("GET", new[] { key }, out T v2);
+            var rs2 = rds.TryExecute("GET", new[] { k }, out T v2);
             v1 = v2;
             return rs2;
         });
@@ -871,16 +872,16 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     public override Int64 Increment(String key, Int64 value)
     {
         if (value == 1)
-            return Execute(key, rds => rds.Execute<Int64>("INCR", key), true);
+            return Execute(key, (rds, k) => rds.Execute<Int64>("INCR", k), true);
         else
-            return Execute(key, rds => rds.Execute<Int64>("INCRBY", key, value), true);
+            return Execute(key, (rds, k) => rds.Execute<Int64>("INCRBY", k, value), true);
     }
 
     /// <summary>累加，原子操作，乘以100后按整数操作</summary>
     /// <param name="key">键</param>
     /// <param name="value">变化量</param>
     /// <returns></returns>
-    public override Double Increment(String key, Double value) => Execute(key, rds => rds.Execute<Double>("INCRBYFLOAT", key, value), true);
+    public override Double Increment(String key, Double value) => Execute(key, (rds, k) => rds.Execute<Double>("INCRBYFLOAT", k, value), true);
 
     /// <summary>递减，原子操作</summary>
     /// <param name="key">键</param>
@@ -889,9 +890,9 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     public override Int64 Decrement(String key, Int64 value)
     {
         if (value == 1)
-            return Execute(key, rds => rds.Execute<Int64>("DECR", key), true);
+            return Execute(key, (rds, k) => rds.Execute<Int64>("DECR", k), true);
         else
-            return Execute(key, rds => rds.Execute<Int64>("DECRBY", key, value.ToString()), true);
+            return Execute(key, (rds, k) => rds.Execute<Int64>("DECRBY", k, value.ToString()), true);
     }
 
     /// <summary>递减，原子操作，乘以100后按整数操作</summary>

@@ -232,7 +232,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
     /// <summary>向集群添加新节点</summary>
     /// <param name="ip"></param>
     /// <param name="port"></param>
-    public virtual void Meet(String ip, Int32 port) => Execute(r => r.Execute("CLUSTER", "MEET", ip, port));
+    public virtual void Meet(String ip, Int32 port) => Execute((r, k) => r.Execute("CLUSTER", "MEET", ip, port));
 
     /// <summary>向节点增加槽</summary>
     /// <param name="node"></param>
