@@ -661,4 +661,20 @@ public class ReliableQueueTests
         XTrace.WriteLine("ReliableQueue_BlockTest: {0}", sw.Elapsed);
         Assert.True(sw.ElapsedMilliseconds < 3_000 + 500);
     }
+
+    private class RedisMessage<T> { public MyModel Data { get; set; } }
+    [Fact]
+    public async Task TakeOneNotDataAsync()
+    {
+        var queue = _redis.GetReliableQueue<RedisMessage<MyModel>>("TakeOneNotDataAsync");
+        queue.RetryInterval = 60;//重新处理确认队列中死信的间隔。默认60s
+        RedisMessage<MyModel>? message = await queue.TakeOneAsync(10);
+        Assert.Null(message);
+
+
+        var queue2 = _redis.GetReliableQueue<Int32>("TakeOneNotDataAsync_Int32");
+        queue2.RetryInterval = 60;//重新处理确认队列中死信的间隔。默认60s
+        int messageInt = await queue2.TakeOneAsync(10);
+        Assert.Equal(0, messageInt);
+    }
 }
