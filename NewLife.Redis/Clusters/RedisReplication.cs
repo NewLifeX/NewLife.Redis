@@ -35,6 +35,18 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     public void StartMonitor()
     {
         //GetNodes();
+        // 先填充已有地址，供外部使用
+        var servers = Redis.GetServices().ToList();
+        var list = new List<RedisNode>();
+        foreach (var server in servers)
+        {
+            list.Add(new RedisNode
+            {
+                Owner = Redis,
+                EndPoint = server.ToString(),
+            });
+        }
+        Nodes = list.ToArray();
 
         if (SetHostServer)
         {

@@ -14,8 +14,9 @@ class Program
         // 初始化Redis
         var redis = new FullRedis { Timeout = 15_000 };
         redis.Init(connStr);
-#if DEBUG
         redis.Log = XTrace.Log;
+#if DEBUG
+        redis.ClientLog = XTrace.Log;
 #endif
 
         XTrace.WriteLine("Redis Queue Demo! Keys= {0}", redis.Count);
@@ -32,7 +33,7 @@ class Program
 
         //需要确认的可信队列
         Console.WriteLine();
-        Console.WriteLine("需要确认的可信队列 RedisReliableQueue");
+        Console.WriteLine("可信队列 RedisReliableQueue （需要确认）");
         AckQueue.Start(redis);
 
         //延迟队列

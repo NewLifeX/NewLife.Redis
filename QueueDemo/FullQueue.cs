@@ -30,7 +30,7 @@ class FullQueue
         // 发布消息
         Public(redis, topic);
 
-        // 再来一个消费组，批量消费
+        // 再来两个消费组，批量消费
         {
             var queue = redis.GetStream<Area>(topic);
             queue.Group = "Group3";

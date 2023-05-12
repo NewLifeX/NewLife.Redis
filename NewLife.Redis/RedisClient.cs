@@ -522,12 +522,13 @@ public class RedisClient : DisposeBase
     private Int32 _selected = -1;
     private void CheckSelect(String cmd)
     {
-        if (_selected == Host.Db) return;
+        var db = Host.Db;
+        if (_selected == db) return;
         if (cmd.EqualIgnoreCase("Auth", "Select", "Info")) return;
 
-        if (Host.Db > 0 && (Host is not FullRedis rds || !rds.Mode.EqualIgnoreCase("cluster", "sentinel"))) Select(Host.Db);
+        if (db > 0 && (Host is not FullRedis rds || !rds.Mode.EqualIgnoreCase("cluster", "sentinel"))) Select(db);
 
-        _selected = Host.Db;
+        _selected = db;
     }
 
     /// <summary>重置。干掉历史残留数据</summary>

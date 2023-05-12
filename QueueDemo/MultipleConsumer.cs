@@ -20,13 +20,13 @@ class MultipleConsumer
         mq.Connect(connStr, "BCGCommandQueue");
         mq.Received += (data) =>
         {
-            XTrace.WriteLine($"[Redis多消费组可重复消费的队列]收到列队消息：{data.Data.ToJson()}");
+            XTrace.WriteLine($"[Redis多消费组]收到列队消息：{data.Data.ToJson()}");
         };
         mq.StopSubscribe += (msg) =>
         {
             //队列不存在等情况都会导致停止
             //遇到异常时停止订阅，等待5秒后重新订阅，不遗漏消息
-            XTrace.WriteLine($"[Redis多消费组可重复消费的队列]停止订阅原因：{msg}");
+            XTrace.WriteLine($"[Redis多消费组]停止订阅原因：{msg}");
             XTrace.WriteLine("5秒后重新自动订阅……");
             Thread.Sleep(5000);
             mq.Subscribe(consumerName);
