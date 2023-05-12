@@ -826,8 +826,8 @@ public class RedisClient : DisposeBase
             if (type == typeof(Object[])) { target = value; return true; }
             if (type == typeof(Packet[])) { target = objs.Cast<Packet>().ToArray(); return true; }
 
-            // 基础类型遇到空结果时返回默认值
-            if (objs.Length == 0 && Type.GetTypeCode(type) != TypeCode.Object) return false;
+            // 遇到空结果时返回默认值
+            if (objs.Length == 0) return false;
 
             var elmType = type.GetElementTypeEx();
             var arr = Array.CreateInstance(elmType, objs.Length);
