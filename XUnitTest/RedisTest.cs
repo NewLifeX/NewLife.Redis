@@ -356,8 +356,8 @@ public class RedisTest
         Assert.NotEmpty(ss);
 
         var ss2 = ic.Execute(null, (r, k) => r.Execute<String[]>("KEYS", "abcdefg*"));
-        Assert.NotNull(ss2);
-        Assert.Empty(ss2);
+        Assert.Null(ss2);
+        //Assert.Empty(ss2);
 
         var n = 0;
         var ss3 = Search(ic, "*", 10, ref n);

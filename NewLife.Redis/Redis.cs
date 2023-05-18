@@ -116,6 +116,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     {
         Name = name;
         Tracer = provider.GetService<ITracer>();
+        Log = provider.GetService<ILog>();
 
         var configProvider = provider.GetRequiredService<IConfigProvider>();
         configProvider.Bind(this, true, name);
