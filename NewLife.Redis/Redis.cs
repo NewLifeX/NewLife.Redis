@@ -10,6 +10,7 @@ using NewLife.Log;
 using NewLife.Model;
 using NewLife.Net;
 using NewLife.Reflection;
+using NewLife.Security;
 
 namespace NewLife.Caching;
 
@@ -173,10 +174,15 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         if (!_configOld.IsNullOrEmpty() && XTrace.Log.Level <= LogLevel.Debug)
             XTrace.WriteLine("Redis[{0}]连接字符串改变！", Name);
 
+        // 解密连接字符串中被保护的密码。解密密钥位于配置文件ProtectedKey，或者环境变量中
+        var connStr = config;
+        var pk = ProtectedKey.Instance;
+        if (pk != null && pk.Secret != null) connStr = pk.Unprotect(connStr);
+
         var dic =
-            config.Contains(',') && !config.Contains(';') ?
-            config.SplitAsDictionary("=", ",", true) :
-            config.SplitAsDictionary("=", ";", true);
+            connStr.Contains(',') && !connStr.Contains(';') ?
+            connStr.SplitAsDictionary("=", ",", true) :
+            connStr.SplitAsDictionary("=", ";", true);
         if (dic.Count > 0)
         {
             Server = dic["Server"]?.Trim();
