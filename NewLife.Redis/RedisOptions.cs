@@ -26,5 +26,5 @@ public class RedisOptions
     public Int32 Timeout { get; set; }
 
     /// <summary>键前缀,只适用于PrefixedRedis</summary>
-    public string Prefix { get; set; }
+    public String Prefix { get; set; }
 }

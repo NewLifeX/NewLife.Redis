@@ -198,7 +198,7 @@ public class FullRedis : Redis
     /// <param name="func"></param>
     /// <param name="write">是否写入操作</param>
     /// <returns></returns>
-    public override T Execute<T>(String key, Func<RedisClient, string, T> func, Boolean write = false)
+    public override T Execute<T>(String key, Func<RedisClient, String, T> func, Boolean write = false)
     {
         InitCluster();
 
@@ -213,6 +213,7 @@ public class FullRedis : Redis
         var sw = Counter?.StartCount();
 
         var i = 0;
+        var delay = 500;
         do
         {
             var pool = GetPool(node);
@@ -224,27 +225,29 @@ public class FullRedis : Redis
                 client.Reset();
                 var rs = func(client, key);
 
-                Counter?.StopCount(sw);
-
                 Cluster.ResetNode(node);
 
                 return rs;
             }
-            catch (InvalidDataException)
-            {
-                if (i++ >= Retry) throw;
-            }
             catch (Exception ex)
             {
-                if (i++ >= Retry) throw;
+                if (++i >= Retry) throw;
+
+                // 销毁连接
+                client.TryDispose();
 
                 // 使用新的节点
-                node = Cluster.ReselectNode(key, write, node, ex);
-                if (node == null) throw;
+                var node2 = Cluster.ReselectNode(key, write, node, ex);
+                if (node2 != null)
+                    node = node2;
+                else
+                    Thread.Sleep(delay *= 2);
             }
             finally
             {
                 pool.Put(client);
+
+                Counter?.StopCount(sw);
             }
         } while (true);
     }
@@ -255,7 +258,7 @@ public class FullRedis : Redis
     /// <param name="func"></param>
     /// <param name="write">是否写入操作</param>
     /// <returns></returns>
-    public override async Task<T> ExecuteAsync<T>(String key, Func<RedisClient, string, Task<T>> func, Boolean write = false)
+    public override async Task<T> ExecuteAsync<T>(String key, Func<RedisClient, String, Task<T>> func, Boolean write = false)
     {
         InitCluster();
 
@@ -270,6 +273,7 @@ public class FullRedis : Redis
         var sw = Counter?.StartCount();
 
         var i = 0;
+        var delay = 500;
         do
         {
             var pool = GetPool(node);
@@ -281,25 +285,27 @@ public class FullRedis : Redis
                 client.Reset();
                 var rs = await func(client, key);
 
-                Counter?.StopCount(sw);
-
                 return rs;
-            }
-            catch (InvalidDataException)
-            {
-                if (i++ >= Retry) throw;
             }
             catch (Exception ex)
             {
-                if (i++ >= Retry) throw;
+                if (++i >= Retry) throw;
+
+                // 销毁连接
+                client.TryDispose();
 
                 // 使用新的节点
-                node = Cluster.ReselectNode(key, write, node, ex);
-                if (node == null) throw;
+                var node2 = Cluster.ReselectNode(key, write, node, ex);
+                if (node2 != null)
+                    node = node2;
+                else
+                    Thread.Sleep(delay *= 2);
             }
             finally
             {
                 pool.Put(client);
+
+                Counter?.StopCount(sw);
             }
         } while (true);
     }

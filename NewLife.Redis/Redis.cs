@@ -41,7 +41,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <summary>读写超时时间。默认3000ms</summary>
     public Int32 Timeout { get; set; } = 3_000;
 
-    /// <summary>出错重试次数。如果出现协议解析错误，可以重试的次数，默认3</summary>
+    /// <summary>出错重试次数。如果出现错误，可以重试的次数，默认3</summary>
     public Int32 Retry { get; set; } = 3;
 
     /// <summary>不可用节点的屏蔽时间。默认10秒</summary>
@@ -296,6 +296,8 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         var idx = _idxServer;
         if (idx > 0)
         {
+            if (idx >= svrs.Length) idx %= svrs.Length;
+
             var now = DateTime.Now;
             if (_nextTrace.Year < 2000) _nextTrace = now.AddSeconds(300);
             if (now > _nextTrace)
@@ -369,7 +371,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <param name="func">回调函数</param>
     /// <param name="write">是否写入操作</param>
     /// <returns></returns>
-    public virtual TResult Execute<TResult>(String key, Func<RedisClient, string, TResult> func, Boolean write = false)
+    public virtual TResult Execute<TResult>(String key, Func<RedisClient, String, TResult> func, Boolean write = false)
     {
         // 写入或完全管道模式时，才处理管道操作
         if (write || FullPipeline)
@@ -399,7 +401,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         var sw = Counter?.StartCount();
 
         var i = 0;
-        var delay = 100;
+        var delay = 500;
         do
         {
             // 每次重试都需要重新从池里借出连接
@@ -410,33 +412,18 @@ public class Redis : Cache, IConfigMapping, ILogFeature
                 client.Reset();
                 return func(client, key);
             }
-            catch (InvalidDataException)
+            catch (Exception ex)
             {
-                if (i++ >= Retry) throw;
+                if (++i >= Retry) throw;
 
                 // 销毁连接
                 client.TryDispose();
 
-                Thread.Sleep(delay);
-                delay *= 2;
-            }
-            catch (Exception ex)
-            {
-                if (ex is SocketException or IOException)
-                {
-                    // 销毁连接
-                    client.TryDispose();
-
-                    // 网络异常时，自动切换到其它节点
+                // 网络异常时，自动切换到其它节点
+                if (ex is SocketException or IOException && i < _servers.Length)
                     _idxServer++;
-                    if (++i < _servers.Length)
-                    {
-                        Thread.Sleep(100);
-                        continue;
-                    }
-                }
-
-                throw;
+                else
+                    Thread.Sleep(delay *= 2);
             }
             finally
             {
@@ -483,7 +470,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <param name="func">回调函数</param>
     /// <param name="write">是否写入操作</param>
     /// <returns></returns>
-    public virtual async Task<TResult> ExecuteAsync<TResult>(String key, Func<RedisClient, string, Task<TResult>> func, Boolean write = false)
+    public virtual async Task<TResult> ExecuteAsync<TResult>(String key, Func<RedisClient, String, Task<TResult>> func, Boolean write = false)
     {
         // 写入或完全管道模式时，才处理管道操作
         if (write || FullPipeline)
@@ -513,7 +500,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         var sw = Counter?.StartCount();
 
         var i = 0;
-        var delay = 100;
+        var delay = 500;
         do
         {
             // 每次重试都需要重新从池里借出连接
@@ -523,18 +510,18 @@ public class Redis : Cache, IConfigMapping, ILogFeature
                 client.Reset();
                 return await func(client, key);
             }
-            catch (InvalidDataException)
+            catch (Exception ex)
             {
-                if (i++ >= Retry) throw;
+                if (++i >= Retry) throw;
 
-                await Task.Delay(delay);
-                delay *= 2;
-            }
-            catch (SocketException)
-            {
+                // 销毁连接
+                client.TryDispose();
+
                 // 网络异常时，自动切换到其它节点
-                _idxServer++;
-                if (++i >= _servers.Length) throw;
+                if (ex is SocketException or IOException && i < _servers.Length)
+                    _idxServer++;
+                else
+                    Thread.Sleep(delay *= 2);
             }
             finally
             {

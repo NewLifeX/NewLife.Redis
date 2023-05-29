@@ -25,12 +25,12 @@ public class PrefixedRedis : FullRedis
     /// <param name="server"></param>
     /// <param name="password"></param>
     /// <param name="db"></param>
-    public PrefixedRedis(String server, String password, Int32 db, String prefix) : base(server, password, db) => Prefix = prefix ?? string.Empty;
+    public PrefixedRedis(String server, String password, Int32 db, String prefix) : base(server, password, db) => Prefix = prefix ?? String.Empty;
     /// <summary>
     /// 实例化支持键前缀的Redis
     /// </summary>
     /// <param name="options"></param>
-    public PrefixedRedis(RedisOptions options) : base(options) => Prefix = options.Prefix ?? string.Empty;
+    public PrefixedRedis(RedisOptions options) : base(options) => Prefix = options.Prefix ?? String.Empty;
     #endregion
 
     /// <summary>重载执行，支持集群</summary>
@@ -39,7 +39,7 @@ public class PrefixedRedis : FullRedis
     /// <param name="func"></param>
     /// <param name="write">是否写入操作</param>
     /// <returns></returns>
-    public override T Execute<T>(String key, Func<RedisClient, string, T> func, Boolean write = false) => base.Execute(key is null || key.StartsWith(Prefix) ? key : Prefix  + key, func, write);
+    public override T Execute<T>(String key, Func<RedisClient, String, T> func, Boolean write = false) => base.Execute(key is null || key.StartsWith(Prefix) ? key : Prefix  + key, func, write);
 
     /// <summary>重载执行，支持集群</summary>
     /// <typeparam name="T"></typeparam>
@@ -47,7 +47,7 @@ public class PrefixedRedis : FullRedis
     /// <param name="func"></param>
     /// <param name="write">是否写入操作</param>
     /// <returns></returns>
-    public override Task<T> ExecuteAsync<T>(String key, Func<RedisClient, string, Task<T>> func, Boolean write = false) => base.ExecuteAsync(key is null || key.StartsWith(Prefix) ? key : Prefix + key, func, write);
+    public override Task<T> ExecuteAsync<T>(String key, Func<RedisClient, String, Task<T>> func, Boolean write = false) => base.ExecuteAsync(key is null || key.StartsWith(Prefix) ? key : Prefix + key, func, write);
 
     #region 子库
     /// <inheritdoc/>

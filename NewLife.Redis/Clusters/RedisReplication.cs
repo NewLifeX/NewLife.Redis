@@ -309,7 +309,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         if (exception is SocketException or IOException)
         {
             // 屏蔽旧节点一段时间
-            if (node is RedisNode redisNode && redisNode.Error++ > Redis.Retry)
+            if (node is RedisNode redisNode && ++redisNode.Error >= Redis.Retry)
             {
                 redisNode.NextTime = now.AddSeconds(Redis.ShieldingTime);
                 var msg = $"屏蔽 {redisNode.EndPoint} 到 {redisNode.NextTime.ToFullString()}";

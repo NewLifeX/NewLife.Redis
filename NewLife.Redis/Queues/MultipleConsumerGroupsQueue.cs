@@ -68,7 +68,7 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
     /// </summary>
     /// <param name="ignoreErrMsg">忽略异常消息(在对消息进行解析时发生异常，依然对当前消息进行消费)</param>
     /// <param name="encoder">编码器</param>
-    public MultipleConsumerGroupsQueue(bool ignoreErrMsg = true, RedisJsonEncoder encoder = null)
+    public MultipleConsumerGroupsQueue(Boolean ignoreErrMsg = true, RedisJsonEncoder encoder = null)
     {
         if (encoder != null)
             Encoder = encoder;
@@ -103,7 +103,7 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
     /// <param name="connStr">连接字串</param>
     /// <param name="queueName">列队名称</param>
     /// <exception cref="NullReferenceException"></exception>
-    public void Connect(string connStr, String queueName)
+    public void Connect(String connStr, String queueName)
     {
         _Redis = new FullRedis() { Timeout = TimeOut, Encoder = Encoder };
         _Redis.Init(connStr);
