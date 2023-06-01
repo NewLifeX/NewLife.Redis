@@ -7,7 +7,7 @@
     <Description>Redis基础操作、消息队列，经过日均100亿次调用量的项目验证。旧版NET45找2021年</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2023 新生命开发团队</Copyright>
-    <VersionPrefix>5.3</VersionPrefix>
+    <VersionPrefix>5.4</VersionPrefix>
     <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
     <Version>$(VersionPrefix).$(VersionSuffix)</Version>
     <FileVersion>$(Version)</FileVersion>
@@ -28,7 +28,7 @@
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Redis</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>支持集群、主从复制和哨兵的自动发现与切换</PackageReleaseNotes>
+    <PackageReleaseNotes>新增支持前缀设置的PrefixedRedis；支持密码保护；强化出错重试机制</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -45,7 +45,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="10.3.2023.519-beta1319" />
+    <PackageReference Include="NewLife.Core" Version="10.3.2023.601" />
   </ItemGroup>
 
   <ItemGroup>
