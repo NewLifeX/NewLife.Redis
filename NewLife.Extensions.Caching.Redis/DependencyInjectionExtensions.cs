@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Options;
 using NewLife;
 using NewLife.Caching;
-using NewLife.Model;
+using NewLife.Caching.Services;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -97,6 +97,7 @@ public static class DependencyInjectionExtensions
 
         return services;
     }
+
     /// <summary>
     /// 添加键前缀的PrefixedRedis缓存
     /// </summary>
@@ -104,7 +105,8 @@ public static class DependencyInjectionExtensions
     /// <param name="setupAction"></param>
     /// <returns></returns>
     /// <exception cref="ArgumentNullException"></exception>
-    public static IServiceCollection AddPrefixedRedis(this IServiceCollection services, Action<RedisOptions> setupAction) {
+    public static IServiceCollection AddPrefixedRedis(this IServiceCollection services, Action<RedisOptions> setupAction)
+    {
         if (services == null)
             throw new ArgumentNullException(nameof(services));
         if (setupAction == null)
@@ -113,6 +115,17 @@ public static class DependencyInjectionExtensions
         services.AddOptions();
         services.Configure(setupAction);
         services.AddSingleton(sp => new PrefixedRedis(sp.GetRequiredService<IOptions<RedisOptions>>().Value));
+
+        return services;
+    }
+
+    /// <summary>添加Redis缓存提供者ICacheProvider</summary>
+    /// <param name="services"></param>
+    /// <returns></returns>
+    public static IServiceCollection AddRedisCacheProvider(this IServiceCollection services)
+    {
+        services.AddSingleton<ICacheProvider, RedisCacheProvider>();
+
         return services;
     }
 }
