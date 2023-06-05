@@ -357,7 +357,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
             var retry = RetryInterval * 1000;
 
             var tracer = Redis.Tracer;
-            var span = tracer?.NewSpan($"redismq:{Key}:RetryAck");
+            using var span = tracer?.NewSpan($"redismq:{Key}:RetryAck");
 
             // 拿到死信，重新放入队列
             String id = null;
@@ -402,12 +402,16 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
             // 清理历史消费者
             var consumers = GetConsumers(Group);
             if (consumers != null)
+            {
+                span?.AppendTag(consumers);
+
                 foreach (var item in consumers)
                     if (item.Pending == 0 && item.Idle > 3600_000)
                     {
                         XTrace.WriteLine("[{0}]删除空闲消费者：{1}", Group, item.ToJson());
                         GroupDeleteConsumer(Group, item.Name);
                     }
+            }
         }
 
         return count;

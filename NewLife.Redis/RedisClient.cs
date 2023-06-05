@@ -649,7 +649,9 @@ public class RedisClient : DisposeBase
     /// <returns></returns>
     public virtual Object Execute(String cmd, params Object[] args)
     {
-        using var span = cmd.IsNullOrEmpty() ? null : Host.Tracer?.NewSpan($"redis:{Name}:{cmd}", args);
+        // 埋点名称，支持二级命令
+        var act = cmd.EqualIgnoreCase("cluster", "xinfo", "xgroup", "xreadgroup") ? $"{cmd}-{args?.FirstOrDefault()}" : cmd;
+        using var span = cmd.IsNullOrEmpty() ? null : Host.Tracer?.NewSpan($"redis:{Name}:{act}", args);
         try
         {
             return ExecuteCommand(cmd, args?.Select(e => Host.Encoder.Encode(e)).ToArray(), args);
@@ -729,7 +731,9 @@ public class RedisClient : DisposeBase
     /// <returns></returns>
     public virtual async Task<Object> ExecuteAsync(String cmd, Object[] args, CancellationToken cancellationToken = default)
     {
-        using var span = cmd.IsNullOrEmpty() ? null : Host.Tracer?.NewSpan($"redis:{Name}:{cmd}", args);
+        // 埋点名称，支持二级命令
+        var act = cmd.EqualIgnoreCase("cluster", "xinfo", "xgroup") ? $"{cmd}-{args?.FirstOrDefault()}" : cmd;
+        using var span = cmd.IsNullOrEmpty() ? null : Host.Tracer?.NewSpan($"redis:{Name}:{act}", args);
         try
         {
             return await ExecuteCommandAsync(cmd, args?.Select(e => Host.Encoder.Encode(e)).ToArray(), args, cancellationToken);
