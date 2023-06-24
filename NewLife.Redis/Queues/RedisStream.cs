@@ -280,10 +280,9 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
         if (FromLastOffset && _setGroupId == 0 && Interlocked.CompareExchange(ref _setGroupId, 1, 0) == 0)
             GroupSetId(Group, "$");
 
+        // 优先处理未确认死信，避免在处理海量消息的过程中，未确认死信一直得不到处理
         var group = Group;
-        if (!group.IsNullOrEmpty())
-            // 优先处理未确认死信，避免在处理海量消息的过程中，未确认死信一直得不到处理
-            _claims += RetryAck();
+        if (!group.IsNullOrEmpty()) _claims += RetryAck();
 
         // 抢过来的消息，优先处理，可能需要多次消费才能消耗完
         if (_claims > 0)
@@ -312,7 +311,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
             // id为>时，消费从未传递给消费者的消息
             // id为$时，消费从从阻塞开始新收到的消息
             // id为0时，消费当前消费者的历史待处理消息，包括自己未ACK和从其它消费者抢来的消息
-            // 使用消费组时，如果拿不到消息，则尝试消费抢过来的历史消息
+            // 使用消费组时，如果拿不到消息，则尝试当前消费者之前消费但没有确认的消息
             if (!group.IsNullOrEmpty())
             {
                 rs = await ReadGroupAsync(group, Consumer, count, 3_000, "0", cancellationToken);
@@ -370,21 +369,35 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
                 span?.AppendTag(list);
 
                 foreach (var item in list)
-                    if (item.Idle > retry)
+                {
+                    // 不要抢自己的消息
+                    if (item.Consumer == Consumer)
+                    {
+                        // 当前消费者失败多次，直接删除
                         if (item.Delivery >= MaxRetry)
                         {
                             var msg = item.ToJson();
-                            tracer?.NewError($"redismq:{Key}:Delete", msg);
+                            using var span2 = tracer?.NewSpan($"redismq:{Key}:Delete", msg);
+
+                            XTrace.WriteLine("[{0}]删除多次失败死信（当前消费者）：{1}", Group, msg);
+                            Ack(Group, item.Id);
+                        }
+                    }
+                    else if (item.Idle > retry)
+                    {
+                        if (item.Delivery >= MaxRetry)
+                        {
+                            var msg = item.ToJson();
+                            using var span2 = tracer?.NewSpan($"redismq:{Key}:Delete", msg);
 
                             XTrace.WriteLine("[{0}]删除多次失败死信：{1}", Group, msg);
-                            //Delete(item.Id);
                             Claim(Group, Consumer, item.Id, retry);
                             Ack(Group, item.Id);
                         }
                         else
                         {
                             var msg = item.ToJson();
-                            tracer?.NewError($"redismq:{Key}:Rollback", msg);
+                            using var span2 = tracer?.NewSpan($"redismq:{Key}:Rollback", msg);
 
                             XTrace.WriteLine("[{0}]定时回滚：{1}", Group, msg);
                             // 抢夺消息，所有者更改为当前消费者，Idle从零开始计算。这些消息需要尽快得到处理，否则会再次过期
@@ -392,6 +405,8 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
 
                             count++;
                         }
+                    }
+                }
 
                 // 下一个开始id
                 id = list[^1].Id;
@@ -399,18 +414,21 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
                 if (p > 0) id = $"{id[..p].ToLong() + 1}-0";
             }
 
-            // 清理历史消费者
+            // 清理历史空闲消费者
             var consumers = GetConsumers(Group);
             if (consumers != null)
             {
                 span?.AppendTag(consumers);
 
+                // 删除没有挂起消费项且超1小时不活跃的消费者
                 foreach (var item in consumers)
+                {
                     if (item.Pending == 0 && item.Idle > 3600_000)
                     {
                         XTrace.WriteLine("[{0}]删除空闲消费者：{1}", Group, item.ToJson());
                         GroupDeleteConsumer(Group, item.Name);
                     }
+                }
             }
         }
 
