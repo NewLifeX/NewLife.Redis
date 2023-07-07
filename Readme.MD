@@ -35,6 +35,21 @@ Nuget：NewLife.Redis
 以上经验，源自于300多个实例4T以上空间一年多稳定工作的经验，并按照重要程度排了先后顺序，可根据场景需要酌情采用！
 
 ---
+### 推荐用法
+推荐使用单例模式,Redis内部有连接池并且支持多线程并发访问
+```csharp
+public static class RedisHelper
+{
+    /// <summary>
+    /// Redis实例
+    /// </summary>
+    public static FullRedis redisConnection=FullRedis.Create("server=127.0.0.1:6379;password=123456;db=4");
+}
+
+Console.WriteLine(RedisHelper.redisConnection.Keys);
+``` 
+
+---
 ### 基础 Redis
 Redis实现标准协议以及基础字符串操作，完整实现由独立开源项目[NewLife.Redis](https://github.com/NewLifeX/NewLife.Redis)提供。  
 采取连接池加同步阻塞架构，具有超低延迟（200~600us）以及超高吞吐量的特点。  
