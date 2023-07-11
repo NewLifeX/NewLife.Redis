@@ -63,6 +63,7 @@ Before the basic operation, let's do some preparation:
 + Create a new console project and add `XTrace.UseConsole();` at the beginning of the entry function to make it easier to view the debug logs.
 + Before you can test the code, you need to add the code that instantiates MemoryCache or Redis.
 + Prepare a model class User
+
 ``` csharp
 class User
 {
