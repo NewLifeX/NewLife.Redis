@@ -1,7 +1,7 @@
-﻿using System.Linq;
-
-using NewLife.Caching.Models;
+﻿using NewLife.Caching.Models;
 using NewLife.Caching.Queues;
+using NewLife.Log;
+using NewLife.Model;
 
 namespace NewLife.Caching;
 
@@ -31,6 +31,14 @@ public class PrefixedRedis : FullRedis
     /// </summary>
     /// <param name="options"></param>
     public PrefixedRedis(RedisOptions options) : base(options) => Prefix = options.Prefix ?? String.Empty;
+    /// <summary>按照配置服务实例化Redis，用于NETCore依赖注入</summary>
+    /// <param name="provider">服务提供者，将要解析IConfigProvider</param>
+    /// <param name="name">缓存名称，也是配置中心key</param>
+    public PrefixedRedis(IServiceProvider provider, String name) : base(provider, name) { }
+    /// <summary>按照配置服务实例化Redis，用于NETCore依赖注入</summary>
+    /// <param name="provider">服务提供者，将要解析IConfigProvider</param>
+    /// <param name="options">Redis链接配置</param>
+    public PrefixedRedis(IServiceProvider provider, RedisOptions options) : this(options) => Tracer = provider.GetService<ITracer>();
     #endregion
 
     /// <summary>重载执行，支持集群</summary>

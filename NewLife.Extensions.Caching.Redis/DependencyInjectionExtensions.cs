@@ -1,8 +1,10 @@
 ﻿using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+
 using NewLife;
 using NewLife.Caching;
 using NewLife.Caching.Services;
+using NewLife.Log;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -24,9 +26,21 @@ public static class DependencyInjectionExtensions
         var redis = new FullRedis();
         redis.Init(config);
 
-        services.TryAddSingleton<ICache>(redis);
-        services.AddSingleton<Redis>(redis);
-        services.AddSingleton(redis);
+        services.TryAddSingleton<ICache>(sp =>
+        {
+            if (redis.Tracer is null) { redis.Tracer = sp.GetService<ITracer>(); }
+            return redis;
+        });
+        services.AddSingleton<Redis>(sp =>
+        {
+            if (redis.Tracer is null) { redis.Tracer = sp.GetService<ITracer>(); }
+            return redis;
+        });
+        services.AddSingleton(sp =>
+        {
+            if (redis.Tracer is null) { redis.Tracer = sp.GetService<ITracer>(); }
+            return redis;
+        });
 
         return redis;
     }
@@ -48,9 +62,21 @@ public static class DependencyInjectionExtensions
         redis.Init(config);
         if (timeout > 0) redis.Timeout = timeout;
 
-        services.TryAddSingleton<ICache>(redis);
-        services.AddSingleton<Redis>(redis);
-        services.AddSingleton(redis);
+        services.TryAddSingleton<ICache>(sp =>
+        {
+            if (redis.Tracer is null) { redis.Tracer = sp.GetService<ITracer>(); }
+            return redis;
+        });
+        services.AddSingleton<Redis>(sp =>
+        {
+            if (redis.Tracer is null) { redis.Tracer = sp.GetService<ITracer>(); }
+            return redis;
+        });
+        services.AddSingleton(sp =>
+        {
+            if (redis.Tracer is null) { redis.Tracer = sp.GetService<ITracer>(); }
+            return redis;
+        });
 
         return redis;
     }
@@ -71,9 +97,21 @@ public static class DependencyInjectionExtensions
         var redis = new FullRedis(server, psssword, db);
         if (timeout > 0) redis.Timeout = timeout;
 
-        services.TryAddSingleton<ICache>(redis);
-        services.AddSingleton<Redis>(redis);
-        services.AddSingleton(redis);
+        services.TryAddSingleton<ICache>(sp =>
+        {
+            if (redis.Tracer is null) { redis.Tracer = sp.GetService<ITracer>(); }
+            return redis;
+        });
+        services.AddSingleton<Redis>(sp =>
+        {
+            if (redis.Tracer is null) { redis.Tracer = sp.GetService<ITracer>(); }
+            return redis;
+        });
+        services.AddSingleton(sp =>
+        {
+            if (redis.Tracer is null) { redis.Tracer = sp.GetService<ITracer>(); }
+            return redis;
+        });
 
         return redis;
     }
@@ -93,7 +131,7 @@ public static class DependencyInjectionExtensions
         services.AddOptions();
         services.Configure(setupAction);
         //services.Add(ServiceDescriptor.Singleton<ICache, FullRedis>());
-        services.AddSingleton(sp => new FullRedis(sp.GetRequiredService<IOptions<RedisOptions>>().Value));
+        services.AddSingleton(sp => new FullRedis(sp, sp.GetRequiredService<IOptions<RedisOptions>>().Value));
 
         return services;
     }
@@ -114,7 +152,7 @@ public static class DependencyInjectionExtensions
 
         services.AddOptions();
         services.Configure(setupAction);
-        services.AddSingleton(sp => new PrefixedRedis(sp.GetRequiredService<IOptions<RedisOptions>>().Value));
+        services.AddSingleton(sp => new PrefixedRedis(sp, sp.GetRequiredService<IOptions<RedisOptions>>().Value));
 
         return services;
     }
