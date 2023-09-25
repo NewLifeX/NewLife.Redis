@@ -1,7 +1,5 @@
 ﻿using System.Collections.Concurrent;
-using System.Net;
 using System.Text;
-
 using NewLife.Caching.Clusters;
 using NewLife.Caching.Models;
 using NewLife.Caching.Queues;
@@ -37,6 +35,9 @@ public class FullRedis : Redis
     #endregion
 
     #region 属性
+    /// <summary>自动检测集群节点。默认true</summary>
+    public Boolean AutoDetect { get; set; } = true;
+
     /// <summary>模式</summary>
     public String Mode { get; private set; }
 
@@ -137,8 +138,12 @@ public class FullRedis : Redis
                 info.TryGetValue("role", out var role);
                 info.TryGetValue("connected_slaves", out var connected_slaves);
 
+                if (!AutoDetect)
+                {
+                    Cluster = null;
+                }
                 // 集群模式初始化节点
-                if (mode == "cluster")
+                else if (mode == "cluster")
                 {
                     var cluster = new RedisCluster(this);
                     cluster.StartMonitor();
