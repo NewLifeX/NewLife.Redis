@@ -22,7 +22,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{E136
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "QueueDemo", "QueueDemo\QueueDemo.csproj", "{5829188A-DC4A-4F00-AD95-5873E4057BDE}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NewLife.Extensions.Caching.Redis", "NewLife.Extensions.Caching.Redis\NewLife.Extensions.Caching.Redis.csproj", "{F33100CF-0DBE-4B03-A1B7-7CDBD5F130B2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NewLife.Redis.Extensions", "NewLife.Redis.Extensions\NewLife.Redis.Extensions.csproj", "{499A9E8E-050C-40CD-90AF-FE4E499121D1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -46,10 +46,10 @@ Global
 		{5829188A-DC4A-4F00-AD95-5873E4057BDE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5829188A-DC4A-4F00-AD95-5873E4057BDE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5829188A-DC4A-4F00-AD95-5873E4057BDE}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F33100CF-0DBE-4B03-A1B7-7CDBD5F130B2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F33100CF-0DBE-4B03-A1B7-7CDBD5F130B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F33100CF-0DBE-4B03-A1B7-7CDBD5F130B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F33100CF-0DBE-4B03-A1B7-7CDBD5F130B2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{499A9E8E-050C-40CD-90AF-FE4E499121D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{499A9E8E-050C-40CD-90AF-FE4E499121D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{499A9E8E-050C-40CD-90AF-FE4E499121D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{499A9E8E-050C-40CD-90AF-FE4E499121D1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

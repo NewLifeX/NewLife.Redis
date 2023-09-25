@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\NewLife.Extensions.Caching.Redis\NewLife.Extensions.Caching.Redis.csproj" />
+    <ProjectReference Include="..\NewLife.Redis.Extensions\NewLife.Redis.Extensions.csproj" />
     <ProjectReference Include="..\NewLife.Redis\NewLife.Redis.csproj" />
   </ItemGroup>
 
