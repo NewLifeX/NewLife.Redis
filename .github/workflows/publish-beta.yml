@@ -5,7 +5,7 @@ on:
     branches: [ master ]
     paths:
         - 'NewLife.Redis/**'
-        - 'NewLife.Extensions.Caching.Redis/**'
+        - 'NewLife.Redis.Extensions/**'
   workflow_dispatch:
 
 jobs:
@@ -22,11 +22,11 @@ jobs:
     - name: Restore
       run: |
         dotnet restore NewLife.Redis/NewLife.Redis.csproj
-        dotnet restore NewLife.Extensions.Caching.Redis/NewLife.Extensions.Caching.Redis.csproj
+        dotnet restore NewLife.Redis.Extensions/NewLife.Redis.Extensions.csproj
     - name: Build
       run: |
         dotnet pack --no-restore --version-suffix $(date "+%Y.%m%d-beta%H%M") -c Release -o out NewLife.Redis/NewLife.Redis.csproj
-        dotnet pack --no-restore --version-suffix $(date "+%Y.%m%d-beta%H%M") -c Release -o out NewLife.Extensions.Caching.Redis/NewLife.Extensions.Caching.Redis.csproj
+        dotnet pack --no-restore --version-suffix $(date "+%Y.%m%d-beta%H%M") -c Release -o out NewLife.Redis.Extensions/NewLife.Redis.Extensions.csproj
     - name: Publish
       run: |
         # dotnet nuget push ./out/*.nupkg --skip-duplicate --source https://nuget.pkg.github.com/NewLifeX/index.json --api-key ${{ github.token }}
