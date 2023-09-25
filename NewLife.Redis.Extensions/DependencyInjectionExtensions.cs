@@ -119,7 +119,7 @@ public static class DependencyInjectionExtensions
         return services;
     }
 
-    /// <summary>添加Redis缓存提供者ICacheProvider</summary>
+    /// <summary>添加Redis缓存提供者ICacheProvider。从配置读取RedisCache和RedisQueue</summary>
     /// <param name="services"></param>
     /// <returns></returns>
     public static IServiceCollection AddRedisCacheProvider(this IServiceCollection services)

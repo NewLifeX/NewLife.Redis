@@ -1,20 +1,19 @@
 ﻿using System.Xml.Linq;
 using Microsoft.AspNetCore.DataProtection.Repositories;
-using NewLife.Caching;
 
 namespace NewLife.Redis.Extensions;
 
 /// <summary>在Redis中存储Xml</summary>
 public class RedisXmlRepository : IXmlRepository
 {
-    private readonly FullRedis _redis;
+    private readonly NewLife.Caching.Redis _redis;
 
     private readonly String _key;
 
     /// <summary>实例化</summary>
     /// <param name="redis"></param>
     /// <param name="key"></param>
-    public RedisXmlRepository(FullRedis redis, String key)
+    public RedisXmlRepository(NewLife.Caching.Redis redis, String key)
     {
         _redis = redis;
         _key = key;
