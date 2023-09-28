@@ -6,6 +6,7 @@ using NewLife.Caching.Queues;
 using NewLife.Collections;
 using NewLife.Data;
 using NewLife.Log;
+using NewLife.Model;
 using NewLife.Serialization;
 
 namespace NewLife.Caching;
@@ -76,6 +77,10 @@ public class FullRedis : Redis
     /// <param name="provider">服务提供者，将要解析IConfigProvider</param>
     /// <param name="name">缓存名称，也是配置中心key</param>
     public FullRedis(IServiceProvider provider, String name) : base(provider, name) { }
+    /// <summary>按照配置服务实例化Redis，用于NETCore依赖注入</summary>
+    /// <param name="provider">服务提供者，将要解析IConfigProvider</param>
+    /// <param name="options">Redis链接配置</param>
+    public FullRedis(IServiceProvider provider, RedisOptions options) : this(options) => Tracer = provider.GetService<ITracer>();
 
     /// <summary>销毁</summary>
     /// <param name="disposing"></param>
