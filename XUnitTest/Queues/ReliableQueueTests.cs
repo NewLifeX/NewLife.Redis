@@ -296,7 +296,7 @@ public class ReliableQueueTests
     }
 
     [Fact]
-    public void Queue_Benchmark_Mutilate()
+    public async void Queue_Benchmark_Mutilate()
     {
         var key = "ReliableQueue_benchmark_mutilate";
         _redis.Remove(key);
@@ -320,6 +320,7 @@ public class ReliableQueueTests
         //var count = 0;
         var ths = new List<Task<Int32>>();
         for (var i = 0; i < 16; i++)
+        {
             ths.Add(Task.Run(() =>
             {
                 var count = 0;
@@ -339,9 +340,10 @@ public class ReliableQueueTests
                 }
                 return count;
             }));
+        }
 
         //Task.WaitAll(ths.ToArray());
-        var rs = Task.WhenAll(ths).Result.Sum();
+        var rs = (await Task.WhenAll(ths)).Sum();
 
         Assert.Equal(1_000 * 100, rs);
     }
@@ -637,7 +639,7 @@ public class ReliableQueueTests
     }
 
     [Fact]
-    public void BlockTest()
+    public async void BlockTest()
     {
         // 一个队列两个消费，阻塞是否叠加
         var key = "ReliableQueue_BlockTest";
@@ -657,7 +659,7 @@ public class ReliableQueueTests
             await queue.TakeOneAsync(3);
         });
 
-        Task.WaitAll(t1, t2);
+        await Task.WhenAll(t1, t2);
 
         sw.Stop();
         XTrace.WriteLine("ReliableQueue_BlockTest: {0}", sw.Elapsed);

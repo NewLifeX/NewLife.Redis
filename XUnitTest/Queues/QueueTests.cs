@@ -189,7 +189,7 @@ public class QueueTests
     }
 
     [Fact]
-    public void Queue_Benchmark_Mutilate()
+    public async void Queue_Benchmark_Mutilate()
     {
         var key = "Queue_benchmark_mutilate";
         _redis.Remove(key);
@@ -220,7 +220,7 @@ public class QueueTests
                 }
             }));
 
-        Task.WaitAll(ths.ToArray());
+        await Task.WhenAll(ths.ToArray());
 
         Assert.Equal(1_000 * 100, count);
     }
