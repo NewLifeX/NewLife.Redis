@@ -1,5 +1,6 @@
 ﻿using System.Xml.Linq;
 using Microsoft.AspNetCore.DataProtection.Repositories;
+using NewLife.Log;
 
 namespace NewLife.Redis.Extensions;
 
@@ -7,6 +8,7 @@ namespace NewLife.Redis.Extensions;
 public class RedisXmlRepository : IXmlRepository
 {
     private readonly NewLife.Caching.Redis _redis;
+    private readonly Func<NewLife.Caching.Redis> _redisFactory;
 
     private readonly String _key;
 
@@ -17,6 +19,19 @@ public class RedisXmlRepository : IXmlRepository
     {
         _redis = redis;
         _key = key;
+
+        XTrace.WriteLine("DataProtection使用Redis持久化密钥，Key={0}", key);
+    }
+
+    /// <summary>实例化</summary>
+    /// <param name="redisFactory"></param>
+    /// <param name="key"></param>
+    public RedisXmlRepository(Func<NewLife.Caching.Redis> redisFactory, String key)
+    {
+        _redisFactory = redisFactory;
+        _key = key;
+
+        XTrace.WriteLine("DataProtection使用Redis持久化密钥，Key={0}", key);
     }
 
     /// <summary>获取所有元素</summary>
@@ -27,7 +42,8 @@ public class RedisXmlRepository : IXmlRepository
     /// <returns></returns>
     private IEnumerable<XElement> GetAllElementsCore()
     {
-        var list = _redis.GetList<String>(_key);
+        var rds = _redis ?? _redisFactory();
+        var list = rds.GetList<String>(_key);
         foreach (var item in list)
         {
             yield return XElement.Parse(item);
@@ -39,7 +55,8 @@ public class RedisXmlRepository : IXmlRepository
     /// <param name="friendlyName"></param>
     public void StoreElement(XElement element, String friendlyName)
     {
-        var list = _redis.GetList<String>(_key);
+        var rds = _redis ?? _redisFactory();
+        var list = rds.GetList<String>(_key);
         list.Add(element.ToString(SaveOptions.DisableFormatting));
     }
 }

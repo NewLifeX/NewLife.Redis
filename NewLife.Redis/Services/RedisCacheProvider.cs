@@ -29,24 +29,42 @@ public class RedisCacheProvider : CacheProvider
     public RedisCacheProvider(IServiceProvider serviceProvider)
     {
         var config = serviceProvider?.GetService<IConfigProvider>();
-        if (config != null)
-        {
-            var cacheConn = config["RedisCache"];
-            var queueConn = config["RedisQueue"];
+        if (config != null) Init(config, serviceProvider);
+    }
+    #endregion
 
-            // 实例化全局缓存和队列，如果未设置队列，则使用缓存对象
-            if (!cacheConn.IsNullOrEmpty())
+    #region 方法
+    /// <summary>初始化</summary>
+    /// <param name="config"></param>
+    /// <param name="serviceProvider"></param>
+    public void Init(IConfigProvider config, IServiceProvider serviceProvider = null)
+    {
+        var cacheConn = config["RedisCache"];
+        var queueConn = config["RedisQueue"];
+
+        // 实例化全局缓存和队列，如果未设置队列，则使用缓存对象
+        if (!cacheConn.IsNullOrEmpty())
+        {
+            if (serviceProvider != null)
             {
                 _redis = new FullRedis(serviceProvider, "RedisCache")
                 {
                     Log = serviceProvider.GetService<ILog>(),
                     Tracer = serviceProvider.GetService<ITracer>(),
                 };
-
-                _redisQueue = _redis;
-                Cache = _redis;
             }
-            if (!queueConn.IsNullOrEmpty())
+            else
+            {
+                _redis = new FullRedis { Name = "RedisCache", Log = XTrace.Log };
+                _redis.Init(cacheConn);
+            }
+
+            _redisQueue = _redis;
+            Cache = _redis;
+        }
+        if (!queueConn.IsNullOrEmpty())
+        {
+            if (serviceProvider != null)
             {
                 _redisQueue = new FullRedis(serviceProvider, "RedisQueue")
                 {
@@ -54,11 +72,14 @@ public class RedisCacheProvider : CacheProvider
                     Tracer = serviceProvider.GetService<ITracer>(),
                 };
             }
+            else
+            {
+                _redisQueue = new FullRedis { Name = "RedisQueue", Log = XTrace.Log };
+                _redisQueue.Init(queueConn);
+            }
         }
     }
-    #endregion
 
-    #region 方法
     /// <summary>获取队列。各功能模块跨进程共用的队列，默认使用LIST，带消费组时使用STREAM</summary>
     /// <remarks>
     /// 使用队列时，可根据是否设置消费组来决定使用简单队列还是完整队列。
