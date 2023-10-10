@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using NewLife;
 using NewLife.Caching;
 using NewLife.Caching.Services;
+using NewLife.Log;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -16,13 +17,15 @@ public static class DependencyInjectionExtensions
     /// </summary>
     /// <param name="services"></param>
     /// <param name="config"></param>
+    /// <param name="tracer"></param>
     /// <returns></returns>
-    public static FullRedis AddRedis(this IServiceCollection services, String config)
+    public static FullRedis AddRedis(this IServiceCollection services, String config, ITracer tracer = null!)
     {
         if (String.IsNullOrEmpty(config)) throw new ArgumentNullException(nameof(config));
 
         var redis = new FullRedis();
         redis.Init(config);
+        redis.Tracer = tracer;
 
         services.TryAddSingleton<ICache>(redis);
         services.AddSingleton<Redis>(redis);
@@ -38,8 +41,9 @@ public static class DependencyInjectionExtensions
     /// <param name="name"></param>
     /// <param name="config"></param>
     /// <param name="timeout"></param>
+    /// <param name="tracer"></param>
     /// <returns></returns>
-    public static FullRedis AddRedis(this IServiceCollection services, String name, String config, Int32 timeout = 0)
+    public static FullRedis AddRedis(this IServiceCollection services, String name, String config, Int32 timeout = 0, ITracer tracer = null!)
     {
         if (String.IsNullOrEmpty(config)) throw new ArgumentNullException(nameof(config));
 
@@ -47,6 +51,7 @@ public static class DependencyInjectionExtensions
         if (!name.IsNullOrEmpty()) redis.Name = name;
         redis.Init(config);
         if (timeout > 0) redis.Timeout = timeout;
+        redis.Tracer = tracer;
 
         services.TryAddSingleton<ICache>(redis);
         services.AddSingleton<Redis>(redis);
@@ -63,13 +68,15 @@ public static class DependencyInjectionExtensions
     /// <param name="psssword"></param>
     /// <param name="db"></param>
     /// <param name="timeout"></param>
+    /// <param name="tracer"></param>
     /// <returns></returns>
-    public static FullRedis AddRedis(this IServiceCollection services, String server, String psssword, Int32 db, Int32 timeout = 0)
+    public static FullRedis AddRedis(this IServiceCollection services, String server, String psssword, Int32 db, Int32 timeout = 0, ITracer tracer = null!)
     {
         if (String.IsNullOrEmpty(server)) throw new ArgumentNullException(nameof(server));
 
         var redis = new FullRedis(server, psssword, db);
         if (timeout > 0) redis.Timeout = timeout;
+        redis.Tracer = tracer;
 
         services.TryAddSingleton<ICache>(redis);
         services.AddSingleton<Redis>(redis);
@@ -93,7 +100,7 @@ public static class DependencyInjectionExtensions
         services.AddOptions();
         services.Configure(setupAction);
         //services.Add(ServiceDescriptor.Singleton<ICache, FullRedis>());
-        services.AddSingleton(sp => new FullRedis(sp.GetRequiredService<IOptions<RedisOptions>>().Value));
+        services.AddSingleton(sp => new FullRedis(sp, sp.GetRequiredService<IOptions<RedisOptions>>().Value));
 
         return services;
     }
@@ -114,7 +121,7 @@ public static class DependencyInjectionExtensions
 
         services.AddOptions();
         services.Configure(setupAction);
-        services.AddSingleton(sp => new PrefixedRedis(sp.GetRequiredService<IOptions<RedisOptions>>().Value));
+        services.AddSingleton(sp => new PrefixedRedis(sp, sp.GetRequiredService<IOptions<RedisOptions>>().Value));
 
         return services;
     }
