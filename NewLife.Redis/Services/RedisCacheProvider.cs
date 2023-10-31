@@ -16,11 +16,11 @@ namespace NewLife.Caching.Services;
 public class RedisCacheProvider : CacheProvider
 {
     #region 属性
-    private FullRedis _redis;
-    private FullRedis _redisQueue;
+    private FullRedis? _redis;
+    private FullRedis? _redisQueue;
 
     /// <summary>队列</summary>
-    public FullRedis RedisQueue { get => _redisQueue; set => _redisQueue = value; }
+    public FullRedis? RedisQueue { get => _redisQueue; set => _redisQueue = value; }
     #endregion
 
     #region 构造
@@ -37,7 +37,7 @@ public class RedisCacheProvider : CacheProvider
     /// <summary>初始化</summary>
     /// <param name="config"></param>
     /// <param name="serviceProvider"></param>
-    public void Init(IConfigProvider config, IServiceProvider serviceProvider = null)
+    public void Init(IConfigProvider config, IServiceProvider? serviceProvider = null)
     {
         var cacheConn = config["RedisCache"];
         var queueConn = config["RedisQueue"];
@@ -49,8 +49,8 @@ public class RedisCacheProvider : CacheProvider
             {
                 _redis = new FullRedis(serviceProvider, "RedisCache")
                 {
-                    Log = serviceProvider.GetService<ILog>(),
-                    Tracer = serviceProvider.GetService<ITracer>(),
+                    Log = serviceProvider.GetRequiredService<ILog>(),
+                    Tracer = serviceProvider.GetRequiredService<ITracer>(),
                 };
             }
             else
@@ -68,8 +68,8 @@ public class RedisCacheProvider : CacheProvider
             {
                 _redisQueue = new FullRedis(serviceProvider, "RedisQueue")
                 {
-                    Log = serviceProvider.GetService<ILog>(),
-                    Tracer = serviceProvider.GetService<ITracer>(),
+                    Log = serviceProvider.GetRequiredService<ILog>(),
+                    Tracer = serviceProvider.GetRequiredService<ITracer>(),
                 };
             }
             else
@@ -90,7 +90,7 @@ public class RedisCacheProvider : CacheProvider
     /// <param name="topic">主题</param>
     /// <param name="group">消费组。未指定消费组时使用简单队列（如RedisQueue），指定消费组时使用完整队列（如RedisStream）</param>
     /// <returns></returns>
-    public override IProducerConsumer<T> GetQueue<T>(String topic, String group = null)
+    public override IProducerConsumer<T> GetQueue<T>(String topic, String? group = null)
     {
         if (_redisQueue != null)
         {
