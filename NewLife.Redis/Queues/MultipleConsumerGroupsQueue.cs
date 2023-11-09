@@ -1,4 +1,6 @@
-﻿using NewLife.Log;
+﻿using System.Text;
+using System.Threading;
+using NewLife.Log;
 
 namespace NewLife.Caching.Queues;
 
@@ -47,6 +49,14 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
     /// 忽略异常消息(在对消息进行解析时发生异常，依然对当前消息进行消费)
     /// </summary>
     public Boolean IgnoreErrMsg { set; get; } = true;
+
+    /// <summary>
+    /// 订阅消费消息后自动确认
+    /// </summary>
+    /// <remarks>
+    /// 如改为false请确保手动调用Acknowledge确认消费。
+    /// </remarks>
+    public Boolean AutoConfirmConsumption { set; get; } = true;
 
     /// <summary>
     /// 日志对像
@@ -125,6 +135,7 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
     /// <exception cref="NullReferenceException"></exception>
     public void Connect(FullRedis redis, String queueName)
     {
+        _Redis = redis;
         if (_Redis != null)
         {
             _Queue = _Redis.GetStream<T>(queueName);
@@ -158,7 +169,10 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
         _Cts = new CancellationTokenSource();
 
         if (_Redis == null || _Queue == null)
+        {
             OnDisconnected("订阅时列队对像为Null。");
+            return;
+        }
 
         //尝试创建消费组
         try
@@ -183,6 +197,15 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
     }
 
     /// <summary>
+    /// 确认消费消息
+    /// </summary>
+    /// <param name="msgIds">消息编号</param>
+    public void Acknowledge(params string[] msgIds)
+    {
+        _Queue?.Acknowledge(msgIds);
+    }
+
+    /// <summary>
     /// 取消订阅
     /// </summary>
     public void UnSubscribe() => _Cts.Cancel();
@@ -193,6 +216,11 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
     /// <param name="subscribeAppName">订阅APP名称</param>
     private async Task getSubscribe(String subscribeAppName)
     {
+        if (_Redis == null)
+        {
+            OnDisconnected("Redis对像为Null。");
+            return;
+        }
         if (_Queue == null)
         {
             _Cts.Cancel();
@@ -201,9 +229,6 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
         }
         while (!_Cts.IsCancellationRequested)
         {
-            if (_Redis == null || _Queue == null)
-                OnDisconnected("获取订阅消息时列队对像为Null。");
-
 
             var msg = await _Queue.TakeMessageAsync(10);
             if (msg != null)
@@ -211,13 +236,16 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
                 try
                 {
                     var data = msg.GetBody<T>();
-                    _Queue.Acknowledge(msg.Id);
                     //通知订阅者
-                    OnReceived(data);
+                    OnReceived(msg.Id, data);
+                    if (AutoConfirmConsumption)
+                    {
+                        _Queue.Acknowledge(msg.Id);
+                    }
                 }
                 catch (Exception err)
                 {
-                    
+
                     if (XTrace.Debug) XTrace.WriteException(err);
                     //多消费组中，假如当前消息解析异常，原因大多是因为新增加消息格式等原因导致
                     //所以都可以正常忽略，如有特殊需要配置IgnoreErrMsg为false
@@ -231,7 +259,7 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
                         OnStopSubscribe(err.Message);
                         return;
                     }
-                   
+
                 }
             }
 
@@ -253,8 +281,9 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
     /// <summary>
     /// 通知订阅者接收到新消息
     /// </summary>
+    /// <param name="msgId">消息ID</param>
     /// <param name="data">命令</param>
-    public delegate void ReceivedHandler(T data);
+    public delegate void ReceivedHandler(string msgId, T data);
 
     /// <summary>
     /// 通知订阅者接收到新消息
@@ -264,8 +293,9 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
     /// <summary>
     /// 通知订阅者接收到新消息
     /// </summary>
-    /// <param name="data"></param>
-    protected void OnReceived(T data) => Received?.Invoke(data);
+    /// <param name="msgId">消息ID</param>
+    /// <param name="data">消息实体信息</param>
+    protected void OnReceived(string msgId, T data) => Received?.Invoke(msgId, data);
 
     /// <summary>
     /// 通知订阅者停止订阅

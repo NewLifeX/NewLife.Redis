@@ -46,10 +46,10 @@ class Program
         Console.WriteLine("完整队列 RedisStream");
         FullQueue.Start(redis);
 
-        //Redis多消费组可重复消费的队列
+        //Redis多消费组可重复消费的队列（完整队列的封装）
         Console.WriteLine();
         Console.WriteLine("多消费组 MultipleConsumerGroupsQueue");
-        MultipleConsumer.Start(redis, connStr);
+        MultipleConsumer.Start(redis);
 
         Console.WriteLine("Finish!");
         Console.ReadLine();
