@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Setup .NET
+    - uses: actions/checkout@v4
+    - name: Setup dotNET
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: 7.0.x
+        dotnet-version: 8.x
     - name: Build
       run: |
         dotnet pack -c Release -o out NewLife.Redis/NewLife.Redis.csproj
