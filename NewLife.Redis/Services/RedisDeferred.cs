@@ -25,11 +25,11 @@ public class RedisDeferred : DisposeBase
     public Int32 BatchSize { get; set; } = 10;
 
     /// <summary>批处理事件。定时取数后的批量处理逻辑</summary>
-    public EventHandler<BatchEventArgs> Process;
+    public EventHandler<BatchEventArgs>? Process;
 
     private FullRedis _redis;
     private readonly RedisSet<String> _set;
-    private TimerX _timer;
+    private TimerX? _timer;
     #endregion
 
     #region 构造
@@ -41,7 +41,7 @@ public class RedisDeferred : DisposeBase
         _redis = redis;
         Name = name;
 
-        _set = redis.GetSet<String>(name) as RedisSet<String>;
+        _set = (redis.GetSet<String>(name) as RedisSet<String>)!;
     }
 
     /// <summary>销毁</summary>
@@ -67,12 +67,16 @@ public class RedisDeferred : DisposeBase
     private void StartTimer()
     {
         if (_timer == null)
+        {
             lock (this)
+            {
                 if (_timer == null)
                 {
                     var p = Period > 100 ? Period : 1000;
                     _timer = new TimerX(DoWork, null, p, p) { Async = true };
                 }
+            }
+        }
     }
 
     private void DoWork(Object state)
@@ -105,7 +109,7 @@ public class RedisDeferred : DisposeBase
             }
         }
 
-        if (Period > 0) _timer.Period = Period;
+        if (Period > 0 && _timer != null) _timer.Period = Period;
     }
 
     /// <summary>批量处理</summary>

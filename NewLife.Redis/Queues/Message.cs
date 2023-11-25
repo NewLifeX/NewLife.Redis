@@ -7,15 +7,15 @@ namespace NewLife.Caching.Queues;
 public class Message
 {
     /// <summary>消息标识</summary>
-    public String Id { get; set; }
+    public String? Id { get; set; }
 
     /// <summary>消息体</summary>
-    public String[] Body { get; set; }
+    public String[]? Body { get; set; }
 
     /// <summary>解码消息体为具体类型</summary>
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
-    public T GetBody<T>()
+    public T? GetBody<T>()
     {
         var vs = Body;
         if (vs == null || vs.Length == 0) return default;
@@ -38,7 +38,7 @@ public class Message
             {
                 // 复杂类型序列化为json字符串
                 var val = vs[i + 1];
-                Object v;
+                Object? v;
                 if (pi.PropertyType == typeof(Object))
                     // 有的模型类属性就是Object类型
                     v = val;

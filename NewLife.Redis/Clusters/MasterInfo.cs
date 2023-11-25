@@ -5,19 +5,19 @@ public class MasterInfo
 {
     #region 属性
     /// <summary>名称</summary>
-    public String Name { get; set; }
+    public String? Name { get; set; }
 
     /// <summary>状态。ok</summary>
-    public String Status { get; set; }
+    public String? Status { get; set; }
 
     /// <summary>地址</summary>
-    public String IP { get; set; }
+    public String? IP { get; set; }
 
     /// <summary>端口</summary>
     public Int32 Port { get; set; }
 
     /// <summary>节点信息</summary>
-    public String EndPoint => IP.IsNullOrEmpty() ? null : $"{IP}:{Port}";
+    public String? EndPoint => IP.IsNullOrEmpty() ? null : $"{IP}:{Port}";
 
     /// <summary>从机数</summary>
     public Int32 Slaves { get; set; }
@@ -29,14 +29,14 @@ public class MasterInfo
     #region 构造
     /// <summary>已重载。</summary>
     /// <returns></returns>
-    public override String ToString() => !IP.IsNullOrEmpty() ? EndPoint : base.ToString();
+    public override String? ToString() => !IP.IsNullOrEmpty() ? EndPoint : base.ToString();
     #endregion
 
     #region 方法
     /// <summary>分析字符串</summary>
     /// <param name="str"></param>
     /// <returns></returns>
-    public static MasterInfo Parse(String str)
+    public static MasterInfo? Parse(String str)
     {
         if (str.IsNullOrEmpty()) return null;
 

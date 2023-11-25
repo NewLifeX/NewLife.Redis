@@ -133,7 +133,7 @@ public static class QueueExtensions
     /// <param name="log">日志对象</param>
     /// <param name="idField">消息标识字段名，用于处理错误重试</param>
     /// <returns></returns>
-    public static async Task ConsumeAsync<T>(this RedisReliableQueue<String> queue, Func<T, String, CancellationToken, Task> onMessage, CancellationToken cancellationToken = default, ILog log = null, String idField = null)
+    public static async Task ConsumeAsync<T>(this RedisReliableQueue<String> queue, Func<T, String, CancellationToken, Task> onMessage, CancellationToken cancellationToken = default, ILog? log = null, String? idField = null)
     {
         await Task.Yield();
 
@@ -169,7 +169,7 @@ public static class QueueExtensions
         {
             var msgId = "";
             var mqMsg = "";
-            ISpan span = null;
+            ISpan? span = null;
             try
             {
                 // 异步阻塞消费
@@ -184,7 +184,7 @@ public static class QueueExtensions
                     var dic = JsonParser.Decode(mqMsg);
                     var msg = JsonHelper.Convert<T>(dic);
 
-                    if (dic.TryGetValue("traceParent", out var tp)) span.Detach(tp + "");
+                    if (dic.TryGetValue("traceParent", out var tp)) span?.Detach(tp + "");
 
                     // 消息标识
                     foreach (var item in ids)
@@ -247,7 +247,7 @@ public static class QueueExtensions
     /// <param name="log">日志对象</param>
     /// <param name="idField">消息标识字段名，用于处理错误重试</param>
     /// <returns></returns>
-    public static async Task ConsumeAsync<T>(this RedisReliableQueue<String> queue, Action<T> onMessage, CancellationToken cancellationToken = default, ILog log = null, String idField = null)
+    public static async Task ConsumeAsync<T>(this RedisReliableQueue<String> queue, Action<T> onMessage, CancellationToken cancellationToken = default, ILog? log = null, String? idField = null)
     {
         await queue.ConsumeAsync<T>((m, k, t) => { onMessage(m); return Task.FromResult(0); }, cancellationToken, log, idField);
     }
@@ -259,7 +259,7 @@ public static class QueueExtensions
     /// <param name="cancellationToken">取消令牌</param>
     /// <param name="log">日志对象</param>
     /// <returns></returns>
-    public static async Task ConsumeAsync<T>(this RedisReliableQueue<String> queue, Action<String> onMessage, CancellationToken cancellationToken = default, ILog log = null)
+    public static async Task ConsumeAsync<T>(this RedisReliableQueue<String> queue, Action<String> onMessage, CancellationToken cancellationToken = default, ILog? log = null)
     {
         await Task.Yield();
 
@@ -291,7 +291,7 @@ public static class QueueExtensions
         while (!cancellationToken.IsCancellationRequested)
         {
             var mqMsg = "";
-            ISpan span = null;
+            ISpan? span = null;
             try
             {
                 // 异步阻塞消费

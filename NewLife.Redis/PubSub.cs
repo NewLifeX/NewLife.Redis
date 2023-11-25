@@ -66,7 +66,7 @@ public class PubSub : RedisBase
 
             //var rs = await client.ExecuteAsync<String[]>(null, new Object[] { new Object() }, source2.Token);
             var rs = await client.ReadMoreAsync<String[]>(source2.Token);
-            if (rs.Length == 3 && rs[0] == "message") onMessage(rs[1], rs[2]);
+            if (rs != null && rs.Length == 3 && rs[0] == "message") onMessage(rs[1], rs[2]);
         }
 
         await client.ExecuteAsync<String[]>("SUBSCRIBE", channels);

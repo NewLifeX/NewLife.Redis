@@ -25,13 +25,13 @@ public class RedisClient : DisposeBase
     public String Name { get; set; }
 
     /// <summary>客户端</summary>
-    public TcpClient Client { get; set; }
+    public TcpClient? Client { get; set; }
 
     /// <summary>服务器地址</summary>
     public NetUri Server { get; set; }
 
     /// <summary>宿主</summary>
-    public Redis Host { get; set; }
+    public Redis Host { get; set; } = null!;
 
     /// <summary>读写超时时间。默认为0取Host.Timeout</summary>
     public Int32 Timeout { get; set; }
@@ -49,7 +49,7 @@ public class RedisClient : DisposeBase
     /// <param name="server">服务器地址。一个redis对象可能有多服务器，例如Cluster集群</param>
     public RedisClient(Redis redis, NetUri server)
     {
-        Name = redis?.Name;
+        Name = redis.Name;
         Host = redis;
         Server = server;
     }
@@ -80,11 +80,11 @@ public class RedisClient : DisposeBase
     #endregion
 
     #region 核心方法
-    private Stream _stream;
+    private Stream? _stream;
     /// <summary>新建连接获取数据流</summary>
     /// <param name="create">新建连接</param>
     /// <returns></returns>
-    private Stream GetStream(Boolean create)
+    private Stream? GetStream(Boolean create)
     {
         var tc = Client;
         //NetworkStream ns = null;
@@ -137,7 +137,7 @@ public class RedisClient : DisposeBase
                 if (sp != SslProtocols.None)
                 {
                     var sslStream = new SslStream(ns, false, OnCertificateValidationCallback);
-                    sslStream.AuthenticateAsClient(uri.Host ?? uri.Address + "", new X509CertificateCollection(), sp, false);
+                    sslStream.AuthenticateAsClient(uri.Host ?? uri.Address + "", [], sp, false);
 
                     ns = sslStream;
                 }
@@ -175,7 +175,7 @@ public class RedisClient : DisposeBase
                 .Any(x => x.Certificate.Thumbprint == cert.Thumbprint);
     }
 
-    private async Task<Stream> GetStreamAsync(Boolean create)
+    private async Task<Stream?> GetStreamAsync(Boolean create)
     {
         var tc = Client;
         //NetworkStream ns = null;
@@ -218,7 +218,7 @@ public class RedisClient : DisposeBase
             if (sp != SslProtocols.None)
             {
                 var sslStream = new SslStream(ns, false, OnCertificateValidationCallback);
-                sslStream.AuthenticateAsClient(uri.Host ?? uri.Address + "", new X509CertificateCollection(), sp, false);
+                sslStream.AuthenticateAsClient(uri.Host ?? uri.Address + "", [], sp, false);
 
                 ns = sslStream;
             }
@@ -229,7 +229,7 @@ public class RedisClient : DisposeBase
         return ns;
     }
 
-    private static readonly Byte[] _NewLine = new[] { (Byte)'\r', (Byte)'\n' };
+    private static readonly Byte[] _NewLine = [(Byte)'\r', (Byte)'\n'];
 
     /// <summary>发出请求</summary>
     /// <param name="ms"></param>
@@ -237,7 +237,7 @@ public class RedisClient : DisposeBase
     /// <param name="args"></param>
     /// <param name="oriArgs">原始参数，仅用于输出日志</param>
     /// <returns></returns>
-    protected virtual void GetRequest(Stream ms, String cmd, Packet[] args, Object[] oriArgs)
+    protected virtual void GetRequest(Stream ms, String cmd, Packet[] args, Object[]? oriArgs)
     {
         // *<number of arguments>\r\n$<number of bytes of argument 1>\r\n<argument data>\r\n
         // *1\r\n$4\r\nINFO\r\n
@@ -270,10 +270,10 @@ public class RedisClient : DisposeBase
                 var sizes = size.ToString().GetBytes();
 
                 // 指令日志。简单类型显示原始值，复杂类型显示序列化后字符串
-                if (log != null)
+                if (log != null && oriArgs != null)
                 {
                     log.Append(' ');
-                    var ori = oriArgs?[i];
+                    var ori = oriArgs[i];
                     switch (ori.GetType().GetTypeCode())
                     {
                         case TypeCode.Object:
@@ -305,7 +305,7 @@ public class RedisClient : DisposeBase
     /// <param name="ns"></param>
     /// <param name="count"></param>
     /// <returns></returns>
-    protected virtual IList<Object> GetResponse(Stream ns, Int32 count)
+    protected virtual IList<Object?> GetResponse(Stream ns, Int32 count)
     {
         /*
          * 响应格式
@@ -320,7 +320,7 @@ public class RedisClient : DisposeBase
         var log = Log == null || Log == Logger.Null ? null : Pool.StringBuilder.Get();
 
         // 多行响应
-        var list = new List<Object>();
+        var list = new List<Object?>();
         for (var i = 0; i < count; i++)
         {
             // 解析响应
@@ -365,7 +365,7 @@ public class RedisClient : DisposeBase
     /// <param name="args"></param>
     /// <param name="oriArgs">原始参数，仅用于输出日志</param>
     /// <returns></returns>
-    protected virtual Object ExecuteCommand(String cmd, Packet[] args, Object[] oriArgs)
+    protected virtual Object? ExecuteCommand(String cmd, Packet[] args, Object[]? oriArgs)
     {
         var isQuit = cmd == "QUIT";
 
@@ -402,7 +402,7 @@ public class RedisClient : DisposeBase
     /// <param name="count">响应个数</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    protected virtual async Task<IList<Object>> GetResponseAsync(Stream ns, Int32 count, CancellationToken cancellationToken)
+    protected virtual async Task<IList<Object?>> GetResponseAsync(Stream ns, Int32 count, CancellationToken cancellationToken)
     {
         /*
          * 响应格式
@@ -413,7 +413,7 @@ public class RedisClient : DisposeBase
          * 5：多条回复。*开头， 例：*2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n
          */
 
-        var list = new List<Object>();
+        var list = new List<Object?>();
         var ms = ns;
         var log = Log == null || Log == Logger.Null ? null : Pool.StringBuilder.Get();
 
@@ -476,7 +476,7 @@ public class RedisClient : DisposeBase
     /// <param name="oriArgs">原始参数，仅用于输出日志</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    protected virtual async Task<Object> ExecuteCommandAsync(String cmd, Packet[] args, Object[] oriArgs, CancellationToken cancellationToken)
+    protected virtual async Task<Object?> ExecuteCommandAsync(String cmd, Packet[] args, Object[]? oriArgs, CancellationToken cancellationToken)
     {
         var isQuit = cmd == "QUIT";
 
@@ -507,7 +507,7 @@ public class RedisClient : DisposeBase
         return rs.FirstOrDefault();
     }
 
-    private void CheckLogin(String cmd)
+    private void CheckLogin(String? cmd)
     {
         if (Logined) return;
         if (cmd.EqualIgnoreCase("Auth")) return;
@@ -520,7 +520,7 @@ public class RedisClient : DisposeBase
     }
 
     private Int32 _selected = -1;
-    private void CheckSelect(String cmd)
+    private void CheckSelect(String? cmd)
     {
         var db = Host.Db;
         if (_selected == db) return;
@@ -550,16 +550,16 @@ public class RedisClient : DisposeBase
         }
     }
 
-    private static Packet ReadBlock(Stream ms, StringBuilder log) => ReadPacket(ms, log);
+    private static Packet? ReadBlock(Stream ms, StringBuilder? log) => ReadPacket(ms, log);
 
-    private Object[] ReadBlocks(Stream ms, StringBuilder log)
+    private Object?[] ReadBlocks(Stream ms, StringBuilder? log)
     {
         // 结果集数量
         var len = ReadLine(ms).ToInt(-1);
         log?.Append(len);
         if (len < 0) return new Object[0];
 
-        var arr = new Object[len];
+        var arr = new Object?[len];
         for (var i = 0; i < len; i++)
         {
             var b = ms.ReadByte();
@@ -586,7 +586,7 @@ public class RedisClient : DisposeBase
         return arr;
     }
 
-    private static Packet ReadPacket(Stream ms, StringBuilder log)
+    private static Packet? ReadPacket(Stream ms, StringBuilder? log)
     {
         var len = ReadLine(ms).ToInt(-1);
         log?.Append(len);
@@ -647,14 +647,14 @@ public class RedisClient : DisposeBase
     /// <param name="cmd"></param>
     /// <param name="args"></param>
     /// <returns></returns>
-    public virtual Object Execute(String cmd, params Object[] args)
+    public virtual Object? Execute(String cmd, params Object[] args)
     {
         // 埋点名称，支持二级命令
-        var act = cmd.EqualIgnoreCase("cluster", "xinfo", "xgroup", "xreadgroup") ? $"{cmd}-{args?.FirstOrDefault()}" : cmd;
+        var act = cmd.EqualIgnoreCase("cluster", "xinfo", "xgroup", "xreadgroup") ? $"{cmd}-{args.FirstOrDefault()}" : cmd;
         using var span = cmd.IsNullOrEmpty() ? null : Host.Tracer?.NewSpan($"redis:{Name}:{act}", args);
         try
         {
-            return ExecuteCommand(cmd, args?.Select(e => Host.Encoder.Encode(e)).ToArray(), args);
+            return ExecuteCommand(cmd, args.Select(e => Host.Encoder.Encode(e)).ToArray(), args);
         }
         catch (Exception ex)
         {
@@ -667,7 +667,7 @@ public class RedisClient : DisposeBase
     /// <param name="cmd"></param>
     /// <param name="args"></param>
     /// <returns></returns>
-    public virtual TResult Execute<TResult>(String cmd, params Object[] args)
+    public virtual TResult? Execute<TResult>(String cmd, params Object[] args)
     {
         // 管道模式
         if (_ps != null)
@@ -679,7 +679,7 @@ public class RedisClient : DisposeBase
         var rs = Execute(cmd, args);
         if (rs == null) return default;
         if (rs is TResult rs2) return rs2;
-        if (rs != null && TryChangeType(rs, typeof(TResult), out var target)) return (TResult)target;
+        if (rs != null && TryChangeType(rs, typeof(TResult), out var target)) return (TResult?)target;
 
         return default;
     }
@@ -689,7 +689,7 @@ public class RedisClient : DisposeBase
     /// <param name="args"></param>
     /// <param name="value"></param>
     /// <returns></returns>
-    public virtual Boolean TryExecute<TResult>(String cmd, Object[] args, out TResult value)
+    public virtual Boolean TryExecute<TResult>(String cmd, Object[] args, out TResult? value)
     {
         var rs = Execute(cmd, args);
         if (rs is TResult rs2)
@@ -701,14 +701,14 @@ public class RedisClient : DisposeBase
         value = default;
         if (rs == null) return false;
 
-        if (rs != null && TryChangeType(rs, typeof(TResult), out var target)) value = (TResult)target;
+        if (rs != null && TryChangeType(rs, typeof(TResult), out var target)) value = (TResult?)target;
 
         return true;
     }
 
     /// <summary>读取更多。用于PubSub等多次读取命令</summary>
     /// <returns></returns>
-    public virtual TResult ReadMore<TResult>()
+    public virtual TResult? ReadMore<TResult>()
     {
         var ns = GetStream(false);
         if (ns == null) return default;
@@ -719,7 +719,7 @@ public class RedisClient : DisposeBase
         //var rs = ExecuteCommand(null, null, null);
         if (rs == null) return default;
         if (rs is TResult rs2) return rs2;
-        if (rs != null && TryChangeType(rs, typeof(TResult), out var target)) return (TResult)target;
+        if (rs != null && TryChangeType(rs, typeof(TResult), out var target)) return (TResult?)target;
 
         return default;
     }
@@ -729,14 +729,14 @@ public class RedisClient : DisposeBase
     /// <param name="args">参数数组</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    public virtual async Task<Object> ExecuteAsync(String cmd, Object[] args, CancellationToken cancellationToken = default)
+    public virtual async Task<Object?> ExecuteAsync(String cmd, Object[] args, CancellationToken cancellationToken = default)
     {
         // 埋点名称，支持二级命令
         var act = cmd.EqualIgnoreCase("cluster", "xinfo", "xgroup") ? $"{cmd}-{args?.FirstOrDefault()}" : cmd;
         using var span = cmd.IsNullOrEmpty() ? null : Host.Tracer?.NewSpan($"redis:{Name}:{act}", args);
         try
         {
-            return await ExecuteCommandAsync(cmd, args?.Select(e => Host.Encoder.Encode(e)).ToArray(), args, cancellationToken);
+            return await ExecuteCommandAsync(cmd, args.Select(e => Host.Encoder.Encode(e)).ToArray(), args, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -749,14 +749,14 @@ public class RedisClient : DisposeBase
     /// <param name="cmd">命令</param>
     /// <param name="args">参数数组</param>
     /// <returns></returns>
-    public virtual async Task<TResult> ExecuteAsync<TResult>(String cmd, params Object[] args) => await ExecuteAsync<TResult>(cmd, args, CancellationToken.None);
+    public virtual async Task<TResult?> ExecuteAsync<TResult>(String cmd, params Object[] args) => await ExecuteAsync<TResult>(cmd, args, CancellationToken.None);
 
     /// <summary>异步执行命令。返回基本类型、对象、对象数组</summary>
     /// <param name="cmd">命令</param>
     /// <param name="args">参数数组</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    public virtual async Task<TResult> ExecuteAsync<TResult>(String cmd, Object[] args, CancellationToken cancellationToken)
+    public virtual async Task<TResult?> ExecuteAsync<TResult>(String cmd, Object[] args, CancellationToken cancellationToken)
     {
         // 管道模式
         if (_ps != null)
@@ -768,7 +768,7 @@ public class RedisClient : DisposeBase
         var rs = await ExecuteAsync(cmd, args, cancellationToken);
         if (rs == null) return default;
         if (rs is TResult rs2) return rs2;
-        if (rs != null && TryChangeType(rs, typeof(TResult), out var target)) return (TResult)target;
+        if (rs != null && TryChangeType(rs, typeof(TResult), out var target)) return (TResult?)target;
 
         return default;
     }
@@ -776,7 +776,7 @@ public class RedisClient : DisposeBase
     /// <summary>读取更多。用于PubSub等多次读取命令</summary>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    public virtual async Task<TResult> ReadMoreAsync<TResult>(CancellationToken cancellationToken)
+    public virtual async Task<TResult?> ReadMoreAsync<TResult>(CancellationToken cancellationToken)
     {
         var ns = await GetStreamAsync(false);
         if (ns == null) return default;
@@ -787,7 +787,7 @@ public class RedisClient : DisposeBase
         //var rs = ExecuteCommand(null, null, null);
         if (rs == null) return default;
         if (rs is TResult rs2) return rs2;
-        if (rs != null && TryChangeType(rs, typeof(TResult), out var target)) return (TResult)target;
+        if (rs != null && TryChangeType(rs, typeof(TResult), out var target)) return (TResult?)target;
 
         return default;
     }
@@ -797,7 +797,7 @@ public class RedisClient : DisposeBase
     /// <param name="type"></param>
     /// <param name="target"></param>
     /// <returns></returns>
-    public virtual Boolean TryChangeType(Object value, Type type, out Object target)
+    public virtual Boolean TryChangeType(Object value, Type type, out Object? target)
     {
         target = null;
 
@@ -834,6 +834,8 @@ public class RedisClient : DisposeBase
             if (objs.Length == 0) return false;
 
             var elmType = type.GetElementTypeEx();
+            if (elmType == null) return false;
+
             var arr = Array.CreateInstance(elmType, objs.Length);
             for (var i = 0; i < objs.Length; i++)
             {
@@ -849,7 +851,7 @@ public class RedisClient : DisposeBase
         return false;
     }
 
-    private IList<Command> _ps;
+    private IList<Command>? _ps;
     /// <summary>管道命令个数</summary>
     public Int32 PipelineCommands => _ps == null ? 0 : _ps.Count;
 
@@ -858,7 +860,7 @@ public class RedisClient : DisposeBase
 
     /// <summary>结束管道模式</summary>
     /// <param name="requireResult">要求结果</param>
-    public virtual Object[] StopPipeline(Boolean requireResult)
+    public virtual Object?[]? StopPipeline(Boolean requireResult)
     {
         var ps = _ps;
         if (ps == null) return null;
@@ -897,7 +899,8 @@ public class RedisClient : DisposeBase
             var list = GetResponse(ns, ps.Count);
             for (var i = 0; i < list.Count; i++)
             {
-                if (TryChangeType(list[i], ps[i].Type, out var target) && target != null) list[i] = target;
+                var rs = list[i];
+                if (rs != null && TryChangeType(rs, ps[i].Type, out var target) && target != null) list[i] = target;
             }
 
             return list.ToArray();
@@ -938,7 +941,7 @@ public class RedisClient : DisposeBase
     /// <param name="username"></param>
     /// <param name="password"></param>
     /// <returns></returns>
-    public Boolean Auth(String username, String password)
+    public Boolean Auth(String? username, String password)
     {
         var rs = username.IsNullOrEmpty() ?
             Execute<String>("AUTH", password) :
@@ -984,18 +987,18 @@ public class RedisClient : DisposeBase
     /// <typeparam name="T"></typeparam>
     /// <param name="keys"></param>
     /// <returns></returns>
-    public IDictionary<String, T> GetAll<T>(IEnumerable<String> keys)
+    public IDictionary<String, T?> GetAll<T>(IEnumerable<String> keys)
     {
         if (keys == null || !keys.Any()) throw new ArgumentNullException(nameof(keys));
 
         var ks = keys.ToArray();
 
-        var dic = new Dictionary<String, T>();
+        var dic = new Dictionary<String, T?>();
         if (Execute("MGET", ks) is not Object[] rs) return dic;
 
         for (var i = 0; i < ks.Length && i < rs.Length; i++)
         {
-            if (rs[i] is Packet pk) dic[ks[i]] = (T)Host.Encoder.Decode(pk, typeof(T));
+            if (rs[i] is Packet pk) dic[ks[i]] = (T?)Host.Encoder.Decode(pk, typeof(T));
         }
 
         return dic;

@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
@@ -27,13 +28,13 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 {
     #region 属性
     /// <summary>服务器，带端口。例如127.0.0.1:6397，支持逗号分隔的多地址，网络异常时，自动切换到其它节点，60秒后切回来</summary>
-    public String Server { get; set; }
+    public String? Server { get; set; }
 
     /// <summary>用户名。Redis6.0支持</summary>
-    public String UserName { get; set; }
+    public String? UserName { get; set; }
 
     /// <summary>密码</summary>
-    public String Password { get; set; }
+    public String? Password { get; set; }
 
     /// <summary>目标数据库。默认0</summary>
     public Int32 Db { get; set; }
@@ -61,7 +62,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
     /// <summary>X509证书。用于SSL连接时验证证书指纹，可以直接加载pem证书文件，未指定时不验证证书</summary>
     /// <remarks>var cert = new X509Certificate2("abc.pem", "pass");</remarks>
-    public X509Certificate2 Certificate { get; set; }
+    public X509Certificate2? Certificate { get; set; }
 
     /// <summary>失败时抛出异常。默认true</summary>
     public Boolean ThrowOnFailure { get; set; } = true;
@@ -70,19 +71,19 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     public Int32 MaxMessageSize { get; set; } = 1024 * 1024;
 
     /// <summary>性能计数器</summary>
-    public PerfCounter Counter { get; set; }
+    public PerfCounter? Counter { get; set; }
 
     /// <summary>性能跟踪器。仅记录read/write，形成调用链，key在tag中，没有记录异常。高速海量操作时不建议开启</summary>
-    public ITracer Tracer { get; set; }
+    public ITracer? Tracer { get; set; }
 
-    private IDictionary<String, String> _Info;
+    private IDictionary<String, String>? _Info;
     /// <summary>服务器信息</summary>
     public IDictionary<String, String> Info => _Info ??= GetInfo();
     #endregion
 
     #region 构造
     /// <summary>实例化</summary>
-    public Redis() { }
+    public Redis() : base() { }
 
     /// <summary>实例化Redis，指定服务器地址、密码、库</summary>
     /// <param name="server"></param>
@@ -117,7 +118,8 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     {
         Name = name;
         Tracer = provider.GetService<ITracer>();
-        Log = provider.GetService<ILog>();
+        var log = provider.GetService<ILog>();
+        if (log != null) Log = log;
 
         var configProvider = provider.GetRequiredService<IConfigProvider>();
         configProvider.Bind(this, true, name);
@@ -162,7 +164,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     #endregion
 
     #region 配置方法
-    private String _configOld;
+    private String? _configOld;
     /// <summary>使用连接字符串初始化</summary>
     /// <param name="config"></param>
     public override void Init(String config)
@@ -196,7 +198,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
             // 连接字符串可能独立写了port
             var port = dic["Port"].ToInt();
-            if (port > 0 && !Server.Contains(':')) Server += ":" + port;
+            if (port > 0 && !Server.IsNullOrEmpty() && !Server.Contains(':')) Server += ":" + port;
 
             if (dic.TryGetValue("Timeout", out str))
                 Timeout = str.ToInt();
@@ -235,22 +237,22 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     #region 客户端池
     private class MyPool : ObjectPool<RedisClient>
     {
-        public Redis Instance { get; set; }
+        public Redis Instance { get; set; } = null!;
 
-        public Func<RedisClient> Callback { get; set; }
+        public Func<RedisClient> Callback { get; set; } = null!;
 
         protected override RedisClient OnCreate() => Callback();
 
         protected override Boolean OnGet(RedisClient value)
         {
             // 借出时清空残留
-            value?.Reset();
+            value.Reset();
 
             return base.OnGet(value);
         }
     }
 
-    private NetUri[] _servers;
+    private NetUri[]? _servers;
     private Int32 _idxServer;
     private Int32 _idxLast = -1;
     private DateTime _nextTrace;
@@ -263,7 +265,10 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         var svrs = _servers;
         if (svrs != null) return svrs;
 
-        var ss = Server.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        var server = Server?.Trim();
+        if (server.IsNullOrEmpty()) throw new ArgumentNullException(nameof(Server));
+
+        var ss = server.Split(',', StringSplitOptions.RemoveEmptyEntries);
         var uris = new NetUri[ss.Length];
         for (var i = 0; i < ss.Length; i++)
         {
@@ -328,7 +333,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         return rc;
     }
 
-    private IPool<RedisClient> _Pool;
+    private IPool<RedisClient>? _Pool;
     /// <summary>连接池</summary>
     public IPool<RedisClient> Pool
     {
@@ -420,7 +425,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
                 client.TryDispose();
 
                 // 网络异常时，自动切换到其它节点
-                if (ex is SocketException or IOException && i < _servers.Length)
+                if (ex is SocketException or IOException && _servers != null && i < _servers.Length)
                     _idxServer++;
                 else
                     Thread.Sleep(delay *= 2);
@@ -518,7 +523,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
                 client.TryDispose();
 
                 // 网络异常时，自动切换到其它节点
-                if (ex is SocketException or IOException && i < _servers.Length)
+                if (ex is SocketException or IOException && _servers != null && i < _servers.Length)
                     _idxServer++;
                 else
                     Thread.Sleep(delay *= 2);
@@ -532,7 +537,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         } while (true);
     }
 
-    private readonly ThreadLocal<RedisClient> _client = new();
+    private readonly ThreadLocal<RedisClient?> _client = new();
     /// <summary>开始管道模式</summary>
     public virtual RedisClient StartPipeline()
     {
@@ -551,7 +556,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
     /// <summary>结束管道模式</summary>
     /// <param name="requireResult">要求结果。默认true</param>
-    public virtual Object[] StopPipeline(Boolean requireResult = true)
+    public virtual Object?[]? StopPipeline(Boolean requireResult = true)
     {
         var rds = _client.Value;
         if (rds == null) return null;
@@ -594,7 +599,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <returns></returns>
     public virtual Redis CreateSub(Int32 db)
     {
-        var rds = GetType().CreateInstance() as Redis;
+        var rds = (GetType().CreateInstance() as Redis)!;
         rds.Server = Server;
         rds.Db = db;
         rds.UserName = UserName;
@@ -621,7 +626,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         {
             if (Count > 10000) throw new InvalidOperationException("数量过大时，禁止获取所有键，请使用FullRedis.Search");
 
-            return Execute(rds => rds.Execute<String[]>("KEYS", "*"));
+            return Execute(rds => rds.Execute<String[]>("KEYS", "*")) ?? new String[0];
         }
     }
 
@@ -633,7 +638,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         var rs = all ?
             Execute(rds => rds.Execute("INFO", "all") as Packet) :
             Execute(rds => rds.Execute("INFO") as Packet);
-        if (rs == null || rs.Count == 0) return null;
+        if (rs == null || rs.Count == 0) return new Dictionary<String, String>();
 
         var inf = rs.ToStr();
         return inf.SplitAsDictionary(":", "\r\n");
@@ -664,6 +669,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
     /// <summary>获取单体</summary>
     /// <param name="key">键</param>
+    [return: MaybeNull]
     public override T Get<T>(String key) => Execute(key, (rds, k) => rds.Execute<T>("GET", k));
 
     /// <summary>批量移除缓存项</summary>
@@ -816,6 +822,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <param name="key">键</param>
     /// <param name="value">值</param>
     /// <returns></returns>
+    [return: MaybeNull]
     public override T Replace<T>(String key, T value) => Execute(key, (rds, k) => rds.Execute<T>("GETSET", k, value), true);
 
     /// <summary>尝试获取指定键，返回是否包含值。有可能缓存项刚好是默认值，或者只是反序列化失败</summary>
@@ -826,12 +833,12 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <param name="key">键</param>
     /// <param name="value">值。即使有值也不一定能够返回，可能缓存项刚好是默认值，或者只是反序列化失败</param>
     /// <returns>返回是否包含值，即使反序列化失败</returns>
-    public override Boolean TryGetValue<T>(String key, out T value)
+    public override Boolean TryGetValue<T>(String key, [MaybeNull] out T value)
     {
-        T v1 = default;
+        T? v1 = default;
         var rs1 = Execute(key, (rds, k) =>
         {
-            var rs2 = rds.TryExecute("GET", new[] { k }, out T v2);
+            var rs2 = rds.TryExecute("GET", new[] { k }, out T? v2);
             v1 = v2;
             return rs2;
         });

@@ -7,7 +7,7 @@ public interface IRedisCluster
     /// <param name="key">键</param>
     /// <param name="write">可写</param>
     /// <returns></returns>
-    IRedisNode SelectNode(String key, Boolean write);
+    IRedisNode? SelectNode(String key, Boolean write);
 
     /// <summary>根据异常重选节点</summary>
     /// <param name="key">键</param>
@@ -15,7 +15,7 @@ public interface IRedisCluster
     /// <param name="node"></param>
     /// <param name="exception"></param>
     /// <returns></returns>
-    IRedisNode ReselectNode(String key, Boolean write, IRedisNode node, Exception exception);
+    IRedisNode? ReselectNode(String key, Boolean write, IRedisNode node, Exception exception);
 
     /// <summary>重置节点。设置成功状态</summary>
     /// <param name="node"></param>

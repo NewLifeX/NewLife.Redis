@@ -65,7 +65,7 @@ public class RedisCache : IDistributedCache, IDisposable
     /// </summary>
     /// <param name="key"></param>
     /// <returns></returns>
-    public Byte[] Get(String key) => _redis.Get<Byte[]>(key);
+    public Byte[]? Get(String key) => _redis.Get<Byte[]>(key);
 
     /// <summary>
     /// 异步获取
@@ -73,7 +73,7 @@ public class RedisCache : IDistributedCache, IDisposable
     /// <param name="key"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public Task<Byte[]> GetAsync(String key, CancellationToken token = default) => Task.Run(() => _redis.Get<Byte[]>(key), token);
+    public Task<Byte[]?> GetAsync(String key, CancellationToken token = default) => Task.Run(() => _redis.Get<Byte[]>(key), token);
 
     /// <summary>
     /// 设置

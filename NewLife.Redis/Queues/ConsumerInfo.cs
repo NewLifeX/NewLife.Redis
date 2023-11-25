@@ -8,7 +8,7 @@ public class ConsumerInfo
 {
     #region 属性
     /// <summary>名称</summary>
-    public String Name { get; set; }
+    public String? Name { get; set; }
 
     /// <summary>挂起数</summary>
     public Int32 Pending { get; set; }
@@ -24,7 +24,9 @@ public class ConsumerInfo
     {
         for (var i = 0; i < vs.Length - 1; i += 2)
         {
-            var key = (vs[i] as Packet).ToStr();
+            var key = (vs[i] as Packet)!.ToStr();
+            if (key.IsNullOrEmpty()) continue;
+
             switch (key)
             {
                 case "name": Name = (vs[i + 1] as Packet)?.ToStr(); break;

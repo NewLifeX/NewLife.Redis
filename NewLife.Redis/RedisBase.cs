@@ -1,6 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
-using NewLife.Data;
+﻿using NewLife.Data;
 using NewLife.Reflection;
 using NewLife.Serialization;
 
@@ -66,7 +64,7 @@ public abstract class RedisBase
     /// <param name="pk"></param>
     /// <param name="type"></param>
     /// <returns></returns>
-    protected virtual Object FromBytes(Packet pk, Type type)
+    protected virtual Object? FromBytes(Packet pk, Type type)
     {
         if (type == typeof(Packet)) return pk;
         if (type == typeof(Byte[])) return pk.ToArray();
@@ -83,6 +81,6 @@ public abstract class RedisBase
     /// <typeparam name="T"></typeparam>
     /// <param name="pk"></param>
     /// <returns></returns>
-    protected T FromBytes<T>(Packet pk) => (T)FromBytes(pk, typeof(T));
+    protected T? FromBytes<T>(Packet pk) => (T?)FromBytes(pk, typeof(T));
     #endregion
 }

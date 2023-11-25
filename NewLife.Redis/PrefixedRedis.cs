@@ -10,7 +10,7 @@ public class PrefixedRedis : FullRedis
 {
     #region 属性
     /// <summary>键前缀</summary>
-    public String Prefix { get; set; }
+    public String Prefix { get; set; } = null!;
     #endregion
 
     #region 构造
@@ -18,6 +18,7 @@ public class PrefixedRedis : FullRedis
     /// 实例化支持键前缀的Redis
     /// </summary>
     public PrefixedRedis() { }
+
     /// <summary>
     /// 实例化支持键前缀的Redis, Remove，GetAll\SetAll Rename  Search 支持前缀的有问题
     /// </summary>
@@ -26,15 +27,18 @@ public class PrefixedRedis : FullRedis
     /// <param name="password"></param>
     /// <param name="db"></param>
     public PrefixedRedis(String server, String password, Int32 db, String prefix) : base(server, password, db) => Prefix = prefix ?? String.Empty;
+
     /// <summary>
     /// 实例化支持键前缀的Redis
     /// </summary>
     /// <param name="options"></param>
     public PrefixedRedis(RedisOptions options) : base(options) => Prefix = options.Prefix ?? String.Empty;
+
     /// <summary>按照配置服务实例化Redis，用于NETCore依赖注入</summary>
     /// <param name="provider">服务提供者，将要解析IConfigProvider</param>
     /// <param name="name">缓存名称，也是配置中心key</param>
     public PrefixedRedis(IServiceProvider provider, String name) : base(provider, name) { }
+
     /// <summary>按照配置服务实例化Redis，用于NETCore依赖注入</summary>
     /// <param name="provider">服务提供者，将要解析IConfigProvider</param>
     /// <param name="options">Redis链接配置</param>
@@ -47,7 +51,7 @@ public class PrefixedRedis : FullRedis
     /// <param name="func"></param>
     /// <param name="write">是否写入操作</param>
     /// <returns></returns>
-    public override T Execute<T>(String key, Func<RedisClient, String, T> func, Boolean write = false) => base.Execute(key is null || key.StartsWith(Prefix) ? key : Prefix  + key, func, write);
+    public override T Execute<T>(String key, Func<RedisClient, String, T> func, Boolean write = false) => base.Execute(key is null || key.StartsWith(Prefix) ? key : Prefix + key, func, write);
 
     /// <summary>重载执行，支持集群</summary>
     /// <typeparam name="T"></typeparam>
@@ -59,9 +63,11 @@ public class PrefixedRedis : FullRedis
 
     #region 子库
     /// <inheritdoc/>
-    public override Redis CreateSub(Int32 db) { 
-        var rd = base.CreateSub(db) as PrefixedRedis;
+    public override Redis CreateSub(Int32 db)
+    {
+        var rd = (base.CreateSub(db) as PrefixedRedis)!;
         rd.Prefix = Prefix;
+
         return rd;
     }
     #endregion
@@ -80,12 +86,12 @@ public class PrefixedRedis : FullRedis
 
     #region 集合操作
     /// <inheritdoc/>
-    public override void SetAll<T>(IDictionary<String, T> values, Int32 expire = -1) 
-        => base.SetAll<T>(values.ToDictionary(k => k.Key.StartsWith(Prefix) ? k.Key : Prefix + k.Key, v => v.Value), expire);  
-        
+    public override void SetAll<T>(IDictionary<String, T> values, Int32 expire = -1)
+        => base.SetAll<T>(values.ToDictionary(k => k.Key.StartsWith(Prefix) ? k.Key : Prefix + k.Key, v => v.Value), expire);
+
     /// <inheritdoc/>
-    public override IDictionary<String, T> GetAll<T>(IEnumerable<String> keys) 
-        => base.GetAll<T>(keys.Select(k => k.StartsWith(Prefix) ? k :  Prefix + k));
+    public override IDictionary<String, T> GetAll<T>(IEnumerable<String> keys)
+        => base.GetAll<T>(keys.Select(k => k.StartsWith(Prefix) ? k : Prefix + k));
     /// <inheritdoc/>
     public override IDictionary<String, T> GetDictionary<T>(String key) => base.GetDictionary<T>(Prefix + key);
     /// <inheritdoc/>

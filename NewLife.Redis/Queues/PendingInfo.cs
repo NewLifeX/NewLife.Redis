@@ -10,13 +10,13 @@ public class PendingInfo
     public Int32 Count { get; set; }
 
     /// <summary>开始Id</summary>
-    public String StartId { get; set; }
+    public String? StartId { get; set; }
 
     /// <summary>结束Id</summary>
-    public String EndId { get; set; }
+    public String? EndId { get; set; }
 
     /// <summary>消费者挂起情况</summary>
-    public IDictionary<String, Int32> Consumers { get; set; }
+    public IDictionary<String, Int32>? Consumers { get; set; }
     #endregion
 
     #region 方法
@@ -40,7 +40,7 @@ public class PendingInfo
                     var consumer = (vs3[0] as Packet)?.ToStr();
                     if (!consumer.IsNullOrEmpty())
                     {
-                        var count = (vs3[1] as Packet).ToStr().ToInt();
+                        var count = (vs3[1] as Packet)?.ToStr().ToInt() ?? 0;
                         dic[consumer] = count;
                     }
                 }

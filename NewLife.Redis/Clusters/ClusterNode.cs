@@ -7,28 +7,28 @@ public class ClusterNode : RedisNode
 {
     #region 属性
     /// <summary>标识</summary>
-    public String ID { get; set; }
+    public String ID { get; set; } = null!;
 
     /// <summary>标志。master/slave/myself</summary>
-    public String Flags { get; set; }
+    public String Flags { get; set; } = null!;
 
     /// <summary>主机。当前节点对应的主机</summary>
-    public String Master { get; set; }
+    public String Master { get; set; } = null!;
 
     /// <summary>链接状态</summary>
     public Int32 LinkState { get; set; }
 
     /// <summary>当前节点的从节点集合</summary>
-    public IList<ClusterNode> Slaves { get; set; }
+    public IList<ClusterNode>? Slaves { get; set; }
 
     /// <summary>本节点数据槽</summary>
     public IList<Slot> Slots { get; private set; } = new List<Slot>();
 
     /// <summary>正在转入</summary>
-    public IDictionary<Int32, String> Importings { get; private set; }
+    public IDictionary<Int32, String>? Importings { get; private set; }
 
     /// <summary>正在转出</summary>
-    public IDictionary<Int32, String> Migratings { get; private set; }
+    public IDictionary<Int32, String>? Migratings { get; private set; }
     #endregion
 
     #region 构造

@@ -7,10 +7,10 @@ public class PendingItem
 {
     #region 属性
     /// <summary>消息Id</summary>
-    public String Id { get; set; }
+    public String? Id { get; set; }
 
     /// <summary>消费者</summary>
-    public String Consumer { get; set; }
+    public String? Consumer { get; set; }
 
     /// <summary>空闲时间。从读取到现在经历过的毫秒数</summary>
     public Int32 Idle { get; set; }
