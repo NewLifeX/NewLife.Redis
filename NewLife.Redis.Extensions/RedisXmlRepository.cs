@@ -43,7 +43,7 @@ public class RedisXmlRepository : IXmlRepository
     private IEnumerable<XElement> GetAllElementsCore()
     {
         var rds = _redis ?? _redisFactory!();
-        var list = rds.GetList<String>(_key);
+        var list = rds.GetList<String>(_key) ?? [];
         foreach (var item in list)
         {
             yield return XElement.Parse(item);
