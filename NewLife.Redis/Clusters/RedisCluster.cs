@@ -50,7 +50,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
     public void ParseNodes(String nodes)
     {
         var showLog = Nodes == null;
-        if (showLog) WriteLog("分析[{0}]集群节点：", Redis.Name);
+        if (showLog) WriteLog("分析[{0}]集群节点：", Redis?.Name);
 
         var list = new List<ClusterNode>();
         foreach (var item in nodes.Split("\r", "\n"))
