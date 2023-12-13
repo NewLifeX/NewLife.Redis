@@ -37,11 +37,14 @@ public class RedisCache : IDistributedCache, IDisposable
 
         _options = optionsAccessor.Value;
 
-        _redis = new FullRedis
-        {
-            Name = _options.InstanceName,
-            Tracer = serviceProvider.GetService<ITracer>(),
-        };
+        //_redis = new FullRedis
+        //{
+        //    Name = _options.InstanceName,
+        //    Tracer = serviceProvider.GetService<ITracer>(),
+        //};
+        _redis = _options.Prefix.IsNullOrEmpty() ? new FullRedis() : new PrefixedRedis();
+        _redis.Name = _options.InstanceName;
+        _redis.Tracer = serviceProvider.GetService<ITracer>();
 
         if (!_options.Configuration.IsNullOrEmpty())
             _redis.Init(_options.Configuration);
@@ -91,13 +94,13 @@ public class RedisCache : IDistributedCache, IDisposable
             _redis.Set(key, value);
         else
             if (options.AbsoluteExpiration != null)
-                _redis.Set(key, value, options.AbsoluteExpiration.Value - DateTime.Now);
-            else if (options.AbsoluteExpirationRelativeToNow != null)
-                _redis.Set(key, value, options.AbsoluteExpirationRelativeToNow.Value);
-            else if (options.SlidingExpiration != null)
-                _redis.Set(key, value, options.SlidingExpiration.Value);
-            else
-                _redis.Set(key, value);
+            _redis.Set(key, value, options.AbsoluteExpiration.Value - DateTime.Now);
+        else if (options.AbsoluteExpirationRelativeToNow != null)
+            _redis.Set(key, value, options.AbsoluteExpirationRelativeToNow.Value);
+        else if (options.SlidingExpiration != null)
+            _redis.Set(key, value, options.SlidingExpiration.Value);
+        else
+            _redis.Set(key, value);
     }
 
     /// <summary>
