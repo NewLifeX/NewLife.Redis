@@ -386,10 +386,88 @@ public class FullRedis : Redis
     #region 基础操作
     /// <summary>批量移除缓存项</summary>
     /// <param name="keys">键集合</param>
-    public override Int32 Remove(params String[] keys) => Execute(keys, (rds, ks) => rds.Execute<Int32>("DEL", ks), true).Sum();
+    public override Int32 Remove(params String[] keys)
+    {
+        if (keys == null || keys.Length == 0) return 0;
+        if (keys.Length == 1) return base.Remove(keys[0]);
+
+        return Execute(keys, (rds, ks) => rds.Execute<Int32>("DEL", ks), true).Sum();
+    }
     #endregion
 
     #region 集合操作
+    /// <summary>批量获取缓存项</summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="keys"></param>
+    /// <returns></returns>
+    public override IDictionary<String, T> GetAll<T>(IEnumerable<String> keys)
+    {
+        if (keys == null || !keys.Any()) return new Dictionary<String, T>();
+
+        var keys2 = keys.ToArray();
+        if (keys2.Length == 1 || Cluster == null) return base.GetAll<T>(keys2);
+
+        //Execute(keys.FirstOrDefault(), (rds, k) => rds.GetAll<T>(keys));
+        var rs = Execute(keys2, (rds, ks) => rds.GetAll<T>(ks), false);
+
+        var dic = new Dictionary<String, T?>();
+        foreach (var item in rs)
+        {
+            if (item != null && item.Count > 0)
+            {
+                foreach (var kv in item)
+                {
+                    dic[kv.Key] = kv.Value;
+                }
+            }
+        }
+
+        return dic;
+    }
+
+    /// <summary>批量设置缓存项</summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="values"></param>
+    /// <param name="expire">过期时间，秒。小于0时采用默认缓存时间<seealso cref="Cache.Expire"/></param>
+    public override void SetAll<T>(IDictionary<String, T> values, Int32 expire = -1)
+    {
+        if (values == null || values.Count == 0) return;
+
+        if (expire < 0) expire = Expire;
+
+        // 优化少量读取
+        if (values.Count <= 2)
+        {
+            foreach (var item in values)
+            {
+                Set(item.Key, item.Value, expire);
+            }
+            return;
+        }
+
+        //Execute(values.FirstOrDefault().Key, (rds, k) => rds.SetAll(values), true);
+        var rs = Execute([.. values.Keys], (rds, ks) => rds.SetAll(ks.ToDictionary(e => e, e => values[e])), true);
+
+        // 使用管道批量设置过期时间
+        if (expire > 0)
+        {
+            var ts = TimeSpan.FromSeconds(expire);
+
+            StartPipeline();
+            try
+            {
+                foreach (var item in values)
+                {
+                    SetExpire(item.Key, ts);
+                }
+            }
+            finally
+            {
+                StopPipeline(true);
+            }
+        }
+    }
+
     /// <summary>获取列表</summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="key"></param>

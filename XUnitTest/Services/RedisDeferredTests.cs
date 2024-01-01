@@ -88,6 +88,7 @@ public class RedisDeferredTests
         Assert.Equal(2, keys.Length);
         //Assert.Equal(key, keys[0]);
 
+        //Thread.Sleep(60_000);
         key = keys[^1];
         Assert.Equal(3, vs.Count);
         Assert.Equal(vv[0], vs[$"{key}:Total"]);
