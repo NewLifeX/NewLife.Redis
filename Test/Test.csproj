@@ -10,7 +10,7 @@
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Caching.Redis" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
-    <PackageReference Include="NewLife.Core" Version="10.6.2023.1201" />
+    <PackageReference Include="NewLife.Core" Version="10.6.2024.101" />
   </ItemGroup>
 
   <ItemGroup>

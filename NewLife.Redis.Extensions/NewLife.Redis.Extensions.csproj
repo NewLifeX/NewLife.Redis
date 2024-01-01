@@ -5,7 +5,7 @@
     <AssemblyTitle>新生命Redis扩展</AssemblyTitle>
     <Description>Redis扩展库，便于注入Redis，支持分布式缓存IDistributedCache和数据保护IDataProtection</Description>
     <Company>新生命开发团队</Company>
-    <Copyright>©2002-2023 新生命开发团队</Copyright>
+    <Copyright>©2002-2024 新生命开发团队</Copyright>
     <VersionPrefix>5.5</VersionPrefix>
     <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
     <Version>$(VersionPrefix).$(VersionSuffix)</Version>

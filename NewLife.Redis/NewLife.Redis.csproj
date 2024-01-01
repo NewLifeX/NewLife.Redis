@@ -6,8 +6,8 @@
     <AssemblyTitle>新生命Redis客户端组件</AssemblyTitle>
     <Description>Redis基础操作、消息队列，经过日均100亿次调用量的项目验证。旧版NET45找2021年</Description>
     <Company>新生命开发团队</Company>
-    <Copyright>©2002-2023 新生命开发团队</Copyright>
-    <VersionPrefix>5.5</VersionPrefix>
+    <Copyright>©2002-2024 新生命开发团队</Copyright>
+    <VersionPrefix>5.6</VersionPrefix>
     <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
     <Version>$(VersionPrefix).$(VersionSuffix)</Version>
     <FileVersion>$(Version)</FileVersion>
@@ -29,7 +29,7 @@
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Redis</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>支持.NET8.0</PackageReleaseNotes>
+    <PackageReleaseNotes>支持集群中的批量操作</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -46,7 +46,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="10.6.2023.1201" />
+    <PackageReference Include="NewLife.Core" Version="10.6.2024.101" />
   </ItemGroup>
 
   <ItemGroup>
