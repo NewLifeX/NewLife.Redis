@@ -204,8 +204,8 @@ public class FullRedis : Redis
 
     /// <summary>重载执行，支持集群</summary>
     /// <typeparam name="T"></typeparam>
-    /// <param name="key"></param>
-    /// <param name="func"></param>
+    /// <param name="key">用于选择集群节点的key</param>
+    /// <param name="func">命令函数</param>
     /// <param name="write">是否写入操作</param>
     /// <returns></returns>
     public override T Execute<T>(String key, Func<RedisClient, String, T> func, Boolean write = false)
@@ -219,6 +219,20 @@ public class FullRedis : Redis
         //?? throw new XException($"集群[{Name}]没有可用节点");
         if (node == null) return base.Execute(key, func, write);
 
+        return ExecuteOnNode(key, func, write, Cluster, node);
+    }
+
+    /// <summary>在指定集群节点上执行命令</summary>
+    /// <typeparam name="T"></typeparam>
+    /// <typeparam name="TKey"></typeparam>
+    /// <param name="key">用于选择集群节点的key</param>
+    /// <param name="func">命令函数</param>
+    /// <param name="write">是否写入操作</param>
+    /// <param name="cluster">集群</param>
+    /// <param name="node">选中的节点</param>
+    /// <returns></returns>
+    public virtual T ExecuteOnNode<T, TKey>(TKey key, Func<RedisClient, TKey, T> func, Boolean write, IRedisCluster cluster, IRedisNode node)
+    {
         // 统计性能
         var sw = Counter?.StartCount();
 
@@ -235,7 +249,7 @@ public class FullRedis : Redis
                 client.Reset();
                 var rs = func(client, key);
 
-                Cluster.ResetNode(node);
+                cluster.ResetNode(node);
 
                 return rs;
             }
@@ -247,7 +261,8 @@ public class FullRedis : Redis
                 client.TryDispose();
 
                 // 使用新的节点
-                var node2 = Cluster.ReselectNode(key, write, node, ex);
+                var k = key is IList<String> ks ? ks[0] : key + "";
+                var node2 = cluster.ReselectNode(k, write, node, ex);
                 if (node2 != null)
                     node = node2;
                 else
@@ -260,6 +275,53 @@ public class FullRedis : Redis
                 Counter?.StopCount(sw);
             }
         } while (true);
+    }
+
+    /// <summary>在指定集群节点上执行命令</summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="keys">用于选择集群节点的key</param>
+    /// <param name="func">命令函数</param>
+    /// <param name="write">是否写入操作</param>
+    /// <returns></returns>
+    public virtual T[] Execute<T>(String[] keys, Func<RedisClient, String[], T> func, Boolean write)
+    {
+        if (keys == null || keys.Length == 0) return new T[0];
+
+        InitCluster();
+
+        // 如果不支持集群，或者只有一个key，直接执行
+        if (Cluster == null || keys.Length == 1) return [Execute(keys.FirstOrDefault(), (rds, k) => func(rds, [k]), write)];
+
+        // 计算每个key所在的节点
+        var dic = new Dictionary<String, List<String>>();
+        var nodes = new Dictionary<String, IRedisNode>();
+        foreach (var key in keys)
+        {
+            var node = Cluster.SelectNode(key, true);
+            if (node != null)
+            {
+                var k = node.EndPoint;
+                if (!dic.TryGetValue(k, out var list))
+                {
+                    dic[k] = list = [];
+                    nodes[k] = node;
+                }
+
+                if (!list.Contains(key)) list.Add(key);
+            }
+        }
+
+        // 分组批量执行
+        var rs = new List<T>();
+        foreach (var item in dic)
+        {
+            if (nodes.TryGetValue(item.Key, out var node))
+            {
+                rs.Add(ExecuteOnNode([.. item.Value], func, write, Cluster, node));
+            }
+        }
+
+        return [.. rs];
     }
 
     /// <summary>重载执行，支持集群</summary>
@@ -319,6 +381,12 @@ public class FullRedis : Redis
             }
         } while (true);
     }
+    #endregion
+
+    #region 基础操作
+    /// <summary>批量移除缓存项</summary>
+    /// <param name="keys">键集合</param>
+    public override Int32 Remove(params String[] keys) => Execute(keys, (rds, ks) => rds.Execute<Int32>("DEL", ks), true).Sum();
     #endregion
 
     #region 集合操作

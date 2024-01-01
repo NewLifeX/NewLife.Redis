@@ -250,7 +250,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     /// <param name="key">键</param>
     /// <param name="write">可写</param>
     /// <returns></returns>
-    public virtual IRedisNode SelectNode(String key, Boolean write)
+    public virtual IRedisNode? SelectNode(String key, Boolean write)
     {
         if (key.IsNullOrEmpty()) return null;
 
