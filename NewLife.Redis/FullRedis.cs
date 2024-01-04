@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Net.Sockets;
 using System.Text;
 using NewLife.Caching.Clusters;
 using NewLife.Caching.Models;
@@ -324,6 +325,37 @@ public class FullRedis : Redis
         return [.. rs];
     }
 
+    /// <summary>直接执行命令，不考虑集群读写</summary>
+    /// <typeparam name="TResult">返回类型</typeparam>
+    /// <param name="func">回调函数</param>
+    /// <param name="node">回调函数</param>
+    /// <returns></returns>
+    public virtual TResult Execute<TResult>(Func<RedisClient, TResult> func, IRedisNode? node)
+    {
+        // 每次重试都需要重新从池里借出连接
+        var pool = node != null ? GetPool(node) : Pool;
+        var client = pool.Get();
+        try
+        {
+            client.Reset();
+            return func(client);
+        }
+        catch (Exception ex)
+        {
+            if (ex is SocketException or IOException)
+            {
+                // 销毁连接
+                client.TryDispose();
+            }
+
+            throw;
+        }
+        finally
+        {
+            pool.Put(client);
+        }
+    }
+
     /// <summary>重载执行，支持集群</summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="key"></param>
@@ -576,24 +608,40 @@ public class FullRedis : Redis
     /// <returns></returns>
     public virtual IEnumerable<String> Search(SearchModel model)
     {
-        var count = model.Count;
-        while (count > 0)
+        InitCluster();
+
+        if (Cluster != null)
         {
-            var p = model.Position;
-            var rs = Execute(r => r.Execute<Object[]>("SCAN", p, "MATCH", model.Pattern + "", "COUNT", count));
-            if (rs == null || rs.Length != 2) break;
+            var nodes = Cluster.RedisNodes;
+            var result = nodes.SelectMany(x => Scan(x));
+            return result;
+        }
+        else
+        {
+            return Scan();
+        }
 
-            model.Position = (rs[0] as Packet)?.ToStr().ToInt() ?? 0;
-
-            if (rs[1] is Object[] ps)
+        IEnumerable<String> Scan(IRedisNode? node = null)
+        {
+            var count = model.Count;
+            while (count > 0)
             {
-                foreach (Packet item in ps)
-                {
-                    if (count-- > 0) yield return item.ToStr();
-                }
-            }
+                var p = model.Position;
+                var rs = Execute(r => r.Execute<Object[]>("SCAN", p, "MATCH", model.Pattern + "", "COUNT", count), node);
+                if (rs == null || rs.Length != 2) break;
 
-            if (model.Position == 0) break;
+                model.Position = (rs[0] as Packet)?.ToStr().ToInt() ?? 0;
+
+                if (rs[1] is Object[] ps)
+                {
+                    foreach (Packet item in ps)
+                    {
+                        if (count-- > 0) yield return item.ToStr();
+                    }
+                }
+
+                if (model.Position == 0) break;
+            }
         }
     }
 

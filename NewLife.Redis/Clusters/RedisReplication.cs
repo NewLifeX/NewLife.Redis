@@ -9,6 +9,12 @@ namespace NewLife.Caching.Clusters;
 public class RedisReplication : RedisBase, IRedisCluster, IDisposable
 {
     #region 属性
+
+    /// <summary>
+    /// redis nodes
+    /// </summary>
+    public List<IRedisNode> RedisNodes => Nodes.Select(x => (IRedisNode)x).ToList();
+
     /// <summary>集群节点</summary>
     public RedisNode[] Nodes { get; protected set; }
 
