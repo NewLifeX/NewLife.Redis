@@ -391,7 +391,15 @@ public class FullRedis : Redis
         if (keys == null || keys.Length == 0) return 0;
         if (keys.Length == 1) return base.Remove(keys[0]);
 
-        return Execute(keys, (rds, ks) => rds.Execute<Int32>("DEL", ks), true).Sum();
+        InitCluster();
+        if (Cluster != null)
+        {
+            return Execute(keys, (rds, ks) => rds.Execute<Int32>("DEL", ks), true).Sum();
+        }
+        else
+        {
+            return Execute(keys.FirstOrDefault(), (rds, k) => rds.Execute<Int32>("DEL", keys), true);
+        }
     }
     #endregion
 
