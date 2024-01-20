@@ -503,7 +503,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
     /// <param name="end"></param>
     /// <param name="count"></param>
     /// <returns></returns>
-    public IList<Message> Range(DateTime start, DateTime end, Int32 count = -1) => Range(start.ToLong() + "-0", end.ToLong() + "-0", count);
+    public IList<Message> Range(DateTime start, DateTime end, Int32 count = -1) => Range(start.ToUniversalTime().ToLong() + "-0", end.ToUniversalTime().ToLong() + "-0", count);
 
     /// <summary>原始独立消费</summary>
     /// <remarks>
