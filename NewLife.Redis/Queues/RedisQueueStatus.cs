@@ -4,19 +4,19 @@
 public class RedisQueueStatus
 {
     /// <summary>标识消费者的唯一Key</summary>
-    public String Key { get; set; }
+    public String Key { get; set; } = null!;
 
     /// <summary>机器名</summary>
-    public String MachineName { get; set; }
+    public String? MachineName { get; set; }
 
     /// <summary>用户名</summary>
-    public String UserName { get; set; }
+    public String? UserName { get; set; }
 
     /// <summary>进程</summary>
     public Int32 ProcessId { get; set; }
 
     /// <summary>IP地址</summary>
-    public String Ip { get; set; }
+    public String? Ip { get; set; }
 
     /// <summary>开始时间</summary>
     public DateTime CreateTime { get; set; }

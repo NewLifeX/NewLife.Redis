@@ -51,7 +51,7 @@ public class PrefixedRedis : FullRedis
     /// <param name="func"></param>
     /// <param name="write">是否写入操作</param>
     /// <returns></returns>
-    public override T Execute<T>(String key, Func<RedisClient, String, T> func, Boolean write = false) => base.Execute(key is null || key.StartsWith(Prefix) ? key : Prefix + key, func, write);
+    public override T Execute<T>(String key, Func<RedisClient, String, T> func, Boolean write = false) => base.Execute(key is null || key.StartsWith(Prefix) ? key + "" : Prefix + key, func, write);
 
     /// <summary>重载执行，支持集群</summary>
     /// <typeparam name="T"></typeparam>
@@ -59,7 +59,7 @@ public class PrefixedRedis : FullRedis
     /// <param name="func"></param>
     /// <param name="write">是否写入操作</param>
     /// <returns></returns>
-    public override Task<T> ExecuteAsync<T>(String key, Func<RedisClient, String, Task<T>> func, Boolean write = false) => base.ExecuteAsync(key is null || key.StartsWith(Prefix) ? key : Prefix + key, func, write);
+    public override Task<T> ExecuteAsync<T>(String key, Func<RedisClient, String, Task<T>> func, Boolean write = false) => base.ExecuteAsync(key is null || key.StartsWith(Prefix) ? key + "" : Prefix + key, func, write);
 
     #region 子库
     /// <inheritdoc/>

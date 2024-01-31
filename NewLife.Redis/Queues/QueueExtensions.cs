@@ -197,14 +197,16 @@ public static class QueueExtensions
                     }
 
                     // 处理消息
-                    await onMessage(msg, mqMsg, cancellationToken);
+                    if (msg != null) await onMessage(msg, mqMsg, cancellationToken);
 
                     // 确认消息
                     queue.Acknowledge(mqMsg);
                 }
                 else
+                {
                     // 没有消息，歇一会
                     await Task.Delay(1000, cancellationToken);
+                }
             }
             catch (ThreadAbortException) { break; }
             catch (ThreadInterruptedException) { break; }

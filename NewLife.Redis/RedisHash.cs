@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using NewLife.Caching.Models;
 using NewLife.Data;
 using NewLife.Reflection;
@@ -24,15 +25,15 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
     Boolean ICollection<KeyValuePair<TKey, TValue>>.IsReadOnly => false;
 
     /// <summary>获取所有键</summary>
-    public ICollection<TKey> Keys => Execute((r, k) => r.Execute<TKey[]>("HKEYS", Key));
+    public ICollection<TKey> Keys => Execute((r, k) => r.Execute<TKey[]>("HKEYS", Key)) ?? new TKey[0];
 
     /// <summary>获取所有值</summary>
-    public ICollection<TValue> Values => Execute((r, k) => r.Execute<TValue[]>("HVALS", Key));
+    public ICollection<TValue> Values => Execute((r, k) => r.Execute<TValue[]>("HVALS", Key)) ?? new TValue[0];
 
     /// <summary>获取 或 设置 指定键的值</summary>
     /// <param name="key"></param>
     /// <returns></returns>
-    public TValue this[TKey key]
+    public TValue? this[TKey key]
     {
         get => Execute((r, k) => r.Execute<TValue>("HGET", Key, key));
         set => Execute((r, k) => r.Execute<Int32>("HSET", Key, key, value), true);

@@ -8,10 +8,10 @@ public class RedisNode : IRedisNode
 {
     #region 属性
     /// <summary>拥有者</summary>
-    public Redis Owner { get; set; }
+    public Redis Owner { get; set; } = null!;
 
     /// <summary>节点地址</summary>
-    public String EndPoint { get; set; }
+    public String EndPoint { get; set; } = null!;
 
     /// <summary>是否从节点</summary>
     public Boolean Slave { get; set; }
@@ -32,7 +32,7 @@ public class RedisNode : IRedisNode
     #region 客户端池
     class MyPool : ObjectPool<RedisClient>
     {
-        public RedisNode Node { get; set; }
+        public RedisNode Node { get; set; } = null!;
 
         protected override RedisClient OnCreate()
         {
@@ -57,74 +57,10 @@ public class RedisNode : IRedisNode
         protected override Boolean OnGet(RedisClient value)
         {
             // 借出时清空残留
-            value?.Reset();
+            value.Reset();
 
             return base.OnGet(value);
         }
     }
-
-    //private MyPool _Pool;
-    ///// <summary>连接池</summary>
-    //public IPool<RedisClient> Pool
-    //{
-    //    get
-    //    {
-    //        if (_Pool != null) return _Pool;
-    //        lock (this)
-    //        {
-    //            if (_Pool != null) return _Pool;
-
-    //            var pool = new MyPool
-    //            {
-    //                Name = Owner.Name + "Pool",
-    //                Node = this,
-    //                Min = 10,
-    //                Max = 100000,
-    //                IdleTime = 30,
-    //                AllIdleTime = 300,
-    //                Log = Owner.ClientLog,
-    //            };
-
-    //            Owner.WriteLog("使用Redis节点：{0}", EndPoint);
-
-    //            return _Pool = pool;
-    //        }
-    //    }
-    //}
-
-    ///// <summary>执行命令</summary>
-    ///// <typeparam name="TResult">返回类型</typeparam>
-    ///// <param name="func">回调函数</param>
-    ///// <param name="write">是否写入操作</param>
-    ///// <returns></returns>
-    //public virtual TResult Execute<TResult>(Func<RedisClient, TResult> func, Boolean write = false)
-    //{
-    //    // 统计性能
-    //    var sw = Owner.Counter?.StartCount();
-
-    //    var i = 0;
-    //    do
-    //    {
-    //        // 每次重试都需要重新从池里借出连接
-    //        var client = Pool.Get();
-    //        try
-    //        {
-    //            client.Reset();
-    //            var rs = func(client);
-
-    //            Owner.Counter?.StopCount(sw);
-
-    //            return rs;
-    //        }
-    //        catch (InvalidDataException)
-    //        {
-    //            if (i++ >= Owner.Retry) throw;
-    //        }
-    //        finally
-    //        {
-    //            Pool.Put(client);
-    //        }
-    //    } while (true);
-    //}
     #endregion
 }

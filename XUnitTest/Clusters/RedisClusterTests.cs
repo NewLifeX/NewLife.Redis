@@ -39,7 +39,7 @@ public class RedisClusterTests
 
             """;
 
-        var cluster = new RedisCluster(null);
+        var cluster = new RedisCluster(new Redis());
         cluster.ParseNodes(str);
     }
 }

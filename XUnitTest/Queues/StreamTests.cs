@@ -58,7 +58,7 @@ public class StreamTests
 
         // 尾部消费
         var vs1 = s.Read(null, 3);
-        Assert.Null(vs1);
+        Assert.Empty(vs1);
 
         // 原始读取
         vs1 = s.Read("0-0", 3);
@@ -132,7 +132,7 @@ public class StreamTests
 
         // 独立消费
         var vs1 = s.Read(null, 3);
-        Assert.Null(vs1);
+        Assert.Empty(vs1);
 
         vs1 = s.Read("0-0", 3);
         Assert.Equal(3, vs1.Count);
@@ -350,16 +350,16 @@ public class StreamTests
 
         // 独立消费
         var vs1 = s.Read(null, 3);
-        Assert.Null(vs1);
+        Assert.Empty(vs1);
 
         vs1 = s.Read("0-0", 3);
-        Assert.Equal(1, vs1.Count);
+        Assert.Single(vs1);
         Assert.Equal(id, vs1[0].Id);
 
         // 取出来
         var vs2 = s.Take(2).ToList();
         Assert.Single(vs2);
-        Assert.Null(vs2[0].Name);
+        Assert.Empty(vs2[0].Name);
         Assert.Equal(36, vs2[0].Age);
     }
 

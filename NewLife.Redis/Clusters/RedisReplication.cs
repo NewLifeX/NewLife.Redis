@@ -16,21 +16,21 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     public List<IRedisNode> RedisNodes => Nodes.Select(x => (IRedisNode)x).ToList();
 
     /// <summary>集群节点</summary>
-    public RedisNode[] Nodes { get; protected set; }
+    public RedisNode[]? Nodes { get; protected set; }
 
     /// <summary>主从信息</summary>
-    public ReplicationInfo Replication { get; protected set; }
+    public ReplicationInfo? Replication { get; protected set; }
 
     /// <summary>是否根据解析得到的节点列表去设置外部Redis的节点地址</summary>
     public Boolean SetHostServer { get; set; }
 
-    private TimerX _timer;
+    private TimerX? _timer;
     #endregion
 
     #region 构造
     /// <summary>实例化</summary>
     /// <param name="redis"></param>
-    public RedisReplication(Redis redis) : base(redis, null) { }
+    public RedisReplication(Redis redis) : base(redis, null!) { }
 
     /// <summary>销毁</summary>
     public void Dispose() => _timer.TryDispose();
@@ -69,7 +69,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     public virtual IList<RedisNode> GetNodes()
     {
         var showLog = Nodes == null;
-        if (showLog) WriteLog("分析[{0}]主从节点：", Redis?.Name);
+        if (showLog) WriteLog("分析[{0}]主从节点：", Redis.Name);
 
         // 可能配置了多个地址，主从混合，需要探索式查找
         var servers = Redis.GetServices().ToList();
@@ -81,7 +81,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         return nodes;
     }
 
-    private String _lastNodes;
+    private String? _lastNodes;
     /// <summary>设置节点</summary>
     /// <param name="nodes"></param>
     protected void SetNodes(IList<RedisNode> nodes)
@@ -109,7 +109,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         var str = nodes.Join("\n", e => $"{e.EndPoint}-{e.Slave}");
         if (_lastNodes != str)
         {
-            WriteLog("得到[{0}]节点：", Redis?.Name);
+            WriteLog("得到[{0}]节点：", Redis.Name);
             showLog = true;
             _lastNodes = str;
         }

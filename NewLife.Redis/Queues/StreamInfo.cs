@@ -19,19 +19,19 @@ public class StreamInfo
     public Int32 Groups { get; set; }
 
     /// <summary>最后生成Id</summary>
-    public String LastGeneratedId { get; set; }
+    public String? LastGeneratedId { get; set; }
 
     /// <summary>第一个Id</summary>
-    public String FirstId { get; set; }
+    public String? FirstId { get; set; }
 
     /// <summary>第一个消息</summary>
-    public String[] FirstValues { get; set; }
+    public String[]? FirstValues { get; set; }
 
     /// <summary>最后一个Id</summary>
-    public String LastId { get; set; }
+    public String? LastId { get; set; }
 
     /// <summary>最后一个消息</summary>
-    public String[] LastValues { get; set; }
+    public String[]? LastValues { get; set; }
     #endregion
 
     #region 方法
@@ -41,7 +41,7 @@ public class StreamInfo
     {
         for (var i = 0; i < vs.Length - 1; i += 2)
         {
-            var key = (vs[i] as Packet).ToStr();
+            var key = (vs[i] as Packet)!.ToStr();
             var value = vs[i + 1];
             switch (key)
             {

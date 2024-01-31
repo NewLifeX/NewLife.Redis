@@ -15,23 +15,23 @@ public class RedisSentinel : RedisBase, IRedisCluster, IDisposable
     public List<IRedisNode> RedisNodes => Nodes.Select(x => (IRedisNode)x).ToList();
 
     /// <summary>集群节点</summary>
-    public RedisNode[] Nodes { get; protected set; }
+    public RedisNode[]? Nodes { get; protected set; }
 
     /// <summary>主从信息</summary>
-    public ReplicationInfo Replication { get; protected set; }
+    public ReplicationInfo? Replication { get; protected set; }
 
     /// <summary>是否根据解析得到的节点列表去设置外部Redis的节点地址</summary>
     public Boolean SetHostServer { get; set; }
 
-    private TimerX _timer;
-    RedisReplication _replication;
-    RedisCluster _cluster;
+    private TimerX? _timer;
+    RedisReplication? _replication;
+    RedisCluster? _cluster;
     #endregion
 
     #region 构造
     /// <summary>实例化</summary>
     /// <param name="redis"></param>
-    public RedisSentinel(Redis redis) : base(redis, null) { }
+    public RedisSentinel(Redis redis) : base(redis, null!) { }
 
     /// <summary>销毁</summary>
     public void Dispose() => _timer.TryDispose();
@@ -47,12 +47,12 @@ public class RedisSentinel : RedisBase, IRedisCluster, IDisposable
         if (SetHostServer && Nodes != null) _timer = new TimerX(s => GetNodes(), null, 60_000, 60_000) { Async = true };
     }
 
-    String _lastServers;
+    String? _lastServers;
     /// <summary>分析主从节点</summary>
-    public virtual IList<RedisNode> GetNodes()
+    public virtual IList<RedisNode>? GetNodes()
     {
         var showLog = Nodes == null;
-        if (showLog) WriteLog("分析[{0}]哨兵节点：", Redis?.Name);
+        if (showLog) WriteLog("分析[{0}]哨兵节点：", Redis.Name);
 
         var rs = Redis.Execute(r => r.Execute<String>("INFO", "Sentinel"));
         if (rs.IsNullOrEmpty()) return null;
@@ -124,7 +124,7 @@ public class RedisSentinel : RedisBase, IRedisCluster, IDisposable
         return nodes;
     }
 
-    private String _lastNodes;
+    private String? _lastNodes;
     /// <summary>设置节点</summary>
     /// <param name="nodes"></param>
     protected void SetNodes(IList<RedisNode> nodes)
@@ -152,7 +152,7 @@ public class RedisSentinel : RedisBase, IRedisCluster, IDisposable
         var str = nodes.Join("\n", e => $"{e.EndPoint}-{e.Slave}");
         if (_lastNodes != str)
         {
-            WriteLog("得到[{0}]节点：", Redis?.Name);
+            WriteLog("得到[{0}]节点：", Redis.Name);
             showLog = true;
             _lastNodes = str;
         }
@@ -174,7 +174,7 @@ public class RedisSentinel : RedisBase, IRedisCluster, IDisposable
     /// <param name="node"></param>
     /// <param name="exception"></param>
     /// <returns></returns>
-    public virtual IRedisNode ReselectNode(String key, Boolean write, IRedisNode node, Exception exception) => null;
+    public virtual IRedisNode? ReselectNode(String key, Boolean write, IRedisNode node, Exception exception) => null;
 
     /// <summary>重置节点。设置成功状态</summary>
     /// <param name="node"></param>
