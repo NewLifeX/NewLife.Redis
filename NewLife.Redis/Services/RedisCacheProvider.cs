@@ -94,14 +94,19 @@ public class RedisCacheProvider : CacheProvider
     {
         if (_redisQueue != null)
         {
-            if (group.IsNullOrEmpty()) return _redisQueue.GetQueue<T>(topic);
+            IProducerConsumer<T>? queue = null;
+            if (group.IsNullOrEmpty())
+                queue = _redisQueue.GetQueue<T>(topic);
+            else
+            {
+                var rs = _redisQueue.GetStream<T>(topic);
+                rs.Group = group;
+                queue = rs;
+            }
 
-            var rs = _redisQueue.GetStream<T>(topic);
-            rs.Group = group;
+            XTrace.WriteLine("[{0}]队列消息数：{1}", topic, queue.Count);
 
-            XTrace.WriteLine("[{0}]队列消息数：{1}", topic, rs.Count);
-
-            return rs;
+            return queue;
         }
 
         return base.GetQueue<T>(topic, group);

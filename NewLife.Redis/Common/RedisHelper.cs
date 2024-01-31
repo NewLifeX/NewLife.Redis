@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using NewLife.Data;
+﻿using NewLife.Data;
 using NewLife.Log;
 
-namespace NewLife.Caching.Common;
+namespace NewLife.Caching;
 
 /// <summary>Redis助手</summary>
 public static class RedisHelper

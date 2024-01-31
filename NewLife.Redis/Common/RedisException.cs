@@ -1,4 +1,4 @@
-﻿namespace NewLife.Caching.Common;
+﻿namespace NewLife.Caching;
 
 /// <summary>Redis异常</summary>
 public class RedisException : XException

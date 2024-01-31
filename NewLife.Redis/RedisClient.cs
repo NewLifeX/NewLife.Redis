@@ -346,7 +346,7 @@ public class RedisClient : DisposeBase
                 if (header is '+' or ':')
                     list.Add(str);
                 else if (header == '-')
-                    throw new Exception(str);
+                    throw new RedisException(str);
                 else
                 {
                     XTrace.WriteLine("无法解析响应[{0:X2}] {1}", (Byte)header, ms.ReadBytes(-1).ToHex("-"));
@@ -456,7 +456,7 @@ public class RedisClient : DisposeBase
                 if (header is '+' or ':')
                     list.Add(str);
                 else if (header == '-')
-                    throw new Exception(str);
+                    throw new RedisException(str);
                 else
                 {
                     XTrace.WriteLine("无法解析响应[{0:X2}] {1}", (Byte)header, ms.ReadBytes(-1).ToHex("-"));

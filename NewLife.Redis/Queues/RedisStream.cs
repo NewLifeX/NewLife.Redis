@@ -1,5 +1,4 @@
-﻿using NewLife.Caching.Common;
-using NewLife.Data;
+﻿using NewLife.Data;
 using NewLife.Log;
 using NewLife.Security;
 using NewLife.Serialization;
@@ -153,7 +152,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
                 rs = Execute((rc, k) => rc.Execute<String>("XADD", args.ToArray()), true);
                 if (!retryOnFailed || !rs.IsNullOrEmpty()) return rs;
 
-                span?.SetError(new RedisException($"发布到队列[{Topic}]失败！"), null);
+                span?.SetError(new InvalidOperationException($"发布到队列[{Topic}]失败！"), null);
 
                 if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
             }
@@ -386,6 +385,9 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
 
             var tracer = Redis.Tracer;
             using var span = tracer?.NewSpan($"redismq:{Key}:RetryAck");
+
+            // 消费组不存在时，自动创建消费组。可能是Redis重启或者主从切换等原因，导致消费组丢失
+            if (!group.IsNullOrEmpty()) SetGroup(group);
 
             // 拿到死信，重新放入队列
             String? id = null;
@@ -915,6 +917,14 @@ XREAD count 3 streams stream_key 0-0
             }
             catch (ThreadAbortException) { break; }
             catch (ThreadInterruptedException) { break; }
+            catch (RedisException ex)
+            {
+                span?.SetError(ex, null);
+
+                // 消费组不存在时，自动创建消费组。可能是Redis重启或者主从切换等原因，导致消费组丢失
+                if (!group.IsNullOrEmpty() && ex.Message.StartsWithIgnoreCase("NOGROUP"))
+                    SetGroup(group);
+            }
             catch (Exception ex)
             {
                 if (cancellationToken.IsCancellationRequested) break;
@@ -1008,6 +1018,14 @@ XREAD count 3 streams stream_key 0-0
             }
             catch (ThreadAbortException) { break; }
             catch (ThreadInterruptedException) { break; }
+            catch (RedisException ex)
+            {
+                span?.SetError(ex, null);
+
+                // 消费组不存在时，自动创建消费组。可能是Redis重启或者主从切换等原因，导致消费组丢失
+                if (!group.IsNullOrEmpty() && ex.Message.StartsWithIgnoreCase("NOGROUP"))
+                    SetGroup(group);
+            }
             catch (Exception ex)
             {
                 if (cancellationToken.IsCancellationRequested) break;
