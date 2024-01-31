@@ -291,7 +291,7 @@ public class FullRedis : Redis
         InitCluster();
 
         // 如果不支持集群，或者只有一个key，直接执行
-        if (Cluster == null || keys.Length == 1) return [Execute(keys.FirstOrDefault(), (rds, k) => func(rds, [k]), write)];
+        if (Cluster == null || keys.Length == 1) return [Execute(keys.FirstOrDefault(), (rds, k) => func(rds, keys), write)];
 
         // 计算每个key所在的节点
         var dic = new Dictionary<String, List<String>>();
@@ -679,7 +679,7 @@ public class FullRedis : Redis
         };
         foreach (var item in values)
         {
-            args.Add(item);
+            if (item != null) args.Add(item);
         }
         return Execute(key, (rc, k) => rc.Execute<Int32>("RPUSH", args.ToArray()), true);
     }
@@ -697,7 +697,7 @@ public class FullRedis : Redis
         };
         foreach (var item in values)
         {
-            args.Add(item);
+            if (item != null) args.Add(item);
         }
         return Execute(key, (rc, k) => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
     }
@@ -818,7 +818,7 @@ public class FullRedis : Redis
         };
         foreach (var item in members)
         {
-            args.Add(item);
+            if (item != null) args.Add(item);
         }
         return Execute(key, (rc, k) => rc.Execute<Int32>("SADD", args.ToArray()), true);
     }
@@ -836,7 +836,7 @@ public class FullRedis : Redis
         };
         foreach (var item in members)
         {
-            args.Add(item);
+            if (item != null) args.Add(item);
         }
         return Execute(key, (rc, k) => rc.Execute<Int32>("SREM", args.ToArray()), true);
     }
