@@ -100,10 +100,17 @@ public class StreamTests
     {
         var key = "stream_key";
 
+        // 测试XTrim
+        if (_redis.ContainsKey(key))
+        {
+            var rs = _redis.GetStream<String>(key);
+            rs.Trim(DateTime.Now.AddHours(-1));
+        }
+
         // 删除已有
         _redis.Remove(key);
         var s = _redis.GetStream<UserInfo>(key);
-        _redis.SetExpire(key, TimeSpan.FromMinutes(60));
+        //_redis.SetExpire(key, TimeSpan.FromMinutes(60));
 
         // 取出个数
         var count = s.Count;
@@ -115,6 +122,9 @@ public class StreamTests
 
         // 添加复杂对象
         var id = s.Add(new UserInfo { Name = "smartStone", Age = 36 });
+
+        // 有数据以后才能设置过期时间
+        _redis.SetExpire(key, TimeSpan.FromMinutes(60));
 
         var queue = s as IProducerConsumer<UserInfo>;
         var vs = new[] {
@@ -155,6 +165,9 @@ public class StreamTests
 
         // 开始编号改变
         Assert.NotEqual(id, s.StartId);
+
+        //_redis.SetExpire(key, TimeSpan.FromMinutes(60));
+        //s.Add(new UserInfo { Name = "xxyy" });
     }
 
     [Fact]

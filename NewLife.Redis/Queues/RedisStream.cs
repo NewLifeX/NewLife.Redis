@@ -2,6 +2,7 @@
 using NewLife.Log;
 using NewLife.Security;
 using NewLife.Serialization;
+using NewLife.Threading;
 
 namespace NewLife.Caching.Queues;
 
@@ -15,7 +16,7 @@ namespace NewLife.Caching.Queues;
 /// 特殊的$，表示接收从阻塞那一刻开始添加到流的消息。
 /// </remarks>
 /// <typeparam name="T"></typeparam>
-public class RedisStream<T> : QueueBase, IProducerConsumer<T>
+public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
 {
     #region 属性
     /// <summary>队列消息总数</summary>
@@ -32,6 +33,10 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
 
     /// <summary>最大队列长度。要保留的消息个数，超过则移除较老消息，非精确，实际上略大于该值，默认100万，大概占用200M内存</summary>
     public Int32 MaxLength { get; set; } = 1_000_000;
+
+    /// <summary>消息有效时间。若指定，将定期删除该时间以前的消息。默认7天</summary>
+    /// <remarks>在IoT等系统中，有些队列数据量比较小，100万条消息将会覆盖非常长的时间，意义不大。</remarks>
+    public TimeSpan Expire { get; set; } = TimeSpan.FromDays(7);
 
     /// <summary>最大重试次数。超过该次数后，消息将被抛弃，默认10次</summary>
     public Int32 MaxRetry { get; set; } = 10;
@@ -58,6 +63,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
     private Int32 _count;
     private Int32 _setGroupId;
     private Int32 _claims;
+    private TimerX? _timer;
     #endregion
 
     #region 构造
@@ -65,6 +71,21 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
     /// <param name="redis"></param>
     /// <param name="key"></param>
     public RedisStream(Redis redis, String key) : base(redis, key) => Consumer = $"{Environment.MachineName}@{Rand.NextString(8)}";
+
+    /// <summary>析构</summary>
+    ~RedisStream() => Dispose();
+
+    /// <summary>销毁</summary>
+    public void Dispose() => Dispose(true);
+
+    /// <summary>销毁</summary>
+    /// <param name="disposing"></param>
+    protected void Dispose(Boolean disposing) => _timer.TryDispose();
+
+    void Init()
+    {
+        _timer ??= new TimerX(DoWork, null, 5_000, 600_000) { Async = true };
+    }
     #endregion
 
     #region 核心生产消费
@@ -98,7 +119,8 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
         // 自动修剪超长部分，每1000次生产，修剪一次
         var n = Interlocked.Increment(ref _count);
         var trim = MaxLength > 0 && n % 1000 == 0;
-        if (n == 1) Trim(MaxLength, true);
+        //if (n == 1) Trim(MaxLength, true);
+        if (n == 1) Init();
 
         return AddInternal(value, msgId, trim, true);
     }
@@ -186,7 +208,8 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
             return values.Length;
         }
 
-        if (_count == 0) Trim(MaxLength, true);
+        //if (_count == 0) Trim(MaxLength, true);
+        if (_count == 0) Init();
 
         // 开启管道
         var rds = Redis;
@@ -368,12 +391,22 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
     #endregion
 
     #region 死信处理
+    private static Version _v620 = new("6.2.0");
+    private void DoWork(Object state)
+    {
+        if (MaxLength > 0) Trim(MaxLength, true);
+
+        if (Expire > TimeSpan.Zero && Redis.Version >= _v620) Trim(DateTime.Now.Add(-Expire));
+    }
+
     private DateTime _nextRetry;
     /// <summary>处理未确认的死信，重新放入队列</summary>
     private Int32 RetryAck()
     {
         var group = Group;
         if (group.IsNullOrEmpty()) return 0;
+
+        Init();
 
         var count = 0;
         var now = DateTime.Now;
@@ -487,6 +520,12 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>
             ? Execute((rc, k) => rc.Execute<Int32>("XTRIM", Key, "MAXLEN", maxLen), true)
             : Execute((rc, k) => rc.Execute<Int32>("XTRIM", Key, "MAXLEN", "~", maxLen), true);
     }
+
+    /// <summary>删除指定时间之前的队列数据</summary>
+    /// <remarks>v6.2.0开始支持MINID</remarks>
+    /// <param name="start">开始时间。删除该时间之前</param>
+    /// <returns></returns>
+    public Int32 Trim(DateTime start) => Execute((rc, k) => rc.Execute<Int32>("XTRIM", Key, "MINID", start.ToUniversalTime().ToLong()), true);
 
     /// <summary>确认消息</summary>
     /// <param name="group">消费组名称</param>
