@@ -78,6 +78,27 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     private IDictionary<String, String>? _Info;
     /// <summary>服务器信息</summary>
     public IDictionary<String, String> Info => _Info ??= GetInfo();
+
+    private Version? _Version;
+    /// <summary>Redis版本。可用于判断某些指令是否可用</summary>
+    public Version Version
+    {
+        get
+        {
+            if (_Version == null)
+            {
+                var inf = Info;
+                if (inf != null && inf.TryGetValue("redis_version", out var ver))
+                {
+                    if (!ver.IsNullOrEmpty() && Version.TryParse(ver, out var version))
+                        _Version = version;
+                }
+                _Version ??= new Version();
+            }
+
+            return _Version;
+        }
+    }
     #endregion
 
     #region 构造
@@ -778,6 +799,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     #endregion
 
     #region 高级操作
+    private static Version _v2612 = new("2.6.12");
     /// <summary>添加，已存在时不更新</summary>
     /// <typeparam name="T">值类型</typeparam>
     /// <param name="key">键</param>
@@ -797,7 +819,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         //{
         //    return Execute(key, rds => rds.Execute<Int32>("SETNX", key, value, expire), true) > 0;
         //}
-        if (inf != null && inf.TryGetValue("redis_version", out var ver) && ver.CompareTo("2.6.12") >= 0)
+        if (Version >= _v2612)
         {
             //!!! 重构Redis.Add实现，早期的SETNX支持设置过期时间，后来不支持了，并且连资料都找不到了，改用2.6.12新版 SET key value EX expire NX
             var result = Execute(key, (rds, k) => rds.Execute<String>("SET", k, value, "EX", expire, "NX"), true);
