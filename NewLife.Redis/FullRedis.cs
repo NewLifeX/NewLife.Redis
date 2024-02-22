@@ -254,6 +254,7 @@ public class FullRedis : Redis
 
                 return rs;
             }
+            //catch (RedisException) { throw; }
             catch (Exception ex)
             {
                 if (++i >= Retry) throw;
@@ -391,6 +392,7 @@ public class FullRedis : Redis
 
                 return rs;
             }
+            //catch (RedisException) { throw; }
             catch (Exception ex)
             {
                 if (++i >= Retry) throw;

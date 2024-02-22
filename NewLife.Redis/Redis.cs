@@ -409,13 +409,13 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         do
         {
             // 每次重试都需要重新从池里借出连接
-            var pool = Pool;
-            var client = pool.Get();
+            var client = Pool.Get();
             try
             {
                 client.Reset();
                 return func(client, key);
             }
+            catch (RedisException) { throw; }
             catch (Exception ex)
             {
                 if (++i >= Retry) throw;
@@ -431,7 +431,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             }
             finally
             {
-                pool.Put(client);
+                Pool.Put(client);
 
                 Counter?.StopCount(sw);
             }
@@ -514,6 +514,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
                 client.Reset();
                 return await func(client, key);
             }
+            catch (RedisException) { throw; }
             catch (Exception ex)
             {
                 if (++i >= Retry) throw;
