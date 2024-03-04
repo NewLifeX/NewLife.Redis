@@ -29,7 +29,7 @@
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Redis</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>支持集群中的批量操作</PackageReleaseNotes>
+    <PackageReleaseNotes>RedisStream支持按时间清理过期消息</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -46,7 +46,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="10.7.2024.202" />
+    <PackageReference Include="NewLife.Core" Version="10.8.2024.303" />
   </ItemGroup>
 
   <ItemGroup>

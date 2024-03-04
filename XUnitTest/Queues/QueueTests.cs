@@ -164,6 +164,8 @@ public class QueueTests
     {
         var key = "Queue_benchmark";
 
+        _redis.Remove(key);
+
         var q = _redis.GetQueue<String>(key);
         for (var i = 0; i < 1_000; i++)
         {

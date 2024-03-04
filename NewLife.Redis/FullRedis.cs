@@ -151,7 +151,7 @@ public class FullRedis : Redis
                 }
                 else
                 {
-                    WriteLog("InitCluster[{0}]：mode={1}, role={2}", Name, mode, role);
+                    WriteLog("Init[{0}]：mode={1}, role={2}", Name, mode, role);
 
                     // 集群模式初始化节点
                     if (mode == "cluster")
