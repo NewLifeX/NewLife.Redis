@@ -757,6 +757,8 @@ public class FullRedis : Redis
         var rs = Execute(keys[0], (rc, k) => rc.Execute<String[]>("BRPOP", sb.ToString(), secTimeout), true);
         if (rs == null || rs.Length != 2) return null;
 
+        if (typeof(T) == typeof(String)) return new Tuple<String, T?>(rs[0], (T)(Object)rs[1]);
+
         return new Tuple<String, T?>(rs[0], rs[1].ToJsonEntity<T>());
     }
 
@@ -793,7 +795,9 @@ public class FullRedis : Redis
         var rs = Execute(keys[0], (rc, k) => rc.Execute<String[]>("BLPOP", sb.ToString(), secTimeout), true);
         if (rs == null || rs.Length != 2) return null;
 
-        return new Tuple<String, T?>(rs[0], rs[1].ToJsonEntity<T>()); //.ChangeType<T>());
+        if (typeof(T) == typeof(String)) return new Tuple<String, T?>(rs[0], (T)(Object)rs[1]);
+
+        return new Tuple<String, T?>(rs[0], rs[1].ToJsonEntity<T>());
     }
 
     /// <summary>从列表头部弹出一个元素，阻塞</summary>
