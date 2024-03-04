@@ -25,6 +25,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     public Boolean SetHostServer { get; set; }
 
     private TimerX? _timer;
+    private ICache _cache = new MemoryCache();
     #endregion
 
     #region 构造
@@ -65,10 +66,11 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         _timer ??= new TimerX(s => GetNodes(), null, 60_000, 60_000) { Async = true };
     }
 
+    private Int32 _initNodes;
     /// <summary>分析主从节点</summary>
     public virtual IList<RedisNode> GetNodes()
     {
-        var showLog = Nodes == null;
+        var showLog = _initNodes++ == 0;
         if (showLog) WriteLog("分析[{0}]主从节点：", Redis.Name);
 
         // 可能配置了多个地址，主从混合，需要探索式查找
@@ -86,7 +88,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     /// <param name="nodes"></param>
     protected void SetNodes(IList<RedisNode> nodes)
     {
-        var showLog = Nodes == null;
+        var showLog = _initNodes++ <= 1;
 
         // 排序，master优先
         nodes = nodes.OrderBy(e => e.Slave).ThenBy(e => e.EndPoint).ToList();
@@ -99,7 +101,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
             {
                 if (node.EndPoint.IsNullOrEmpty()) return;
 
-                var uri = new NetUri(node.EndPoint);
+                var uri = new NetUri(node.EndPoint) { Type = NetType.Tcp };
                 if (uri.Port == 0) uri.Port = 6379;
                 uris.Add(uri);
             }
@@ -109,7 +111,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         var str = nodes.Join("\n", e => $"{e.EndPoint}-{e.Slave}");
         if (_lastNodes != str)
         {
-            WriteLog("得到[{0}]节点：", Redis.Name);
+            WriteLog("得到[{0}]主从节点：", Redis.Name);
             showLog = true;
             _lastNodes = str;
         }
@@ -123,7 +125,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     /// <param name="redis"></param>
     /// <param name="servers"></param>
     /// <returns></returns>
-    public static (IList<ReplicationInfo>, IList<RedisNode>) GetReplications(Redis redis, IList<NetUri> servers)
+    public (IList<ReplicationInfo>, IList<RedisNode>) GetReplications(Redis redis, IList<NetUri> servers)
     {
         // 可能配置了多个地址，主从混合，需要探索式查找
         var hash = servers.Select(e => e.EndPoint + "").ToList();
@@ -158,6 +160,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
 
         // 排序，master优先
         nodes = nodes.OrderBy(e => e.Slave).ThenBy(e => e.EndPoint).ToList();
+        reps = reps.OrderBy(e => e.Role != "master").ThenBy(e => e.EndPoint).ToList();
 
         return (reps, nodes);
     }
@@ -166,9 +169,14 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     /// <param name="redis"></param>
     /// <param name="server"></param>
     /// <returns></returns>
-    public static (ReplicationInfo, IList<RedisNode>) GetReplication(Redis redis, NetUri server)
+    public (ReplicationInfo?, IList<RedisNode>?) GetReplication(Redis redis, NetUri server)
     {
         using var span = redis.Tracer?.NewSpan(nameof(GetReplication), server);
+
+        // 屏蔽中
+        var key = $"rep:{server.Address}-{server.Port}";
+        var repNode = _cache.Get<RedisNode>(key);
+        if (repNode != null && repNode.NextTime > DateTime.Now) return (null, null);
 
         var rs = "";
         try
@@ -185,6 +193,17 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         {
             span?.SetError(ex, null);
             XTrace.WriteLine("探索[{0}]异常 {1}", server.EndPoint, ex.Message);
+
+            // 目前节点不可达，可能是内网节点，屏蔽一段时间
+            repNode ??= new RedisNode { EndPoint = server.EndPoint + "" };
+            repNode.Error++;
+
+            // 指数级增加屏蔽时间
+            var exp = 60 * (1 << repNode.Error);
+            if (exp > 60 * 60 * 4) exp = 60 * 60 * 4;
+            repNode.NextTime = DateTime.Now.AddSeconds(exp);
+
+            _cache.Add(key, repNode, exp);
         }
         if (rs.IsNullOrEmpty()) return (null, null);
 
@@ -197,7 +216,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         {
             foreach (var item in rep.Masters)
             {
-                if (item.IP.IsNullOrEmpty() || list.Any(e => e.EndPoint == item.EndPoint)) continue;
+                if (item.EndPoint.IsNullOrEmpty() || list.Any(e => e.EndPoint == item.EndPoint)) continue;
 
                 var node = new RedisNode
                 {
@@ -212,7 +231,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         {
             foreach (var item in rep.Slaves)
             {
-                if (item.IP.IsNullOrEmpty() || list.Any(e => e.EndPoint == item.EndPoint)) continue;
+                if (item.EndPoint.IsNullOrEmpty() || list.Any(e => e.EndPoint == item.EndPoint)) continue;
 
                 var node = new RedisNode
                 {
@@ -225,7 +244,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         }
 
         // Master节点
-        if (!rep.MasterHost.IsNullOrEmpty())
+        if (!rep.MasterHost.IsNullOrEmpty() && !rep.EndPoint.IsNullOrEmpty())
         {
             var node = new RedisNode
             {

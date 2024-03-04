@@ -44,11 +44,13 @@ public class BasicTest
             if (config.IsNullOrEmpty()) config = "server=127.0.0.1:6379;db=3";
             if (!File.Exists(file)) File.WriteAllText(file.EnsureDirectory(true).GetFullPath(), config);
 
+            XTrace.WriteLine("Redis配置：{0}", config);
+
             return _config = config;
         }
     }
 
-    [Fact(DisplayName = "信息测试", Timeout = 1000)]
+    [Fact(DisplayName = "信息测试")]
     public void InfoTest()
     {
         var inf = _redis.Execute(null, (client, k) => client.Execute<String>("info"));

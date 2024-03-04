@@ -201,10 +201,11 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         var pk = ProtectedKey.Instance;
         if (pk != null && pk.Secret != null) connStr = pk.Unprotect(connStr);
 
+        // 默认分号分割，旧版逗号分隔。可能只有一个server=后续多个含逗号的地址
         var dic =
-            connStr.Contains(',') && !connStr.Contains(';') ?
-            connStr.SplitAsDictionary("=", ",", true) :
-            connStr.SplitAsDictionary("=", ";", true);
+            connStr.Contains(';') || connStr.Split('=').Length <= 2 ?
+            connStr.SplitAsDictionary("=", ";", true) :
+            connStr.SplitAsDictionary("=", ",", true);
         if (dic.Count > 0)
         {
             Server = dic["Server"]?.Trim();

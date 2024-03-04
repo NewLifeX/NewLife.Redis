@@ -69,14 +69,14 @@ public class RedisSentinel : RedisBase, IRedisCluster, IDisposable
         {
             foreach (var item in rep.Masters)
             {
-                if (!item.IP.IsNullOrEmpty()) servers.Add(item.EndPoint);
+                if (!item.EndPoint.IsNullOrEmpty()) servers.Add(item.EndPoint);
             }
         }
         if (rep.Slaves != null)
         {
             foreach (var item in rep.Slaves)
             {
-                if (!item.IP.IsNullOrEmpty()) servers.Add(item.EndPoint);
+                if (!item.EndPoint.IsNullOrEmpty()) servers.Add(item.EndPoint);
             }
         }
 
@@ -142,7 +142,7 @@ public class RedisSentinel : RedisBase, IRedisCluster, IDisposable
             {
                 if (node.EndPoint.IsNullOrEmpty()) return;
 
-                var uri = new NetUri(node.EndPoint);
+                var uri = new NetUri(node.EndPoint) { Type = NetType.Tcp };
                 if (uri.Port == 0) uri.Port = 6379;
                 uris.Add(uri);
             }
@@ -152,7 +152,7 @@ public class RedisSentinel : RedisBase, IRedisCluster, IDisposable
         var str = nodes.Join("\n", e => $"{e.EndPoint}-{e.Slave}");
         if (_lastNodes != str)
         {
-            WriteLog("得到[{0}]节点：", Redis.Name);
+            WriteLog("得到[{0}]哨兵节点：", Redis.Name);
             showLog = true;
             _lastNodes = str;
         }

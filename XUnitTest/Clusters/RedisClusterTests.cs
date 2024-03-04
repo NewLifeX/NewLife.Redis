@@ -42,4 +42,10 @@ public class RedisClusterTests
         var cluster = new RedisCluster(new Redis());
         cluster.ParseNodes(str);
     }
+
+    [Fact]
+    public void InitCluster()
+    {
+        _redis.InitCluster();
+    }
 }
