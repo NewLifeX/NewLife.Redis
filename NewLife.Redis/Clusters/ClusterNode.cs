@@ -22,7 +22,7 @@ public class ClusterNode : RedisNode
     public IList<ClusterNode>? Slaves { get; set; }
 
     /// <summary>本节点数据槽</summary>
-    public IList<Slot> Slots { get; private set; } = new List<Slot>();
+    public IList<Slot> Slots { get; set; } = [];
 
     /// <summary>正在转入</summary>
     public IDictionary<Int32, String>? Importings { get; private set; }

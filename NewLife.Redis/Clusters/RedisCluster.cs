@@ -131,6 +131,14 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
         var now = DateTime.Now;
         var ns = Nodes?.Where(e => e.LinkState == 1).ToArray();
 
+        // Redis支持{}来固定到某个特定节点
+        var p1 = key.IndexOf('{');
+        if (p1 >= 0)
+        {
+            var p2 = key.IndexOf('}', p1 + 1);
+            if (p2 > 0) key = key.Substring(p1 + 1, p2 - p1 - 1);
+        }
+
         var slot = key.GetBytes().Crc16() % 16384;
         ns = ns?.Where(e => e.Contain(slot)).ToArray();
         if (ns != null && ns.Length != 0)

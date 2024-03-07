@@ -1,6 +1,8 @@
-﻿using NewLife.Caching;
+﻿using System;
+using NewLife.Caching;
 using NewLife.Caching.Clusters;
 using NewLife.Log;
+using NewLife.Reflection;
 using Xunit;
 
 namespace XUnitTest.Clusters;
@@ -47,5 +49,59 @@ public class RedisClusterTests
     public void InitCluster()
     {
         _redis.InitCluster();
+    }
+
+    [Fact]
+    public void SelectNode()
+    {
+        var keys = new String[1000];
+        for (var i = 0; i < keys.Length; i++)
+        {
+            keys[i] = "AAAkkk-" + i;
+        }
+
+        var cluster = new RedisCluster(_redis);
+        var nodes = new ClusterNode[4];
+        nodes[0] = new ClusterNode { EndPoint = "127.0.0.1:6001", LinkState = 1, Slots = [new() { From = 0, To = 4095 }] };
+        nodes[1] = new ClusterNode { EndPoint = "127.0.0.1:6002", LinkState = 1, Slots = [new() { From = 4096, To = 8191 }] };
+        nodes[2] = new ClusterNode { EndPoint = "127.0.0.1:6003", LinkState = 1, Slots = [new() { From = 8192, To = 12287 }] };
+        nodes[3] = new ClusterNode { EndPoint = "127.0.0.1:6004", LinkState = 1, Slots = [new() { From = 12288, To = 16383 }] };
+
+        cluster.SetValue("Nodes", nodes);
+
+        for (var i = 0; i < keys.Length; i++)
+        {
+            var node = cluster.SelectNode(keys[i], false);
+            Assert.NotNull(node);
+        }
+    }
+
+    [Fact]
+    public void SelectNodeFixed()
+    {
+        var keys = new String[1000];
+        for (var i = 0; i < keys.Length; i++)
+        {
+            keys[i] = "{AAA}kkk-" + i;
+        }
+
+        var cluster = new RedisCluster(_redis);
+        var nodes = new ClusterNode[4];
+        nodes[0] = new ClusterNode { EndPoint = "127.0.0.1:6001", LinkState = 1, Slots = [new() { From = 0, To = 4095 }] };
+        nodes[1] = new ClusterNode { EndPoint = "127.0.0.1:6002", LinkState = 1, Slots = [new() { From = 4096, To = 8191 }] };
+        nodes[2] = new ClusterNode { EndPoint = "127.0.0.1:6003", LinkState = 1, Slots = [new() { From = 8192, To = 12287 }] };
+        nodes[3] = new ClusterNode { EndPoint = "127.0.0.1:6004", LinkState = 1, Slots = [new() { From = 12288, To = 16383 }] };
+
+        cluster.SetValue("Nodes", nodes);
+
+        IRedisNode last = null;
+        for (var i = 0; i < keys.Length; i++)
+        {
+            var node = cluster.SelectNode(keys[i], false);
+            if (last == null)
+                last = node;
+            else
+                Assert.Equal(last, node);
+        }
     }
 }
