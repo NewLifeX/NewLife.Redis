@@ -28,7 +28,7 @@ public class RedisDelayQueue<T> : QueueBase, IProducerConsumer<T>
     /// <summary>实例化延迟队列</summary>
     /// <param name="redis"></param>
     /// <param name="key"></param>
-    public RedisDelayQueue(Redis redis, String key) : base(redis, key) => _sort = new RedisSortedSet<T>(redis, key);
+    public RedisDelayQueue(Redis redis, String key) : base(redis, key) => _sort = new RedisSortedSet<T>(redis, redis is FullRedis rds ? rds.GetKey(key) : key);
     #endregion
 
     #region 核心方法

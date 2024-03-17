@@ -19,10 +19,19 @@ public abstract class RedisBase
     /// <summary>实例化</summary>
     /// <param name="redis"></param>
     /// <param name="key"></param>
-    public RedisBase(Redis redis, String key) { Redis = redis; Key = key; }
+    public RedisBase(Redis redis, String key)
+    {
+        Redis = redis;
+        Key = redis is FullRedis rds ? rds.GetKey(key) : key;
+    }
     #endregion
 
     #region 方法
+    /// <summary>获取经前缀处理后的键名</summary>
+    /// <param name="key"></param>
+    /// <returns></returns>
+    protected virtual String GetKey(String key) => Redis is FullRedis rds ? rds.GetKey(key) : key;
+
     /// <summary>执行命令</summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="func"></param>

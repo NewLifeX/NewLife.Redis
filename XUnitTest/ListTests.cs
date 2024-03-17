@@ -11,7 +11,7 @@ namespace XUnitTest;
 [Collection("Basic")]
 public class ListTests
 {
-    private readonly FullRedis _redis;
+    protected readonly FullRedis _redis;
 
     public ListTests()
     {
@@ -233,5 +233,13 @@ public class ListTests
         sw.Stop();
         XTrace.WriteLine("BRPOPLPUSH_BlockTest: {0}", sw.Elapsed);
         //Assert.True(sw.ElapsedMilliseconds < 3_000 + 500);
+    }
+}
+
+public class ListTests2 : ListTests
+{
+    public ListTests2() : base()
+    {
+        _redis.Prefix = "NewLife:";
     }
 }

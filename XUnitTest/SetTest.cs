@@ -11,7 +11,7 @@ namespace XUnitTest;
 [Collection("Basic")]
 public class SetTest
 {
-    private readonly FullRedis _redis;
+    protected readonly FullRedis _redis;
 
     public SetTest()
     {
@@ -52,5 +52,13 @@ public class SetTest
         Assert.Equal("stone1", dic[0]);
         Assert.Equal("stone2", dic[1]);
         Assert.Equal("stone3", dic[2]);
+    }
+}
+
+public class SetTest2 : SetTest
+{
+    public SetTest2() : base()
+    {
+        _redis.Prefix = "NewLife:";
     }
 }

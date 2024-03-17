@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using NewLife.Caching;
 using NewLife.Log;
 using Xunit;
@@ -12,7 +8,7 @@ namespace XUnitTest;
 [Collection("Basic")]
 public class HyperLogLogTests
 {
-    private readonly FullRedis _redis;
+    protected readonly FullRedis _redis;
 
     public HyperLogLogTests()
     {
@@ -58,5 +54,13 @@ public class HyperLogLogTests
         Assert.True(rs);
 
         Assert.Equal(vs.Length + hyper2.Count, hyper.Count);
+    }
+}
+
+public class HyperLogLogTests2 : HyperLogLogTests
+{
+    public HyperLogLogTests2() : base()
+    {
+        _redis.Prefix = "NewLife:";
     }
 }

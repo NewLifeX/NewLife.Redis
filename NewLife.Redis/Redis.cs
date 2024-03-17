@@ -390,7 +390,9 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
         return pool;
     }
+    #endregion
 
+    #region 方法
     /// <summary>执行命令，经过管道。FullRedis中还会考虑Cluster分流</summary>
     /// <typeparam name="TResult">返回类型</typeparam>
     /// <param name="key">命令key，用于选择集群节点</param>
@@ -630,6 +632,17 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         rds.Encoder = Encoder;
         rds.Timeout = Timeout;
         rds.Retry = Retry;
+        rds.ShieldingTime = ShieldingTime;
+        rds.FullPipeline = FullPipeline;
+        rds.AutoPipeline = AutoPipeline;
+        rds.SslProtocol = SslProtocol;
+        rds.Certificate = Certificate;
+        rds.ThrowOnFailure = ThrowOnFailure;
+        rds.MaxMessageSize = MaxMessageSize;
+
+        rds._Info = _Info;
+        rds._Version = _Version;
+
         rds.Tracer = Tracer;
         rds.Log = Log;
 
@@ -648,7 +661,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         {
             if (Count > 10000) throw new InvalidOperationException("数量过大时，禁止获取所有键，请使用FullRedis.Search");
 
-            return Execute(rds => rds.Execute<String[]>("KEYS", "*")) ?? new String[0];
+            return Execute(rds => rds.Execute<String[]>("KEYS", "*")) ?? [];
         }
     }
 

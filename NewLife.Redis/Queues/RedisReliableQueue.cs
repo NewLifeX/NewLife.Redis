@@ -70,10 +70,10 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
     /// <param name="key"></param>
     public RedisReliableQueue(Redis redis, String key) : base(redis, key)
     {
-        _Key = key;
+        _Key = redis is FullRedis rds ? rds.GetKey(key) : key;
         _Status = CreateStatus();
-        AckKey = $"{key}:Ack:{_Status.Key}";
-        _StatusKey = $"{key}:Status:{_Status.Key}";
+        AckKey = $"{_Key}:Ack:{_Status.Key}";
+        _StatusKey = $"{_Key}:Status:{_Status.Key}";
     }
 
     /// <summary>析构</summary>

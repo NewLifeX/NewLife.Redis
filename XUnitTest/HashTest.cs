@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using NewLife.Caching;
 using NewLife.Log;
 using Xunit;
@@ -11,7 +10,7 @@ namespace XUnitTest;
 [Collection("Basic")]
 public class HashTest
 {
-    private readonly FullRedis _redis;
+    protected readonly FullRedis _redis;
 
     public HashTest()
     {
@@ -93,5 +92,13 @@ public class HashTest
         Assert.Equal(org1, hash["org1"]);
 
         Assert.Equal(org5, hash["org5"]);
+    }
+}
+
+public class HashTest2 : HashTest
+{
+    public HashTest2() : base()
+    {
+        _redis.Prefix = "NewLife:";
     }
 }

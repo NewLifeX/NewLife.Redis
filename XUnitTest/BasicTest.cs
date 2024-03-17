@@ -14,7 +14,7 @@ namespace XUnitTest;
 [Collection("Basic")]
 public class BasicTest
 {
-    private readonly FullRedis _redis;
+    protected readonly FullRedis _redis;
 
     public BasicTest()
     {
@@ -84,8 +84,8 @@ public class BasicTest
     public void SearchTest()
     {
         var ic = _redis;
-        var key = "Name";
-        var key2 = "Name2";
+        var key = "Company";
+        var key2 = "Company2";
 
         // 添加删除
         ic.Set(key, Environment.UserName);
@@ -96,7 +96,7 @@ public class BasicTest
         //var ss = ic.Search("*");
         //Assert.True(ss.Length > 0);
 
-        var ss2 = ic.Search("Name*", 10).ToArray();
+        var ss2 = ic.Search("Company*", 10).ToArray();
         Assert.True(ss2.Length > 0);
 
         //var ss3 = ic.Search("ReliableQueue:Status:*", 100).ToArray();
@@ -109,5 +109,13 @@ public class BasicTest
         var rds = _redis.CreateSub(0);
         var inf = rds.GetInfo(true);
         Assert.NotNull(inf);
+    }
+}
+
+public class BasicTest2 : BasicTest
+{
+    public BasicTest2() : base()
+    {
+        _redis.Prefix = "NewLife:";
     }
 }

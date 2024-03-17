@@ -169,7 +169,7 @@ public class RedisList<T> : RedisBase, IList<T>
     /// </remarks>
     /// <param name="destKey">目标列表</param>
     /// <returns></returns>
-    public T RPOPLPUSH(String destKey) => Execute((rc, k) => rc.Execute<T>("RPOPLPUSH", Key, destKey), true);
+    public T RPOPLPUSH(String destKey) => Execute((rc, k) => rc.Execute<T>("RPOPLPUSH", Key, GetKey(destKey)), true);
 
     /// <summary>移除并返回最右边一个元素，并插入目标列表左边，原子操作</summary>
     /// <remarks>
@@ -178,7 +178,7 @@ public class RedisList<T> : RedisBase, IList<T>
     /// <param name="destKey">目标列表</param>
     /// <param name="timeout">超时时间，默认0秒永远阻塞；负数表示直接返回，不阻塞。</param>
     /// <returns></returns>
-    public T BRPOPLPUSH(String destKey, Int32 timeout) => Execute((rc, k) => rc.Execute<T>("BRPOPLPUSH", Key, destKey, timeout), true);
+    public T BRPOPLPUSH(String destKey, Int32 timeout) => Execute((rc, k) => rc.Execute<T>("BRPOPLPUSH", Key, GetKey(destKey), timeout), true);
 
     /// <summary>在指定元素之前插入</summary>
     /// <param name="pivot"></param>

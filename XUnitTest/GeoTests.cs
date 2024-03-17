@@ -10,7 +10,7 @@ namespace XUnitTest;
 [Collection("Basic")]
 public class GeoTests
 {
-    private readonly FullRedis _redis;
+    protected readonly FullRedis _redis;
 
     public GeoTests()
     {
@@ -184,5 +184,13 @@ public class GeoTests
 
         Assert.Equal(0, gis[0].Distance);
         Assert.Equal(157.1110, gis[1].Distance);
+    }
+}
+
+public class GeoTests2 : GeoTests
+{
+    public GeoTests2() : base()
+    {
+        _redis.Prefix = "NewLife:";
     }
 }
