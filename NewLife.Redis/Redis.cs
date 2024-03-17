@@ -202,10 +202,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         if (pk != null && pk.Secret != null) connStr = pk.Unprotect(connStr);
 
         // 默认分号分割，旧版逗号分隔。可能只有一个server=后续多个含逗号的地址
-        var dic =
-            connStr.Contains(';') || connStr.Split('=').Length <= 2 ?
-            connStr.SplitAsDictionary("=", ";", true) :
-            connStr.SplitAsDictionary("=", ",", true);
+        var dic = ParseConfig(connStr);
         if (dic.Count > 0)
         {
             Server = dic["Server"]?.Trim();
@@ -247,6 +244,20 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         }
 
         _configOld = config;
+    }
+
+    /// <summary>分析配置连接字符串</summary>
+    /// <param name="connStr"></param>
+    /// <returns></returns>
+    protected IDictionary<String, String> ParseConfig(String connStr)
+    {
+        // 默认分号分割，旧版逗号分隔。可能只有一个server=后续多个含逗号的地址
+        var dic =
+            connStr.Contains(';') || connStr.Split('=').Length <= 2 ?
+            connStr.SplitAsDictionary("=", ";", true) :
+            connStr.SplitAsDictionary("=", ",", true);
+
+        return dic;
     }
 
     void IConfigMapping.MapConfig(IConfigProvider provider, IConfigSection section)

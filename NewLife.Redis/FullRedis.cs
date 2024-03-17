@@ -40,8 +40,11 @@ public class FullRedis : Redis
     /// <summary>键前缀</summary>
     public String? Prefix { get; set; }
 
-    /// <summary>自动检测集群节点。默认true</summary>
-    public Boolean AutoDetect { get; set; } = true;
+    /// <summary>自动检测集群节点。默认false</summary>
+    /// <remarks>
+    /// 公有云Redis一般放在代理背后，主从架构，如果开启自动检测，将会自动识别主从，导致得到无法连接的内网主从库地址。
+    /// </remarks>
+    public Boolean AutoDetect { get; set; }
 
     /// <summary>模式</summary>
     public String? Mode { get; private set; }
@@ -115,14 +118,13 @@ public class FullRedis : Redis
 
         if (config.IsNullOrEmpty()) return;
 
-        var dic =
-            config.Contains(',') && !config.Contains(';') ?
-            config.SplitAsDictionary("=", ",", true) :
-            config.SplitAsDictionary("=", ";", true);
+        var dic = ParseConfig(config);
         if (dic.Count > 0)
         {
-            if (dic.TryGetValue("ThrowOnFailure", out var str))
-                ThrowOnFailure = str.ToBoolean();
+            if (dic.TryGetValue("Prefix", out var str))
+                Prefix = str;
+            if (dic.TryGetValue("AutoDetect", out str))
+                AutoDetect = str.ToBoolean();
         }
 
         _configOld = config;
