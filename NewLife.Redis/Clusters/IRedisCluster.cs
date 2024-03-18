@@ -3,10 +3,11 @@
 /// <summary>Redis集群接口。包括主从、哨兵和集群</summary>
 public interface IRedisCluster
 {
-    /// <summary>
-    /// redis nodes
-    /// </summary>
-    List<IRedisNode> RedisNodes { get; }
+    /// <summary>节点集合</summary>
+    IList<IRedisNode> Nodes { get; }
+
+    /// <summary>节点改变事件</summary>
+    event EventHandler NodeChanged;
 
     /// <summary>根据Key选择节点</summary>
     /// <param name="key">键</param>

@@ -8,11 +8,11 @@ namespace NewLife.Caching.Clusters;
 public class RedisCluster : RedisBase, IRedisCluster, IDisposable
 {
     #region 属性
+    /// <summary>节点集合</summary>
+    IList<IRedisNode> IRedisCluster.Nodes => Nodes.Select(x => (IRedisNode)x).ToList();
 
-    /// <summary>
-    /// redis nodes
-    /// </summary>
-    public List<IRedisNode> RedisNodes => Nodes.Select(x => (IRedisNode)x).ToList();
+    /// <summary>节点改变事件</summary>
+    public event EventHandler NodeChanged;
 
     /// <summary>集群节点</summary>
     public ClusterNode[]? Nodes { get; private set; }
@@ -77,11 +77,13 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
             }
         }
 
+        var changed = false;
         var str = list.Join("\n", n => n + " " + n?.Slots.Join(","));
         if (str != _lastNodes)
         {
             if (!showLog) WriteLog("分析[{0}]集群节点：", Redis.Name);
             showLog = true;
+            changed = true;
             _lastNodes = str;
         }
 
@@ -101,6 +103,8 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
             }
         }
         Nodes = list.ToArray();
+
+        if (changed) NodeChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private List<ClusterNode> SortNodes(List<ClusterNode> list)

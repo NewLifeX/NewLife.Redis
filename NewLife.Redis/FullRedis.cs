@@ -664,15 +664,9 @@ public class FullRedis : Redis
         InitCluster();
 
         if (Cluster != null)
-        {
-            var nodes = Cluster.RedisNodes;
-            var result = nodes.SelectMany(x => Scan(x));
-            return result;
-        }
+            return Cluster.Nodes.SelectMany(x => Scan(x));
         else
-        {
             return Scan();
-        }
 
         IEnumerable<String> Scan(IRedisNode? node = null)
         {
