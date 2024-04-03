@@ -24,6 +24,9 @@ public class RedisCacheProvider : CacheProvider
     #endregion
 
     #region 构造
+    /// <summary>实例化Redis缓存服务</summary>
+    public RedisCacheProvider() { }
+
     /// <summary>实例化Redis缓存服务，自动创建FullRedis对象</summary>
     /// <param name="serviceProvider"></param>
     public RedisCacheProvider(IServiceProvider serviceProvider)
