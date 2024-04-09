@@ -73,7 +73,8 @@ public class FullRedis : Redis
         Server = options.Server;
         Password = options.Password;
         Db = options.Db;
-        Timeout = options.Timeout;
+        if (options.Timeout > 0)
+            Timeout = options.Timeout;
         Prefix = options.Prefix;
 
         if (!options.Configuration.IsNullOrEmpty())
