@@ -23,8 +23,8 @@ public class RedisOptions
     public String? Password { get; set; }
 
     /// <summary>超时时间。单位毫秒</summary>
-    public Int32 Timeout { get; set; }
+    public Int32 Timeout { get; set; } = 3000;
 
-    /// <summary>键前缀,只适用于PrefixedRedis</summary>
+    /// <summary>键前缀</summary>
     public String? Prefix { get; set; }
 }
