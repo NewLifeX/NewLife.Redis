@@ -479,28 +479,42 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <returns></returns>
     public virtual TResult Execute<TResult>(Func<RedisClient, TResult> func)
     {
-        // 每次重试都需要重新从池里借出连接
-        var pool = Pool;
-        var client = pool.Get();
-        try
+        // 统计性能
+        var sw = Counter?.StartCount();
+
+        var i = 0;
+        var delay = 500;
+        do
         {
-            client.Reset();
-            return func(client);
-        }
-        catch (Exception ex)
-        {
-            if (ex is SocketException or IOException)
+            // 每次重试都需要重新从池里借出连接
+            var pool = Pool;
+            var client = pool.Get();
+            try
             {
+                client.Reset();
+                return func(client);
+            }
+            catch (RedisException) { throw; }
+            catch (Exception ex)
+            {
+                if (++i >= Retry) throw;
+
                 // 销毁连接
                 client.TryDispose();
-            }
 
-            throw;
-        }
-        finally
-        {
-            pool.Put(client);
-        }
+                // 网络异常时，自动切换到其它节点
+                if (ex is SocketException or IOException && _servers != null && i < _servers.Length)
+                    _idxServer++;
+                else
+                    Thread.Sleep(delay *= 2);
+            }
+            finally
+            {
+                pool.Put(client);
+
+                Counter?.StopCount(sw);
+            }
+        } while (true);
     }
 
     /// <summary>异步执行命令，经过管道。FullRedis中还会考虑Cluster分流</summary>
