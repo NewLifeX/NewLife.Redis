@@ -62,12 +62,15 @@ public class RedisJsonEncoder : IPacketEncoder
             if (type == typeof(Byte[])) return pk.ReadBytes();
             if (type.As<IAccessor>()) return type.AccessorRead(pk);
 
+            // 支持可空类型，遇到无数据时返回null
+            var ntype = Nullable.GetUnderlyingType(type);
+            if (pk.Total == 0 && ntype != null && ntype != type) return null;
+            if (ntype != null) type = ntype;
+
             //var str = pk.ToStr().Trim('\"');
             var str = pk.ToStr();
             if (type.GetTypeCode() == TypeCode.String) return str;
 
-            // 支持可空类型
-            type = Nullable.GetUnderlyingType(type) ?? type;
             //if (type.GetTypeCode() != TypeCode.Object) return str.ChangeType(type);
             if (type.GetTypeCode() != TypeCode.Object)
             {
