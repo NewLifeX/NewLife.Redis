@@ -65,6 +65,9 @@ public class RedisJsonEncoder : IPacketEncoder
             //var str = pk.ToStr().Trim('\"');
             var str = pk.ToStr();
             if (type.GetTypeCode() == TypeCode.String) return str;
+
+            // 支持可空类型
+            type = Nullable.GetUnderlyingType(type) ?? type;
             //if (type.GetTypeCode() != TypeCode.Object) return str.ChangeType(type);
             if (type.GetTypeCode() != TypeCode.Object)
             {
