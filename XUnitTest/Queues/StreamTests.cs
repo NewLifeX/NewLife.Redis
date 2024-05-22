@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using NewLife.Caching;
 using NewLife.Caching.Queues;
 using NewLife.Log;
@@ -243,7 +244,7 @@ public class StreamTests
     }
 
     [Fact]
-    public async void GlobalConsume()
+    public async Task GlobalConsume()
     {
         var key = "stream_GlobalConsume";
 
@@ -273,7 +274,7 @@ public class StreamTests
     }
 
     [Fact]
-    public async void GroupConsume()
+    public async Task GroupConsume()
     {
         var key = "stream_GroupConsume";
 
@@ -315,7 +316,7 @@ public class StreamTests
         Assert.Equal(7 + 1, pi.Count);
         Assert.Equal(ids[0], pi.StartId);
         //Assert.Equal(ids[0], pi.EndId);
-        Assert.Equal(1, pi.Consumers.Count);
+        Assert.Single(pi.Consumers);
         var kv = pi.Consumers.First();
         Assert.Equal(7 + 1, kv.Value);
         Assert.StartsWith($"{Environment.MachineName}@", kv.Key);
@@ -386,7 +387,7 @@ public class StreamTests
     }
 
     [Fact]
-    public async void Claim()
+    public async Task Claim()
     {
         var key = "stream_Claim";
         var rds = _redis.CreateSub(9);
@@ -421,7 +422,7 @@ public class StreamTests
         Assert.Equal(7, pi.Count);
         Assert.Equal(ids[0], pi.StartId);
         Assert.Equal(ids[^1], pi.EndId);
-        Assert.Equal(1, pi.Consumers.Count);
+        Assert.Single(pi.Consumers);
         var kv = pi.Consumers.First();
         Assert.Equal(7, kv.Value);
         Assert.StartsWith($"{Environment.MachineName}@", kv.Key);

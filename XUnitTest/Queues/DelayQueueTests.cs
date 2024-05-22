@@ -234,7 +234,7 @@ public class DelayQueueTests
     }
 
     [Fact]
-    public async void Queue_Benchmark_Mutilate()
+    public async Task Queue_Benchmark_Mutilate()
     {
         var key = "DelayQueue_benchmark_mutilate";
         _redis.Remove(key);
@@ -284,7 +284,7 @@ public class DelayQueueTests
     }
 
     [Fact]
-    public async void Queue_Async()
+    public async Task Queue_Async()
     {
         var key = "DelayQueue_Async";
 
@@ -331,7 +331,7 @@ public class DelayQueueTests
     }
 
     [Fact]
-    public async void NoAck()
+    public async Task NoAck()
     {
         var key = "DelayQueue_NoAck";
 
@@ -354,7 +354,7 @@ public class DelayQueueTests
     }
 
     [Fact]
-    public async void TransferAsync()
+    public async Task TransferAsync()
     {
         var key = "transfer_delay";
         var key2 = "transfer";

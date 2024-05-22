@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
+using System.Threading.Tasks;
 using NewLife;
 using NewLife.Caching;
 using NewLife.Configuration;
@@ -396,7 +397,7 @@ public class RedisTest
 
     [TestOrder(70)]
     [Fact]
-    public async void PopAsync()
+    public async Task PopAsync()
     {
         var rds = _redis;
         var key = "async_test";

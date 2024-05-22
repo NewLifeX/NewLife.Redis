@@ -345,7 +345,7 @@ public class SortedSetTests
         Assert.Equal("stone3", rs[0]);
 
         var rs2 = zset.RangeByScoreWithScores(13.56, 14.34, 1, 2);
-        Assert.Equal(1, rs2.Count);
+        Assert.Single(rs2);
         var kv2 = rs2.FirstOrDefault();
         Assert.Equal("stone3", kv2.Key);
         Assert.Equal(14.34, kv2.Value);

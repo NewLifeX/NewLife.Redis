@@ -191,7 +191,7 @@ public class QueueTests
     }
 
     [Fact]
-    public async void Queue_Benchmark_Mutilate()
+    public async Task Queue_Benchmark_Mutilate()
     {
         var key = "Queue_benchmark_mutilate";
         _redis.Remove(key);
@@ -228,7 +228,7 @@ public class QueueTests
     }
 
     [Fact]
-    public async void Queue_Async()
+    public async Task Queue_Async()
     {
         var key = "Queue_Async";
 

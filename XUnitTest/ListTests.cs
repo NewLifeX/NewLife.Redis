@@ -194,11 +194,11 @@ public class ListTests
         _redis.SetExpire(key2, TimeSpan.FromSeconds(60));
 
         Assert.Equal(vs[3], l2[0]);
-        Assert.Equal(1, l2.Count);
+        Assert.Single(l2);
     }
 
     [Fact]
-    public async void BRPOPLPUSH_Test()
+    public async Task BRPOPLPUSH_Test()
     {
         // 一个队列多个消费，阻塞是否叠加
         var key = "lkey_brpoplpush";

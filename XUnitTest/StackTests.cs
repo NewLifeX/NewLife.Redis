@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace XUnitTest;
@@ -72,7 +73,7 @@ public class StackTests
     }
 
     [Fact]
-    public async void Queue_Async()
+    public async Task Queue_Async()
     {
         var key = "Stack_Async";
 

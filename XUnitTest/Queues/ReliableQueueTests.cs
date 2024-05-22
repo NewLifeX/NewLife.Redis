@@ -78,11 +78,11 @@ public class ReliableQueueTests
         // 确认两个，留下一个未确认消息在Ack队列
         var rs = queue.Acknowledge(vs2[0]) + queue.Acknowledge(vs2[1]);
         Assert.Equal(2, rs);
-        Assert.Equal(1, ackList.Count);
+        Assert.Single(ackList);
 
         // 捞出来Ack最后一个
         var vs3 = queue.TakeAck(3).ToArray();
-        Assert.Equal(0, ackList.Count);
+        Assert.Empty(ackList);
         Assert.Single(vs3);
         Assert.Equal("新生命团队", vs3[0]);
 
@@ -141,11 +141,11 @@ public class ReliableQueueTests
         // 确认两个
         var rs = queue.Acknowledge(vs2.Take(2).ToArray());
         Assert.Equal(2, rs);
-        Assert.Equal(1, q2.Count);
+        Assert.Single(q2);
 
         // 捞出来Ack最后一个
         var vs3 = queue.TakeAck(3).ToArray();
-        Assert.Equal(0, q2.Count);
+        Assert.Empty(q2);
         Assert.Single(vs3);
         Assert.Equal("新生命团队", vs3[0]);
 
@@ -296,7 +296,7 @@ public class ReliableQueueTests
     }
 
     [Fact]
-    public async void Queue_Benchmark_Mutilate()
+    public async Task Queue_Benchmark_Mutilate()
     {
         var key = "ReliableQueue_benchmark_mutilate";
         _redis.Remove(key);
@@ -391,11 +391,11 @@ public class ReliableQueueTests
         queue.Acknowledge(vs4);
 
         // 确认队列应该空了
-        Assert.Equal(0, q2.Count);
+        Assert.Empty(q2);
     }
 
     [Fact]
-    public async void Queue_Async()
+    public async Task Queue_Async()
     {
         var key = "ReliableQueue_Async";
 
@@ -441,7 +441,7 @@ public class ReliableQueueTests
     }
 
     [Fact]
-    public async void Queue_PublishAndConsume()
+    public async Task Queue_PublishAndConsume()
     {
         var key = "ReliableQueue_PublishAndConsume";
 
@@ -589,7 +589,7 @@ public class ReliableQueueTests
     }
 
     [Fact]
-    public async void AddDelay()
+    public async Task AddDelay()
     {
         var key = "ReliableQueue_addDelay";
 
@@ -639,7 +639,7 @@ public class ReliableQueueTests
     }
 
     [Fact]
-    public async void BlockTest()
+    public async Task BlockTest()
     {
         // 一个队列两个消费，阻塞是否叠加
         var key = "ReliableQueue_BlockTest";
