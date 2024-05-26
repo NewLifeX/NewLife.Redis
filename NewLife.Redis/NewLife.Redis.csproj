@@ -29,7 +29,7 @@
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Redis</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>FullRedis支持前缀；AutoDetect默认关闭</PackageReleaseNotes>
+    <PackageReleaseNotes>默认使用System.Text.Json序列化；支持DateOnly/TimeOnly</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -46,7 +46,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="10.10.2024.521-beta1237" />
+    <PackageReference Include="NewLife.Core" Version="10.10.2024.525-beta1006" />
   </ItemGroup>
 
   <ItemGroup>
