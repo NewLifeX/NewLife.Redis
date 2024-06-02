@@ -7,7 +7,7 @@
     <Description>Redis基础操作、消息队列，经过日均100亿次调用量的项目验证。旧版NET45找2021年</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2024 新生命开发团队</Copyright>
-    <VersionPrefix>5.6</VersionPrefix>
+    <VersionPrefix>5.7</VersionPrefix>
     <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
     <Version>$(VersionPrefix).$(VersionSuffix)</Version>
     <FileVersion>$(Version)</FileVersion>
@@ -46,7 +46,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="10.10.2024.525-beta1006" />
+    <PackageReference Include="NewLife.Core" Version="10.10.2024.601" />
   </ItemGroup>
 
   <ItemGroup>
