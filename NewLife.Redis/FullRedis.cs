@@ -827,7 +827,7 @@ public class FullRedis : Redis
 
         if (typeof(T) == typeof(String)) return new Tuple<String, T?>(rs[0], (T)(Object)rs[1]);
 
-        return new Tuple<String, T?>(rs[0], rs[1].ToJsonEntity<T>());
+        return new Tuple<String, T?>(rs[0], (T?)JsonHost.Read(rs[1], typeof(T)));
     }
 
     /// <summary>从列表末尾弹出一个元素，阻塞</summary>
@@ -866,7 +866,7 @@ public class FullRedis : Redis
 
         if (typeof(T) == typeof(String)) return new Tuple<String, T?>(rs[0], (T)(Object)rs[1]);
 
-        return new Tuple<String, T?>(rs[0], rs[1].ToJsonEntity<T>());
+        return new Tuple<String, T?>(rs[0], (T?)JsonHost.Read(rs[1], typeof(T)));
     }
 
     /// <summary>从列表头部弹出一个元素，阻塞</summary>
@@ -876,7 +876,7 @@ public class FullRedis : Redis
     /// <returns></returns>
     public virtual T? BLPOP<T>(String key, Int32 secTimeout = 0)
     {
-        var rs = BLPOP<T>(new[] { key }, secTimeout);
+        var rs = BLPOP<T>([key], secTimeout);
         return rs == null ? default : rs.Item2;
     }
 

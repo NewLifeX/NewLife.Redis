@@ -11,6 +11,7 @@ using NewLife.Model;
 using NewLife.Net;
 using NewLife.Reflection;
 using NewLife.Security;
+using NewLife.Serialization;
 
 namespace NewLife.Caching;
 
@@ -55,6 +56,9 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
     /// <summary>编码器。决定对象存储在redis中的格式，默认json</summary>
     public IPacketEncoder Encoder { get; set; } = new RedisJsonEncoder();
+
+    /// <summary>Json序列化主机</summary>
+    public IJsonHost JsonHost { get; set; } = null!;
 
     /// <summary>SSL协议。决定是否启用SSL连接，默认None不启用</summary>
     public SslProtocols SslProtocol { get; set; } = SslProtocols.None;
@@ -244,6 +248,11 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         }
 
         _configOld = config;
+
+        // 初始化Json序列化
+        JsonHost ??= RedisJsonEncoder.GetJsonHost();
+        if (Encoder is RedisJsonEncoder encoder)
+            encoder.JsonHost = JsonHost;
     }
 
     /// <summary>分析配置连接字符串</summary>

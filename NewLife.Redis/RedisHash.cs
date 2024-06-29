@@ -60,12 +60,13 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
     /// <returns></returns>
     public Boolean TryGetValue(TKey key, out TValue value)
     {
-        value = default(TValue);
+        value = default!;
 
-        var pk = Execute((r, k) => r.Execute<Packet>("HGET", Key, key));
+        var pk = Execute((r, k) => r.Execute<Packet>("HGET", Key, key!));
         if (pk == null || pk.Total == 0) return false;
 
-        value = FromBytes<TValue>(pk);
+        value = Redis.Encoder.Decode<TValue>(pk)!;
+        //value = (TValue?)Redis.Encoder.Decode(pk, typeof(TValue))!;
 
         return true;
     }
@@ -155,8 +156,8 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
         var dic = new Dictionary<TKey, TValue>();
         for (var i = 0; i < rs.Length; i++)
         {
-            var key = FromBytes<TKey>(rs[i]);
-            var value = FromBytes<TValue>(rs[++i]);
+            var key = Redis.Encoder.Decode<TKey>(rs[i]);
+            var value = Redis.Encoder.Decode<TValue>(rs[++i]);
             dic[key] = value;
         }
 

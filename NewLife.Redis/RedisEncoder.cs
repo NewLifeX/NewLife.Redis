@@ -17,21 +17,27 @@ public class RedisJsonEncoder : IPacketEncoder
     private static IJsonHost _host;
     #endregion
 
-    static RedisJsonEncoder()
+    static RedisJsonEncoder() => _host = GetJsonHost();
+
+    internal static IJsonHost GetJsonHost()
     {
         // 尝试使用System.Text.Json，不支持时使用FastJson
-        IJsonHost? host = null;
-        try
+        var host = JsonHelper.Default;
+        if (host == null || host.GetType().Name == "FastJson")
         {
-            var type = $"{typeof(FastJson).Namespace}.SystemJson".GetTypeEx();
-            if (type != null)
+            // 当前组件输出net45和netstandard2.0，而SystemJson要求net5以上，因此通过反射加载
+            try
             {
-                host = type.CreateInstance() as IJsonHost;
+                var type = $"{typeof(FastJson).Namespace}.SystemJson".GetTypeEx();
+                if (type != null)
+                {
+                    host = type.CreateInstance() as IJsonHost;
+                }
             }
+            catch { }
         }
-        catch { }
 
-        _host = host ?? JsonHelper.Default;
+        return host ?? JsonHelper.Default;
     }
 
     /// <summary>数值转数据包</summary>

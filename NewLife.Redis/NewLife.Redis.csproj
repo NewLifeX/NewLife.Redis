@@ -46,7 +46,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="10.10.2024.601" />
+    <PackageReference Include="NewLife.Core" Version="10.10.2024.629-beta1346" />
   </ItemGroup>
 
   <ItemGroup>

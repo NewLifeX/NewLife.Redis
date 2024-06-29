@@ -78,30 +78,30 @@ public class RedisStack<T> : RedisBase, IProducerConsumer<T>
     /// <summary>消费获取，支持阻塞</summary>
     /// <param name="timeout">超时，0秒永远阻塞；负数表示直接返回，不阻塞。</param>
     /// <returns></returns>
-    public T TakeOne(Int32 timeout = -1)
+    public T? TakeOne(Int32 timeout = -1)
     {
         if (timeout < 0) return Execute((rc, k) => rc.Execute<T>("RPOP", Key), true);
 
         var rs = Execute((rc, k) => rc.Execute<Packet[]>("BRPOP", Key, timeout), true);
-        return rs == null || rs.Length < 2 ? default : (T)Redis.Encoder.Decode(rs[1], typeof(T));
+        return rs == null || rs.Length < 2 ? default : (T?)Redis.Encoder.Decode(rs[1], typeof(T));
     }
 
     /// <summary>异步消费获取</summary>
     /// <param name="timeout">超时时间，默认0秒永远阻塞；负数表示直接返回，不阻塞。</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns></returns>
-    public async Task<T> TakeOneAsync(Int32 timeout = 0, CancellationToken cancellationToken = default)
+    public async Task<T?> TakeOneAsync(Int32 timeout = 0, CancellationToken cancellationToken = default)
     {
         if (timeout < 0) return await ExecuteAsync((rc, k) => rc.ExecuteAsync<T>("RPOP", Key), true);
 
         var rs = await ExecuteAsync((rc, k) => rc.ExecuteAsync<Packet[]>("BRPOP", new Object[] { Key, timeout }, cancellationToken), true);
-        return rs == null || rs.Length < 2 ? default : (T)Redis.Encoder.Decode(rs[1], typeof(T));
+        return rs == null || rs.Length < 2 ? default : (T?)Redis.Encoder.Decode(rs[1], typeof(T));
     }
 
     /// <summary>异步消费获取</summary>
     /// <param name="timeout">超时时间，默认0秒永远阻塞；负数表示直接返回，不阻塞。</param>
     /// <returns></returns>
-    Task<T> IProducerConsumer<T>.TakeOneAsync(Int32 timeout) => TakeOneAsync(timeout, default);
+    Task<T?> IProducerConsumer<T>.TakeOneAsync(Int32 timeout) => TakeOneAsync(timeout, default);
 
     Int32 IProducerConsumer<T>.Acknowledge(params String[] keys) => throw new NotSupportedException();
 }

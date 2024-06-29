@@ -181,8 +181,8 @@ public static class QueueExtensions
                     log?.Info($"[{topic}]消息内容为：{mqMsg}");
 
                     // 解码
-                    var dic = JsonParser.Decode(mqMsg);
-                    var msg = JsonHelper.Convert<T>(dic);
+                    var dic = rds.JsonHost.Decode(mqMsg)!;
+                    var msg = rds.JsonHost.Convert<T>(dic);
 
                     if (dic.TryGetValue("traceParent", out var tp)) span?.Detach(tp + "");
 
