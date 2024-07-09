@@ -117,7 +117,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <param name="server"></param>
     /// <param name="password"></param>
     /// <param name="db"></param>
-    public Redis(String server, String password, Int32 db)
+    public Redis(String server, String password, Int32 db) : this()
     {
         // 有人多输入了一个空格，酿成大祸
         Server = server?.Trim();
@@ -130,7 +130,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <param name="username"></param>
     /// <param name="password"></param>
     /// <param name="db"></param>
-    public Redis(String server, String username, String password, Int32 db)
+    public Redis(String server, String username, String password, Int32 db) : this()
     {
         // 有人多输入了一个空格，酿成大祸
         Server = server?.Trim();
@@ -142,7 +142,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <summary>按照配置服务实例化Redis，用于NETCore依赖注入</summary>
     /// <param name="provider">服务提供者，将要解析IConfigProvider</param>
     /// <param name="name">缓存名称，也是配置中心key</param>
-    public Redis(IServiceProvider provider, String name)
+    public Redis(IServiceProvider provider, String name) : this()
     {
         Name = name;
         Tracer = provider.GetService<ITracer>();
@@ -155,7 +155,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
     /// <summary>实例化Redis，指定名称，支持从环境变量Redis_{Name}读取配置，或者逐个属性配置</summary>
     /// <param name="name"></param>
-    public Redis(String name)
+    public Redis(String name) : this()
     {
         if (name.IsNullOrEmpty()) throw new ArgumentNullException(nameof(name));
 
