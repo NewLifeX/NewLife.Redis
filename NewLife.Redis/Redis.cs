@@ -664,6 +664,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         rds.Password = Password;
 
         rds.Encoder = Encoder;
+        rds.JsonHost = JsonHost;
         rds.Timeout = Timeout;
         rds.Retry = Retry;
         rds.ShieldingTime = ShieldingTime;
