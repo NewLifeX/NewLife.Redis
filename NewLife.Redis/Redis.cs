@@ -472,6 +472,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
                 client.TryDispose();
 
                 // 网络异常时，自动切换到其它节点
+                if (ex is AggregateException ae) ex = ae.InnerException;
                 if (ex is SocketException or IOException && _servers != null && i < _servers.Length)
                     _idxServer++;
                 else

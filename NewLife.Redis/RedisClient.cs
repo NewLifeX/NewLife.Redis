@@ -149,12 +149,12 @@ public class RedisClient : DisposeBase
     private static readonly Byte[] _NewLine = [(Byte)'\r', (Byte)'\n'];
 
     /// <summary>发出请求</summary>
-    /// <param name="ms"></param>
+    /// <param name="memory"></param>
     /// <param name="cmd"></param>
     /// <param name="args"></param>
     /// <param name="oriArgs">原始参数，仅用于输出日志</param>
     /// <returns></returns>
-    protected virtual void GetRequest(Stream ms, String cmd, Packet[] args, Object[]? oriArgs)
+    protected virtual Int32 GetRequest(Memory<Byte> memory, String cmd, Packet[] args, Object[]? oriArgs)
     {
         // *<number of arguments>\r\n$<number of bytes of argument 1>\r\n<argument data>\r\n
         // *1\r\n$4\r\nINFO\r\n
@@ -169,16 +169,20 @@ public class RedisClient : DisposeBase
          * 霜摧砺石开
          */
 
+        var writer = new SpanWriter(memory.Span);
+
         // 区分有参数和无参数
         if (args == null || args.Length == 0)
         {
             //var str = "*1\r\n${0}\r\n{1}\r\n".F(cmd.Length, cmd);
-            ms.Write(GetHeaderBytes(cmd, 0));
+            //Encoding.UTF8.GetBytes(GetHeaderBytes(cmd, 0), memory.Span);
+            writer.Write(GetHeaderBytes(cmd, 0));
         }
         else
         {
             //var str = "*{2}\r\n${0}\r\n{1}\r\n".F(cmd.Length, cmd, 1 + args.Length);
-            ms.Write(GetHeaderBytes(cmd, args.Length));
+            //Encoding.UTF8.GetBytes(GetHeaderBytes(cmd, args.Length), memory.Span);
+            writer.Write(GetHeaderBytes(cmd, args.Length));
 
             for (var i = 0; i < args.Length; i++)
             {
@@ -206,16 +210,19 @@ public class RedisClient : DisposeBase
                 }
 
                 //str = "${0}\r\n".F(item.Length);
-                //ms.Write(str.GetBytes());
-                ms.WriteByte((Byte)'$');
-                ms.Write(sizes);
-                ms.Write(_NewLine);
-                //ms.Write(item);
-                item.CopyTo(ms);
-                ms.Write(_NewLine);
+                writer.WriteByte((Byte)'$');
+                writer.Write(sizes);
+                writer.Write(_NewLine);
+                for (var pk = item; pk != null; pk = pk.Next)
+                {
+                    writer.Write(new Span<Byte>(pk.Data, pk.Offset, pk.Count));
+                }
+                writer.Write(_NewLine);
             }
         }
         if (log != null) WriteLog("=> {0}", log.Return(true));
+
+        return writer.Position;
     }
 
     /// <summary>异步接收响应</summary>
@@ -310,16 +317,20 @@ public class RedisClient : DisposeBase
             CheckLogin(cmd);
             CheckSelect(cmd);
 
-            var ms = Pool.MemoryStream.Get();
-            GetRequest(ms, cmd, args, oriArgs);
+            // 估算数据包大小，从内存池借出
+            var total = 16 + cmd.Length + args.Sum(e => 16 + e.Total);
+            var buffer = Pool.Shared.Rent(total);
+            var memory = buffer.AsMemory();
+
+            var p = GetRequest(memory, cmd, args, oriArgs);
+            memory = memory[..p];
 
             var max = Host.MaxMessageSize;
-            if (max > 0 && ms.Length > max) throw new InvalidOperationException($"命令[{cmd}]的数据包大小[{ms.Length}]超过最大限制[{max}]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。");
+            if (max > 0 && memory.Length > max) throw new InvalidOperationException($"命令[{cmd}]的数据包大小[{memory.Length}]超过最大限制[{max}]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。");
 
-            // WriteTo与位置无关，CopyTo与位置相关
-            ms.Position = 0;
-            if (ms.Length > 0) await ms.CopyToAsync(ns, 4096, cancellationToken);
-            ms.Return();
+            if (memory.Length > 0) await ns.WriteAsync(memory);
+
+            Pool.Shared.Return(buffer);
 
             await ns.FlushAsync(cancellationToken);
         }
@@ -648,7 +659,7 @@ public class RedisClient : DisposeBase
     public Int32 PipelineCommands => _ps == null ? 0 : _ps.Count;
 
     /// <summary>开始管道模式</summary>
-    public virtual void StartPipeline() => _ps ??= new List<Command>();
+    public virtual void StartPipeline() => _ps ??= [];
 
     /// <summary>结束管道模式</summary>
     /// <param name="requireResult">要求结果</param>
@@ -669,21 +680,27 @@ public class RedisClient : DisposeBase
             CheckLogin(null);
             CheckSelect(null);
 
+            // 估算数据包大小，从内存池借出
+            var total = Host.MaxMessageSize;
+            var buffer = Pool.Shared.Rent(total);
+            var memory = buffer.AsMemory();
+            var p = 0;
+
             // 整体打包所有命令
-            var ms = Pool.MemoryStream.Get();
             var cmds = new List<String>(ps.Count);
             foreach (var item in ps)
             {
                 cmds.Add(item.Name);
-                GetRequest(ms, item.Name, item.Args.Select(e => Host.Encoder.Encode(e)).ToArray(), item.Args);
+                p += GetRequest(memory.Slice(p), item.Name, item.Args.Select(e => Host.Encoder.Encode(e)).ToArray(), item.Args);
             }
+            memory = memory[..p];
 
             // 设置数据标签
             span?.SetTag(cmds);
 
             // 整体发出
-            if (ms.Length > 0) ms.WriteTo(ns);
-            ms.Return();
+            if (memory.Length > 0) ns.WriteAsync(memory).GetAwaiter().GetResult();
+            Pool.Shared.Return(buffer);
 
             if (!requireResult) return new Object[ps.Count];
 
@@ -798,22 +815,22 @@ public class RedisClient : DisposeBase
     #endregion
 
     #region 辅助
-    private static readonly ConcurrentDictionary<String, Byte[]> _cache0 = new();
-    private static readonly ConcurrentDictionary<String, Byte[]> _cache1 = new();
-    private static readonly ConcurrentDictionary<String, Byte[]> _cache2 = new();
-    private static readonly ConcurrentDictionary<String, Byte[]> _cache3 = new();
+    private static readonly ConcurrentDictionary<String, String> _cache0 = new();
+    private static readonly ConcurrentDictionary<String, String> _cache1 = new();
+    private static readonly ConcurrentDictionary<String, String> _cache2 = new();
+    private static readonly ConcurrentDictionary<String, String> _cache3 = new();
     /// <summary>获取命令对应的字节数组，全局缓存</summary>
     /// <param name="cmd"></param>
     /// <param name="args"></param>
     /// <returns></returns>
-    private static Byte[] GetHeaderBytes(String cmd, Int32 args = 0)
+    private static String GetHeaderBytes(String cmd, Int32 args = 0)
     {
-        if (args == 0) return _cache0.GetOrAdd(cmd, k => $"*1\r\n${k.Length}\r\n{k}\r\n".GetBytes());
-        if (args == 1) return _cache1.GetOrAdd(cmd, k => $"*2\r\n${k.Length}\r\n{k}\r\n".GetBytes());
-        if (args == 2) return _cache2.GetOrAdd(cmd, k => $"*3\r\n${k.Length}\r\n{k}\r\n".GetBytes());
-        if (args == 3) return _cache3.GetOrAdd(cmd, k => $"*4\r\n${k.Length}\r\n{k}\r\n".GetBytes());
+        if (args == 0) return _cache0.GetOrAdd(cmd, k => $"*1\r\n${k.Length}\r\n{k}\r\n");
+        if (args == 1) return _cache1.GetOrAdd(cmd, k => $"*2\r\n${k.Length}\r\n{k}\r\n");
+        if (args == 2) return _cache2.GetOrAdd(cmd, k => $"*3\r\n${k.Length}\r\n{k}\r\n");
+        if (args == 3) return _cache3.GetOrAdd(cmd, k => $"*4\r\n${k.Length}\r\n{k}\r\n");
 
-        return $"*{1 + args}\r\n${cmd.Length}\r\n{cmd}\r\n".GetBytes();
+        return $"*{1 + args}\r\n${cmd.Length}\r\n{cmd}\r\n";
     }
     #endregion
 
