@@ -8,21 +8,27 @@ public ref struct SpanWriter(Span<Byte> buffer)
 
     public Int32 Position { get; set; }
 
+    public Span<Byte> GetSpan() => _buffer[..Position];
+
+    public Span<Byte> GetRemain() => _buffer[Position..];
+
     public void Write(Int32 value)
     {
         BitConverter.TryWriteBytes(_buffer.Slice(Position), value);
         Position += sizeof(Int32);
     }
 
-    public void Write(String value)
+    public Int32 Write(String value)
     {
         if (value == null)
             throw new ArgumentNullException(nameof(value));
 
-        var byteCount = Encoding.UTF8.GetByteCount(value);
+        //var byteCount = Encoding.UTF8.GetByteCount(value);
 
-        Encoding.UTF8.GetBytes(value, _buffer.Slice(Position));
-        Position += byteCount;
+        var count = Encoding.UTF8.GetBytes(value, _buffer.Slice(Position));
+        Position += count;
+
+        return count;
     }
 
     public void WriteByte(Byte b) => _buffer[Position++] = b;

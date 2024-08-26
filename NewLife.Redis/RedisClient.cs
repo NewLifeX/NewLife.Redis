@@ -154,7 +154,7 @@ public class RedisClient : DisposeBase
     /// <param name="args"></param>
     /// <param name="oriArgs">原始参数，仅用于输出日志</param>
     /// <returns></returns>
-    protected virtual Int32 GetRequest(Memory<Byte> memory, String cmd, Packet[] args, Object[]? oriArgs)
+    protected virtual Int32 GetRequest(Memory<Byte> memory, String cmd, Object[]? args)
     {
         // *<number of arguments>\r\n$<number of bytes of argument 1>\r\n<argument data>\r\n
         // *1\r\n$4\r\nINFO\r\n
@@ -186,19 +186,29 @@ public class RedisClient : DisposeBase
 
             for (var i = 0; i < args.Length; i++)
             {
-                var item = args[i];
-                var size = item.Total;
+                Packet? item = null;
+                var size = 0;
+                var str = args[i] as String;
+                if (str != null)
+                {
+                    size = Encoding.UTF8.GetByteCount(str);
+                }
+                else
+                {
+                    item = Host.Encoder.Encode(args[i]);
+                    size = item.Total;
+                }
                 var sizes = size.ToString().GetBytes();
 
                 // 指令日志。简单类型显示原始值，复杂类型显示序列化后字符串
-                if (log != null && oriArgs != null)
+                if (log != null && args != null)
                 {
                     log.Append(' ');
-                    var ori = oriArgs[i];
+                    var ori = args[i];
                     switch (ori.GetType().GetTypeCode())
                     {
                         case TypeCode.Object:
-                            log.AppendFormat("[{0}]{1}", size, item.ToStr(null, 0, 1024)?.TrimEnd());
+                            //log.AppendFormat("[{0}]{1}", size, item.ToStr(null, 0, 1024)?.TrimEnd());
                             break;
                         case TypeCode.DateTime:
                             log.Append(((DateTime)ori).ToString("yyyy-MM-dd HH:mm:ss.fff"));
@@ -213,9 +223,14 @@ public class RedisClient : DisposeBase
                 writer.WriteByte((Byte)'$');
                 writer.Write(sizes);
                 writer.Write(_NewLine);
-                for (var pk = item; pk != null; pk = pk.Next)
+                if (str != null)
+                    writer.Write(str);
+                else
                 {
-                    writer.Write(new Span<Byte>(pk.Data, pk.Offset, pk.Count));
+                    for (var pk = item; pk != null; pk = pk.Next)
+                    {
+                        writer.Write(new Span<Byte>(pk.Data, pk.Offset, pk.Count));
+                    }
                 }
                 writer.Write(_NewLine);
             }
@@ -304,7 +319,7 @@ public class RedisClient : DisposeBase
     /// <param name="oriArgs">原始参数，仅用于输出日志</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    protected virtual async Task<Object?> ExecuteCommandAsync(String cmd, Packet[] args, Object[]? oriArgs, CancellationToken cancellationToken)
+    protected virtual async Task<Object?> ExecuteCommandAsync(String cmd, Object[]? args, CancellationToken cancellationToken)
     {
         var isQuit = cmd == "QUIT";
 
@@ -318,15 +333,16 @@ public class RedisClient : DisposeBase
             CheckSelect(cmd);
 
             // 估算数据包大小，从内存池借出
-            var total = 16 + cmd.Length + args.Sum(e => 16 + e.Total);
+            var max = Host.MaxMessageSize;
+            var total = 16 + cmd.Length + args.Sum(e => 16 + 240);
+            //var total = max;
             var buffer = Pool.Shared.Rent(total);
             var memory = buffer.AsMemory();
 
-            var p = GetRequest(memory, cmd, args, oriArgs);
+            var p = GetRequest(memory, cmd, args);
             memory = memory[..p];
 
-            var max = Host.MaxMessageSize;
-            if (max > 0 && memory.Length > max) throw new InvalidOperationException($"命令[{cmd}]的数据包大小[{memory.Length}]超过最大限制[{max}]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。");
+            if (max > 0 && memory.Length >= max) throw new InvalidOperationException($"命令[{cmd}]的数据包大小[{memory.Length}]超过最大限制[{max}]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。");
 
             if (memory.Length > 0) await ns.WriteAsync(memory);
 
@@ -539,7 +555,7 @@ public class RedisClient : DisposeBase
         using var span = cmd.IsNullOrEmpty() ? null : Host.Tracer?.NewSpan($"redis:{Name}:{act}", args);
         try
         {
-            return await ExecuteCommandAsync(cmd, args.Select(e => Host.Encoder.Encode(e)).ToArray(), args, cancellationToken);
+            return await ExecuteCommandAsync(cmd, args, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -691,7 +707,7 @@ public class RedisClient : DisposeBase
             foreach (var item in ps)
             {
                 cmds.Add(item.Name);
-                p += GetRequest(memory.Slice(p), item.Name, item.Args.Select(e => Host.Encoder.Encode(e)).ToArray(), item.Args);
+                p += GetRequest(memory.Slice(p), item.Name, item.Args);
             }
             memory = memory[..p];
 
