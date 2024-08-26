@@ -23,7 +23,7 @@ class Program
         try
         {
             //TestHyperLogLog();
-            Test5();
+            Test2();
         }
         catch (Exception ex)
         {
@@ -102,14 +102,14 @@ class Program
         //ic.AutoPipeline = -1;
         ic.Bench();
 
-        Thread.Sleep(1000);
+        //Thread.Sleep(1000);
 
-        Console.WriteLine();
-        var dic = ic.GetInfo();
-        foreach (var item in dic)
-        {
-            Console.WriteLine("{0}:\t{1}", item.Key, item.Value);
-        }
+        //Console.WriteLine();
+        //var dic = ic.GetInfo();
+        //foreach (var item in dic)
+        //{
+        //    Console.WriteLine("{0}:\t{1}", item.Key, item.Value);
+        //}
     }
 
     static void Test3()

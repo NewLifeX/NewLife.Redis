@@ -11,7 +11,6 @@ using NewLife.Net;
 using NewLife.Reflection;
 using NewLife.Serialization;
 
-//#nullable enable
 namespace NewLife.Caching;
 
 /// <summary>Redis客户端</summary>
@@ -84,108 +83,15 @@ public class RedisClient : DisposeBase
     /// <summary>新建连接获取数据流</summary>
     /// <param name="create">新建连接</param>
     /// <returns></returns>
-    private Stream? GetStream(Boolean create)
-    {
-        var tc = Client;
-        //NetworkStream ns = null;
-        var ns = _stream;
-
-        // 判断连接是否可用
-        var active = false;
-        try
-        {
-            //ns = tc?.GetStream();
-            active = ns != null && tc != null && tc.Connected && ns.CanWrite && ns.CanRead;
-        }
-        catch { }
-
-        // 如果连接不可用，则重新建立连接
-        if (!active)
-        {
-            Logined = false;
-
-            Client = null;
-            tc.TryDispose();
-            if (!create) return null;
-
-            var timeout = Timeout;
-            if (timeout == 0) timeout = Host.Timeout;
-            tc = new TcpClient
-            {
-                SendTimeout = timeout,
-                ReceiveTimeout = timeout
-            };
-            //tc.Connect(Server.Address, Server.Port);
-
-            try
-            {
-                // 采用异步来解决连接超时设置问题
-                var uri = Server;
-                var ar = tc.BeginConnect(uri.Address, uri.Port, null, null);
-                if (!ar.AsyncWaitHandle.WaitOne(timeout, true))
-                {
-                    tc.Close();
-                    throw new TimeoutException($"连接[{uri}][{timeout}ms]超时！");
-                }
-                tc.EndConnect(ar);
-
-                Client = tc;
-                ns = tc.GetStream();
-
-                // 客户端SSL
-                var sp = Host.SslProtocol;
-                if (sp != SslProtocols.None)
-                {
-                    var sslStream = new SslStream(ns, false, OnCertificateValidationCallback);
-                    sslStream.AuthenticateAsClient(uri.Host ?? uri.Address + "", [], sp, false);
-
-                    ns = sslStream;
-                }
-
-                _stream = ns;
-            }
-            catch
-            {
-                // 连接异常时，放弃该客户端连接对象。上层连接池将切换新的服务端节点
-                Dispose();
-                throw;
-            }
-        }
-
-        return ns;
-    }
-
-    private Boolean OnCertificateValidationCallback(Object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
-    {
-        //WriteLog("Valid {0} {1}", certificate.Issuer, sslPolicyErrors);
-        //if (chain?.ChainStatus != null)
-        //{
-        //    foreach (var item in chain.ChainStatus)
-        //    {
-        //        WriteLog("Chain {0} {1}", item.Status, item.StatusInformation?.Trim());
-        //    }
-        //}
-
-        // 如果没有证书，全部通过
-        var cert = Host.Certificate;
-        if (cert == null) return true;
-
-        return chain.ChainElements
-                .Cast<X509ChainElement>()
-                .Any(x => x.Certificate.Thumbprint == cert.Thumbprint);
-    }
-
     private async Task<Stream?> GetStreamAsync(Boolean create)
     {
         var tc = Client;
-        //NetworkStream ns = null;
         var ns = _stream;
 
         // 判断连接是否可用
         var active = false;
         try
         {
-            //ns = tc?.GetStream();
             active = ns != null && tc != null && tc.Connected && ns.CanWrite && ns.CanRead;
         }
         catch { }
@@ -227,6 +133,17 @@ public class RedisClient : DisposeBase
         }
 
         return ns;
+    }
+
+    private Boolean OnCertificateValidationCallback(Object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+    {
+        // 如果没有证书，全部通过
+        var cert = Host.Certificate;
+        if (cert == null) return true;
+
+        return chain.ChainElements
+                .Cast<X509ChainElement>()
+                .Any(x => x.Certificate.Thumbprint == cert.Thumbprint);
     }
 
     private static readonly Byte[] _NewLine = [(Byte)'\r', (Byte)'\n'];
@@ -298,103 +215,7 @@ public class RedisClient : DisposeBase
                 ms.Write(_NewLine);
             }
         }
-        if (log != null) WriteLog("=> {0}", log.Put(true));
-    }
-
-    /// <summary>接收响应</summary>
-    /// <param name="ns"></param>
-    /// <param name="count"></param>
-    /// <returns></returns>
-    protected virtual IList<Object?> GetResponse(Stream ns, Int32 count)
-    {
-        /*
-         * 响应格式
-         * 1：简单字符串，非二进制安全字符串，一般是状态回复。  +开头，例：+OK\r\n 
-         * 2: 错误信息。-开头， 例：-ERR unknown command 'mush'\r\n
-         * 3: 整型数字。:开头， 例：:1\r\n
-         * 4：大块回复值，最大512M。  $开头+数据长度。 例：$4\r\nmush\r\n
-         * 5：多条回复。*开头， 例：*2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n
-         */
-
-        var ms = new BufferedStream(ns);
-        var log = Log == null || Log == Logger.Null ? null : Pool.StringBuilder.Get();
-
-        // 多行响应
-        var list = new List<Object?>();
-        for (var i = 0; i < count; i++)
-        {
-            // 解析响应
-            var b = ms.ReadByte();
-            if (b == -1) break;
-
-            var header = (Char)b;
-            log?.Append(header);
-            if (header == '$')
-            {
-                list.Add(ReadBlock(ms, log));
-            }
-            else if (header == '*')
-            {
-                list.Add(ReadBlocks(ms, log));
-            }
-            else
-            {
-                // 字符串以换行为结束符
-                var str = ReadLine(ms);
-                log?.Append(str);
-
-                if (header is '+' or ':')
-                    list.Add(str);
-                else if (header == '-')
-                    throw new RedisException(str);
-                else
-                {
-                    XTrace.WriteLine("无法解析响应[{0:X2}] {1}", (Byte)header, ms.ReadBytes(-1).ToHex("-"));
-                    throw new InvalidDataException($"无法解析响应 [{header}]");
-                }
-            }
-        }
-
-        if (log != null) WriteLog("<= {0}", log.Put(true));
-
-        return list;
-    }
-
-    /// <summary>执行命令，发请求，取响应</summary>
-    /// <param name="cmd"></param>
-    /// <param name="args"></param>
-    /// <param name="oriArgs">原始参数，仅用于输出日志</param>
-    /// <returns></returns>
-    protected virtual Object? ExecuteCommand(String cmd, Packet[] args, Object[]? oriArgs)
-    {
-        var isQuit = cmd == "QUIT";
-
-        var ns = GetStream(!isQuit);
-        if (ns == null) return null;
-
-        if (!cmd.IsNullOrEmpty())
-        {
-            // 验证登录
-            CheckLogin(cmd);
-            CheckSelect(cmd);
-
-            var ms = Pool.MemoryStream.Get();
-            GetRequest(ms, cmd, args, oriArgs);
-
-            var max = Host.MaxMessageSize;
-            if (max > 0 && ms.Length > max) throw new InvalidOperationException($"命令[{cmd}]的数据包大小[{ms.Length}]超过最大限制[{max}]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。");
-
-            // WriteTo与位置无关，CopyTo与位置相关
-            //ms.Position = 0;
-            if (ms.Length > 0) ms.WriteTo(ns);
-            ms.Put();
-        }
-
-        var rs = GetResponse(ns, 1);
-
-        if (isQuit) Logined = false;
-
-        return rs.FirstOrDefault();
+        if (log != null) WriteLog("=> {0}", log.Return(true));
     }
 
     /// <summary>异步接收响应</summary>
@@ -402,7 +223,7 @@ public class RedisClient : DisposeBase
     /// <param name="count">响应个数</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    protected virtual async Task<IList<Object?>> GetResponseAsync(Stream ns, Int32 count, CancellationToken cancellationToken)
+    protected virtual async Task<IList<Object?>> GetResponseAsync(Stream ns, Int32 count, CancellationToken cancellationToken = default)
     {
         /*
          * 响应格式
@@ -465,7 +286,7 @@ public class RedisClient : DisposeBase
             }
         }
 
-        if (log != null) WriteLog("<= {0}", log.Put(true));
+        if (log != null) WriteLog("<= {0}", log.Return(true));
 
         return list;
     }
@@ -492,10 +313,13 @@ public class RedisClient : DisposeBase
             var ms = Pool.MemoryStream.Get();
             GetRequest(ms, cmd, args, oriArgs);
 
+            var max = Host.MaxMessageSize;
+            if (max > 0 && ms.Length > max) throw new InvalidOperationException($"命令[{cmd}]的数据包大小[{ms.Length}]超过最大限制[{max}]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。");
+
             // WriteTo与位置无关，CopyTo与位置相关
             ms.Position = 0;
             if (ms.Length > 0) await ms.CopyToAsync(ns, 4096, cancellationToken);
-            ms.Put();
+            ms.Return();
 
             await ns.FlushAsync(cancellationToken);
         }
@@ -534,7 +358,7 @@ public class RedisClient : DisposeBase
     /// <summary>重置。干掉历史残留数据</summary>
     public void Reset()
     {
-        var ns = GetStream(false);
+        var ns = GetStreamAsync(false).Result;
         if (ns == null) return;
 
         // 干掉历史残留数据
@@ -638,7 +462,7 @@ public class RedisClient : DisposeBase
                 sb.Append((Char)b);
         }
 
-        return sb.Put(true);
+        return sb.Return(true);
     }
     #endregion
 
@@ -647,21 +471,7 @@ public class RedisClient : DisposeBase
     /// <param name="cmd"></param>
     /// <param name="args"></param>
     /// <returns></returns>
-    public virtual Object? Execute(String cmd, params Object[] args)
-    {
-        // 埋点名称，支持二级命令
-        var act = cmd.EqualIgnoreCase("cluster", "xinfo", "xgroup", "xreadgroup") ? $"{cmd}-{args.FirstOrDefault()}" : cmd;
-        using var span = cmd.IsNullOrEmpty() ? null : Host.Tracer?.NewSpan($"redis:{Name}:{act}", args);
-        try
-        {
-            return ExecuteCommand(cmd, args.Select(e => Host.Encoder.Encode(e)).ToArray(), args);
-        }
-        catch (Exception ex)
-        {
-            span?.SetError(ex, null);
-            throw;
-        }
-    }
+    public virtual Object? Execute(String cmd, params Object[] args) => ExecuteAsync(cmd, args).Result;
 
     /// <summary>执行命令。返回基本类型、对象、对象数组</summary>
     /// <param name="cmd"></param>
@@ -706,24 +516,6 @@ public class RedisClient : DisposeBase
         return true;
     }
 
-    /// <summary>读取更多。用于PubSub等多次读取命令</summary>
-    /// <returns></returns>
-    public virtual TResult? ReadMore<TResult>()
-    {
-        var ns = GetStream(false);
-        if (ns == null) return default;
-
-        var rss = GetResponse(ns, 1);
-        var rs = rss.FirstOrDefault();
-
-        //var rs = ExecuteCommand(null, null, null);
-        if (rs == null) return default;
-        if (rs is TResult rs2) return rs2;
-        if (rs != null && TryChangeType(rs, typeof(TResult), out var target)) return (TResult?)target;
-
-        return default;
-    }
-
     /// <summary>异步执行命令。返回字符串、Packet、Packet[]</summary>
     /// <param name="cmd">命令</param>
     /// <param name="args">参数数组</param>
@@ -732,7 +524,7 @@ public class RedisClient : DisposeBase
     public virtual async Task<Object?> ExecuteAsync(String cmd, Object[] args, CancellationToken cancellationToken = default)
     {
         // 埋点名称，支持二级命令
-        var act = cmd.EqualIgnoreCase("cluster", "xinfo", "xgroup") ? $"{cmd}-{args?.FirstOrDefault()}" : cmd;
+        var act = cmd.EqualIgnoreCase("cluster", "xinfo", "xgroup", "xreadgroup") ? $"{cmd}-{args?.FirstOrDefault()}" : cmd;
         using var span = cmd.IsNullOrEmpty() ? null : Host.Tracer?.NewSpan($"redis:{Name}:{act}", args);
         try
         {
@@ -867,7 +659,7 @@ public class RedisClient : DisposeBase
 
         _ps = null;
 
-        var ns = GetStream(true);
+        var ns = GetStreamAsync(true).Result;
         if (ns == null) return null;
 
         using var span = Host.Tracer?.NewSpan($"redis:{Name}:Pipeline", null);
@@ -891,12 +683,12 @@ public class RedisClient : DisposeBase
 
             // 整体发出
             if (ms.Length > 0) ms.WriteTo(ns);
-            ms.Put();
+            ms.Return();
 
             if (!requireResult) return new Object[ps.Count];
 
             // 获取响应
-            var list = GetResponse(ns, ps.Count);
+            var list = GetResponseAsync(ns, ps.Count).Result;
             for (var i = 0; i < list.Count; i++)
             {
                 var rs = list[i];
@@ -1035,4 +827,3 @@ public class RedisClient : DisposeBase
     public void WriteLog(String format, params Object[] args) => Log?.Info(format, args);
     #endregion
 }
-//#nullable restore
