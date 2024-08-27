@@ -212,7 +212,7 @@ public class RedisClient : DisposeBase
                 }
 
                 //str = "${0}\r\n".F(item.Length);
-                writer.WriteByte((Byte)'$');
+                writer.Write((Byte)'$');
                 writer.Write(size.ToString());
                 writer.Write(_NewLine);
                 if (str != null)
@@ -225,7 +225,7 @@ public class RedisClient : DisposeBase
         }
         if (log != null) WriteLog("=> {0}", log.Return(true));
 
-        return writer.Position;
+        return writer.WrittenCount;
     }
 
     /// <summary>异步接收响应</summary>

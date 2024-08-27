@@ -117,7 +117,7 @@ public class RedisJsonEncoder //: IPacketEncoder
         if (value is IAccessor acc) value = acc.ToPacket();
         if (value is Packet pk)
         {
-            if (span != null) pk.AsSpan().CopyTo(span);
+            if (span != null) pk.ToArray().CopyTo(span);
             return pk.Total;
         }
         if (value is Byte[] buf)
@@ -137,7 +137,7 @@ public class RedisJsonEncoder //: IPacketEncoder
 
         if (span == null) return Encoding.UTF8.GetByteCount(str);
 
-        return Encoding.UTF8.GetBytes(str, span);
+        return Encoding.UTF8.GetBytes(str.AsSpan(), span);
     }
 
     /// <summary>数据包转对象</summary>

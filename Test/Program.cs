@@ -4,7 +4,6 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
 using NewLife;
 using NewLife.Caching;
 using NewLife.Caching.Clusters;
@@ -36,14 +35,14 @@ class Program
 
     static void Test1()
     {
-        var services = new ServiceCollection();
-        services.AddRedis("test1", "server=127.0.0.1;db=9");
-        services.AddRedis("test2", "server=127.0.0.1;db=9");
-        var provider = services.BuildServiceProvider();
+        //var services = new ServiceCollection();
+        //services.AddRedis("test1", "server=127.0.0.1;db=9");
+        //services.AddRedis("test2", "server=127.0.0.1;db=9");
+        //var provider = services.BuildServiceProvider();
 
         //var ic = provider.GetRequiredService<Redis>();
-        var ic = provider.GetServices<Redis>().FirstOrDefault(e => e.Name == "test1");
-        //var ic = new FullRedis("127.0.0.1:6379", null, 3);
+        //var ic = provider.GetServices<Redis>().FirstOrDefault(e => e.Name == "test1");
+        var ic = new FullRedis("127.0.0.1:6379", null, 3);
         //var ic = new FullRedis();
         //ic.Server = "127.0.0.1:6379";
         //ic.Db = 3;
@@ -55,7 +54,7 @@ class Program
         ic.Set("name", "大石头");
         Console.WriteLine(ic.Get<String>("name"));
 
-        var ks = ic.Execute(null, (c,k) => c.Execute<String[]>("KEYS", "*"));
+        var ks = ic.Execute(null, (c, k) => c.Execute<String[]>("KEYS", "*"));
         var keys = ic.Keys;
 
         ic.Set("time", DateTime.Now, 1);
@@ -114,18 +113,18 @@ class Program
 
     static void Test3()
     {
-        //var redis = new FullRedis("127.0.0.1:6379", null, 3);
-        //ic.Log = XTrace.Log;
+        var redis = new FullRedis("127.0.0.1:6379", null, 3);
+        //redis.Log = XTrace.Log;
 
-        var services = new ServiceCollection();
-        services.AddRedis(options =>
-        {
-            options.Server = "127.0.0.1:6379";
-            options.Db = 3;
-        });
+        //var services = new ServiceCollection();
+        //services.AddRedis(options =>
+        //{
+        //    options.Server = "127.0.0.1:6379";
+        //    options.Db = 3;
+        //});
 
-        var sp = services.BuildServiceProvider();
-        var redis = sp.GetService<FullRedis>();
+        //var sp = services.BuildServiceProvider();
+        //var redis = sp.GetService<FullRedis>();
 
         var key = "ReliableQueue_unique";
 
