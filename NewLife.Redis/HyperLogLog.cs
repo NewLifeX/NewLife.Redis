@@ -60,7 +60,10 @@ public class HyperLogLog : RedisBase
         };
         foreach (var item in keys)
         {
-            args.Add(item);
+            if (Redis is FullRedis rds && !rds.Prefix.IsNullOrEmpty())
+                args.Add(item.EnsureStart(rds.Prefix));
+            else
+                args.Add(item);
         }
         return Execute((rc, k) => rc.Execute<String>("PFMERGE", args.ToArray()), true) == "OK";
     }
