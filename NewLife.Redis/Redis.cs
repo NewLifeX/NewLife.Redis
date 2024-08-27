@@ -55,7 +55,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     public Int32 AutoPipeline { get; set; }
 
     /// <summary>编码器。决定对象存储在redis中的格式，默认json</summary>
-    public IPacketEncoder Encoder { get; set; } = new RedisJsonEncoder();
+    public RedisJsonEncoder Encoder { get; set; } = new RedisJsonEncoder();
 
     /// <summary>Json序列化主机</summary>
     public IJsonHost JsonHost { get; set; } = null!;

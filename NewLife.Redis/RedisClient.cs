@@ -40,6 +40,8 @@ public class RedisClient : DisposeBase
 
     /// <summary>登录时间</summary>
     public DateTime LoginTime { get; private set; }
+
+    const Int32 MAX_POOL_SIZE = 1024 * 1024;
     #endregion
 
     #region 构造
@@ -198,7 +200,6 @@ public class RedisClient : DisposeBase
                     item = Host.Encoder.Encode(args[i]);
                     size = item.Total;
                 }
-                var sizes = size.ToString().GetBytes();
 
                 // 指令日志。简单类型显示原始值，复杂类型显示序列化后字符串
                 if (log != null && args != null)
@@ -221,7 +222,7 @@ public class RedisClient : DisposeBase
 
                 //str = "${0}\r\n".F(item.Length);
                 writer.WriteByte((Byte)'$');
-                writer.Write(sizes);
+                writer.Write(size.ToString());
                 writer.Write(_NewLine);
                 if (str != null)
                     writer.Write(str);
@@ -334,9 +335,10 @@ public class RedisClient : DisposeBase
 
             // 估算数据包大小，从内存池借出
             var max = Host.MaxMessageSize;
-            var total = 16 + cmd.Length + args.Sum(e => 16 + 240);
+            //var total = 16 + cmd.Length + args.Sum(e => 16 + 240);
             //var total = max;
-            var buffer = Pool.Shared.Rent(total);
+            var total = GetCommandSize(cmd, args);
+            var buffer = total < MAX_POOL_SIZE ? Pool.Shared.Rent(total) : new Byte[total];
             var memory = buffer.AsMemory();
 
             var p = GetRequest(memory, cmd, args);
@@ -346,7 +348,7 @@ public class RedisClient : DisposeBase
 
             if (memory.Length > 0) await ns.WriteAsync(memory);
 
-            Pool.Shared.Return(buffer);
+            if (total < MAX_POOL_SIZE) Pool.Shared.Return(buffer);
 
             await ns.FlushAsync(cancellationToken);
         }
@@ -490,6 +492,20 @@ public class RedisClient : DisposeBase
         }
 
         return sb.Return(true);
+    }
+
+    private Int32 GetCommandSize(String cmd, Object[]? args)
+    {
+        var total = 16 + cmd.Length + args.Sum(e => 16 + 240);
+        if (args != null)
+        {
+            foreach (var item in args)
+            {
+                total += 16 + Host.Encoder.Encode(item, null);
+            }
+        }
+
+        return total;
     }
     #endregion
 
@@ -697,8 +713,13 @@ public class RedisClient : DisposeBase
             CheckSelect(null);
 
             // 估算数据包大小，从内存池借出
-            var total = Host.MaxMessageSize;
-            var buffer = Pool.Shared.Rent(total);
+            var total = 0;
+            foreach (var item in ps)
+            {
+                total += GetCommandSize(item.Name, item.Args);
+            }
+
+            var buffer = total < MAX_POOL_SIZE ? Pool.Shared.Rent(total) : new Byte[total];
             var memory = buffer.AsMemory();
             var p = 0;
 
@@ -716,7 +737,7 @@ public class RedisClient : DisposeBase
 
             // 整体发出
             if (memory.Length > 0) ns.WriteAsync(memory).GetAwaiter().GetResult();
-            Pool.Shared.Return(buffer);
+            if (total < MAX_POOL_SIZE) Pool.Shared.Return(buffer);
 
             if (!requireResult) return new Object[ps.Count];
 

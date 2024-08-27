@@ -1,4 +1,5 @@
-﻿using NewLife.Data;
+﻿using System.Text;
+using NewLife.Data;
 using NewLife.Reflection;
 using NewLife.Serialization;
 
@@ -94,6 +95,77 @@ public class RedisJsonEncoder : IPacketEncoder
             }
 
             //return str.ToJsonEntity(type);
+            return JsonHost.Read(str, type);
+        }
+        catch
+        {
+            if (ThrowOnError) throw;
+
+            return null;
+        }
+    }
+
+    /// <summary>数值转数据包</summary>
+    /// <param name="value"></param>
+    /// <param name="span"></param>
+    /// <returns></returns>
+    public virtual Int32 Encode(Object value, Span<Byte> span)
+    {
+        if (value == null) return 0;
+
+        if (value is IAccessor acc) value = acc.ToPacket();
+        if (value is Packet pk)
+        {
+            if (span != null) pk.AsSpan().CopyTo(span);
+            return pk.Total;
+        }
+        if (value is Byte[] buf)
+        {
+            if (span != null) buf.CopyTo(span);
+            return buf.Length;
+        }
+
+        var type = value.GetType();
+        var str = (type.GetTypeCode()) switch
+        {
+            TypeCode.Object => JsonHost.Write(value),
+            TypeCode.String => value as String,
+            TypeCode.DateTime => ((DateTime)value).ToString("yyyy-MM-dd HH:mm:ss.fff"),
+            _ => value + "",
+        };
+
+        if (span == null) return Encoding.UTF8.GetByteCount(str);
+
+        return Encoding.UTF8.GetBytes(str, span);
+    }
+
+    /// <summary>数据包转对象</summary>
+    /// <param name="span"></param>
+    /// <param name="type"></param>
+    /// <returns></returns>
+    public virtual Object? Decode(Span<Byte> span, Type type)
+    {
+        try
+        {
+            if (type == typeof(Packet)) return span.ToArray();
+            if (type == typeof(Byte[])) return span.ToArray();
+            if (type.As<IAccessor>()) return type.AccessorRead(span.ToArray());
+
+            // 支持可空类型，遇到无数据时返回null
+            var ntype = Nullable.GetUnderlyingType(type);
+            if (span.Length == 0 && ntype != null && ntype != type) return null;
+            if (ntype != null) type = ntype;
+
+            var str = Encoding.UTF8.GetString(span);
+            if (type.GetTypeCode() == TypeCode.String) return str;
+
+            if (type.GetTypeCode() != TypeCode.Object)
+            {
+                if (type == typeof(Boolean) && str == "OK") return true;
+
+                return str.ChangeType(type);
+            }
+
             return JsonHost.Read(str, type);
         }
         catch
