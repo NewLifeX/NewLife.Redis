@@ -186,9 +186,9 @@ public class RedisClient : DisposeBase
             //Encoding.UTF8.GetBytes(GetHeaderBytes(cmd, args.Length), memory.Span);
             writer.Write(GetHeaderBytes(cmd, args.Length));
 
-            for (var i = 0; i < args.Length; i++)
+            for (var i = 0; i < args!.Length; i++)
             {
-                Packet? item = null;
+                Byte[] buf = null!;
                 var size = 0;
                 var str = args[i] as String;
                 if (str != null)
@@ -197,27 +197,18 @@ public class RedisClient : DisposeBase
                 }
                 else
                 {
-                    item = Host.Encoder.Encode(args[i]);
-                    size = item.Total;
+                    buf = (args[i] as Byte[])!;
+                    size = buf.Length;
                 }
 
                 // 指令日志。简单类型显示原始值，复杂类型显示序列化后字符串
                 if (log != null && args != null)
                 {
                     log.Append(' ');
-                    var ori = args[i];
-                    switch (ori.GetType().GetTypeCode())
-                    {
-                        case TypeCode.Object:
-                            //log.AppendFormat("[{0}]{1}", size, item.ToStr(null, 0, 1024)?.TrimEnd());
-                            break;
-                        case TypeCode.DateTime:
-                            log.Append(((DateTime)ori).ToString("yyyy-MM-dd HH:mm:ss.fff"));
-                            break;
-                        default:
-                            log.Append(ori);
-                            break;
-                    }
+                    if (str != null)
+                        log.Append(str);
+                    else
+                        log.AppendFormat("[{0}]{1}", size, buf.ToStr(null, 0, 1024)?.TrimEnd());
                 }
 
                 //str = "${0}\r\n".F(item.Length);
@@ -227,12 +218,8 @@ public class RedisClient : DisposeBase
                 if (str != null)
                     writer.Write(str);
                 else
-                {
-                    for (var pk = item; pk != null; pk = pk.Next)
-                    {
-                        writer.Write(new Span<Byte>(pk.Data, pk.Offset, pk.Count));
-                    }
-                }
+                    writer.Write(buf);
+
                 writer.Write(_NewLine);
             }
         }
@@ -333,10 +320,16 @@ public class RedisClient : DisposeBase
             CheckLogin(cmd);
             CheckSelect(cmd);
 
+            // 参数编码为字符串或字节数组
+            if (args != null)
+            {
+                for (var i = 0; i < args.Length; i++)
+                {
+                    args[i] = Host.Encoder.Encode(args[i]);
+                }
+            }
+
             // 估算数据包大小，从内存池借出
-            var max = Host.MaxMessageSize;
-            //var total = 16 + cmd.Length + args.Sum(e => 16 + 240);
-            //var total = max;
             var total = GetCommandSize(cmd, args);
             var buffer = total < MAX_POOL_SIZE ? Pool.Shared.Rent(total) : new Byte[total];
             var memory = buffer.AsMemory();
@@ -344,6 +337,7 @@ public class RedisClient : DisposeBase
             var p = GetRequest(memory, cmd, args);
             memory = memory[..p];
 
+            var max = Host.MaxMessageSize;
             if (max > 0 && memory.Length >= max) throw new InvalidOperationException($"命令[{cmd}]的数据包大小[{memory.Length}]超过最大限制[{max}]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。");
 
             if (memory.Length > 0) await ns.WriteAsync(memory);
@@ -496,12 +490,15 @@ public class RedisClient : DisposeBase
 
     private Int32 GetCommandSize(String cmd, Object[]? args)
     {
-        var total = 16 + cmd.Length + args.Sum(e => 16 + 240);
+        var total = 16 + cmd.Length;
         if (args != null)
         {
             foreach (var item in args)
             {
-                total += 16 + Host.Encoder.Encode(item, null);
+                if (item is String str)
+                    total += 16 + Encoding.UTF8.GetByteCount(str);
+                else if (item is Byte[] buf)
+                    total += 16 + buf.Length;
             }
         }
 
@@ -716,6 +713,17 @@ public class RedisClient : DisposeBase
             var total = 0;
             foreach (var item in ps)
             {
+                // 参数编码为字符串或字节数组
+                var args = item.Args;
+                if (args != null)
+                {
+                    for (var i = 0; i < args.Length; i++)
+                    {
+                        args[i] = Host.Encoder.Encode(args[i]);
+                    }
+                    item.Args = args;
+                }
+
                 total += GetCommandSize(item.Name, item.Args);
             }
 

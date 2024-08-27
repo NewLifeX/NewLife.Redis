@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using NewLife.Collections;
 using NewLife.Data;
 using NewLife.Reflection;
 using NewLife.Serialization;
@@ -6,7 +7,7 @@ using NewLife.Serialization;
 namespace NewLife.Caching;
 
 /// <summary>Redis编码器</summary>
-public class RedisJsonEncoder : IPacketEncoder
+public class RedisJsonEncoder //: IPacketEncoder
 {
     #region 属性
     /// <summary>解码出错时抛出异常。默认false不抛出异常，仅返回默认值</summary>
@@ -44,21 +45,21 @@ public class RedisJsonEncoder : IPacketEncoder
     /// <summary>数值转数据包</summary>
     /// <param name="value"></param>
     /// <returns></returns>
-    public virtual Packet Encode(Object value)
+    public virtual Object Encode(Object value)
     {
-        if (value == null) return new Byte[0];
+        if (value == null) return Pool.Empty;
 
-        if (value is Packet pk) return pk;
+        if (value is Packet pk) return pk.ToArray();
         if (value is Byte[] buf) return buf;
-        if (value is IAccessor acc) return acc.ToPacket();
+        if (value is IAccessor acc) return acc.ToPacket().ToArray();
 
         var type = value.GetType();
-        return (type.GetTypeCode()) switch
+        return type.GetTypeCode() switch
         {
-            TypeCode.Object => JsonHost.Write(value).GetBytes(),
-            TypeCode.String => (value as String).GetBytes(),
-            TypeCode.DateTime => ((DateTime)value).ToString("yyyy-MM-dd HH:mm:ss.fff").GetBytes(),
-            _ => (value + "").GetBytes(),
+            TypeCode.Object => JsonHost.Write(value),
+            TypeCode.String => (value as String)!,
+            TypeCode.DateTime => ((DateTime)value).ToString("yyyy-MM-dd HH:mm:ss.fff"),
+            _ => value + "",
         };
     }
 
@@ -175,4 +176,9 @@ public class RedisJsonEncoder : IPacketEncoder
             return null;
         }
     }
+}
+
+public static class RedisJsonEncoderHelper
+{
+    public static T Decode<T>(this RedisJsonEncoder encoder, Packet pk) => (T)encoder.Decode(pk, typeof(T))!;
 }

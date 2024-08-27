@@ -44,3 +44,8 @@
 
 
 
+## 完全Encode参数
+
+​	执行命令前，先把参数Encode编码为字符串或字节数组，方便Span写入。其实绝大部分场景都是字符串。Byte[]分配下降到263M。
+
+![image-20240827112839799](dotMemory分析Redis的GC分配.assets/image-20240827112839799.png)
