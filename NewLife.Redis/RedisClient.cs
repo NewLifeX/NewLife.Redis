@@ -847,7 +847,7 @@ public class RedisClient : DisposeBase
 
         var ks = keys.ToArray();
 
-        var dic = new Dictionary<String, T?>();
+        var dic = new Dictionary<String, T?>(ks.Length);
         if (Execute("MGET", ks) is not Object[] rs) return dic;
 
         for (var i = 0; i < ks.Length && i < rs.Length; i++)
