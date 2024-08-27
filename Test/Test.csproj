@@ -2,14 +2,21 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net45;net8.0</TargetFrameworks>
+    <TargetFrameworks>net45;net461;net8.0</TargetFrameworks>
+    <Company>新生命开发团队</Company>
+    <Copyright>©2002-2024 新生命开发团队</Copyright>
+    <VersionPrefix>1.0</VersionPrefix>
+    <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
+    <Version>$(VersionPrefix).$(VersionSuffix)</Version>
+    <FileVersion>$(Version)</FileVersion>
+    <AssemblyVersion>$(VersionPrefix).$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</AssemblyVersion>
     <OutputPath>..\Bin\Test</OutputPath>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="11.0.2024.826-beta0719" />
+    <PackageReference Include="NewLife.Core" Version="11.0.2024.827-beta1512" />
   </ItemGroup>
 
   <ItemGroup>

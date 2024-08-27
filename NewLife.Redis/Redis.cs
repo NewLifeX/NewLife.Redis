@@ -711,12 +711,12 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     public virtual IDictionary<String, String> GetInfo(Boolean all = false)
     {
         var rs = all ?
-            Execute(rds => rds.Execute("INFO", "all") as Packet) :
-            Execute(rds => rds.Execute("INFO") as Packet);
-        if (rs == null || rs.Count == 0) return new Dictionary<String, String>();
+            Execute(rds => rds.Execute<String>("INFO", "all")) :
+            Execute(rds => rds.Execute<String>("INFO"));
+        if (rs.IsNullOrEmpty()) return new Dictionary<String, String>();
 
-        var inf = rs.ToStr();
-        return inf.SplitAsDictionary(":", "\r\n");
+        //var inf = rs.ToStr();
+        return rs.SplitAsDictionary(":", "\r\n");
     }
 
     /// <summary>单个实体项</summary>

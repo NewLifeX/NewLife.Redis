@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System.Buffers;
+using System.Collections.Concurrent;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
@@ -154,7 +155,6 @@ public class RedisClient : DisposeBase
     /// <param name="memory"></param>
     /// <param name="cmd"></param>
     /// <param name="args"></param>
-    /// <param name="oriArgs">原始参数，仅用于输出日志</param>
     /// <returns></returns>
     protected virtual Int32 GetRequest(Memory<Byte> memory, String cmd, Object[]? args)
     {
@@ -248,14 +248,25 @@ public class RedisClient : DisposeBase
         var ms = ns;
         var log = Log == null || Log == Logger.Null ? null : Pool.StringBuilder.Get();
 
-        // 取巧进行异步操作，只要异步读取到第一个字节，后续同步读取
-        var buf = new Byte[1];
-        if (cancellationToken == CancellationToken.None)
-            cancellationToken = new CancellationTokenSource(Timeout > 0 ? Timeout : Host.Timeout).Token;
-        var n = await ms.ReadAsync(buf, 0, buf.Length, cancellationToken);
-        if (n <= 0) return list;
+        Char header;
+        var buf = Pool.Shared.Rent(1);
+        try
+        {
+            // 取巧进行异步操作，只要异步读取到第一个字节，后续同步读取
+            //var buf = new Byte[1];
+            if (cancellationToken == CancellationToken.None)
+                cancellationToken = new CancellationTokenSource(Timeout > 0 ? Timeout : Host.Timeout).Token;
+            var n = await ms.ReadAsync(buf, 0, 1, cancellationToken);
+            if (n <= 0) return list;
 
-        var header = (Char)buf[0];
+            header = (Char)buf[0];
+        }
+        finally
+        {
+            Pool.Shared.Return(buf);
+        }
+
+        //var header = (Char)buf[0];
 
         // 多行响应
         for (var i = 0; i < count; i++)
@@ -304,7 +315,6 @@ public class RedisClient : DisposeBase
     /// <summary>异步执行命令，发请求，取响应</summary>
     /// <param name="cmd">命令</param>
     /// <param name="args">参数数组</param>
-    /// <param name="oriArgs">原始参数，仅用于输出日志</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
     protected virtual async Task<Object?> ExecuteCommandAsync(String cmd, Object[]? args, CancellationToken cancellationToken)
@@ -397,14 +407,14 @@ public class RedisClient : DisposeBase
         }
     }
 
-    private static Packet? ReadBlock(Stream ms, StringBuilder? log) => ReadPacket(ms, log);
+    private static IMemoryOwner<Byte>? ReadBlock(Stream ms, StringBuilder? log) => ReadPacket(ms, log);
 
     private Object?[] ReadBlocks(Stream ms, StringBuilder? log)
     {
         // 结果集数量
         var len = ReadLine(ms).ToInt(-1);
         log?.Append(len);
-        if (len < 0) return new Object[0];
+        if (len < 0) return [];
 
         var arr = new Object?[len];
         for (var i = 0; i < len; i++)
@@ -433,7 +443,7 @@ public class RedisClient : DisposeBase
         return arr;
     }
 
-    private static Packet? ReadPacket(Stream ms, StringBuilder? log)
+    private static IMemoryOwner<Byte>? ReadPacket(Stream ms, StringBuilder? log)
     {
         var len = ReadLine(ms).ToInt(-1);
         log?.Append(len);
@@ -446,21 +456,25 @@ public class RedisClient : DisposeBase
         if (len <= 0) return null;
         //if (len <= 0) throw new InvalidDataException();
 
-        var buf = new Byte[len + 2];
+        len += 2;
+        var owner = MemoryPool<Byte>.Shared.Rent(len);
+        var span = owner.GetSpan();
+        //var buf = new Byte[len];
         var p = 0;
-        while (p < buf.Length)
+        while (p < len)
         {
             // 等待，直到读完需要的数据，避免大包丢数据
-            var count = ms.Read(buf, p, buf.Length - p);
+            var count = ms.Read(span.Slice(p));
             if (count <= 0) break;
 
             p += count;
         }
 
-        var pk = new Packet(buf, 0, p - 2);
-        log?.AppendFormat(" {0}", pk.ToStr(null, 0, 1024)?.TrimEnd());
+        //var pk = new Packet(buf, 0, p - 2);
+        //log?.AppendFormat(" {0}", pk.ToStr(null, 0, 1024)?.TrimEnd());
 
-        return pk;
+        //return pk;
+        return owner;
     }
 
     private static String ReadLine(Stream ms)
@@ -511,7 +525,7 @@ public class RedisClient : DisposeBase
     /// <param name="cmd"></param>
     /// <param name="args"></param>
     /// <returns></returns>
-    public virtual Object? Execute(String cmd, params Object[] args) => ExecuteAsync(cmd, args).Result;
+    public virtual String? Execute(String cmd, params Object[] args) => Execute<String>(cmd, args);
 
     /// <summary>执行命令。返回基本类型、对象、对象数组</summary>
     /// <param name="cmd"></param>
@@ -526,7 +540,7 @@ public class RedisClient : DisposeBase
             return default;
         }
 
-        var rs = Execute(cmd, args);
+        var rs = ExecuteAsync(cmd, args).Result;
         if (rs == null) return default;
         if (rs is TResult rs2) return rs2;
         if (rs != null && TryChangeType(rs, typeof(TResult), out var target)) return (TResult?)target;
@@ -541,7 +555,7 @@ public class RedisClient : DisposeBase
     /// <returns></returns>
     public virtual Boolean TryExecute<TResult>(String cmd, Object[] args, out TResult? value)
     {
-        var rs = Execute(cmd, args);
+        var rs = Execute<TResult>(cmd, args);
         if (rs is TResult rs2)
         {
             value = rs2;
@@ -657,6 +671,14 @@ public class RedisClient : DisposeBase
             return true;
         }
 
+        if (value is IMemoryOwner<Byte> owner)
+        {
+            target = Host.Encoder.Decode(owner.GetSpan(), type);
+            owner.Dispose();
+
+            return true;
+        }
+
         if (value is Object[] objs)
         {
             if (type == typeof(Object[])) { target = value; return true; }
@@ -673,6 +695,11 @@ public class RedisClient : DisposeBase
             {
                 if (objs[i] is Packet pk3)
                     arr.SetValue(Host.Encoder.Decode(pk3, elmType), i);
+                else if (objs[i] is IMemoryOwner<Byte> owner2)
+                {
+                    arr.SetValue(Host.Encoder.Decode(owner2.GetSpan(), elmType), i);
+                    owner2.Dispose();
+                }
                 else if (objs[i] != null && objs[i].GetType().As(elmType))
                     arr.SetValue(objs[i], i);
             }
@@ -848,7 +875,7 @@ public class RedisClient : DisposeBase
         var ks = keys.ToArray();
 
         var dic = new Dictionary<String, T?>(ks.Length);
-        if (Execute("MGET", ks) is not Object[] rs) return dic;
+        if (Execute<Object[]>("MGET", ks) is not Object[] rs) return dic;
 
         for (var i = 0; i < ks.Length && i < rs.Length; i++)
         {

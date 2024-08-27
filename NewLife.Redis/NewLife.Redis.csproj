@@ -40,6 +40,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="SpanWriter.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -47,7 +51,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="11.0.2024.826-beta0719" />
+    <PackageReference Include="NewLife.Core" Version="11.0.2024.827-beta1512" />
   </ItemGroup>
 
   <ItemGroup>
