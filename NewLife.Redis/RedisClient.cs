@@ -407,7 +407,7 @@ public class RedisClient : DisposeBase
         }
     }
 
-    private static IMemoryOwner<Byte>? ReadBlock(Stream ms, StringBuilder? log) => ReadPacket(ms, log);
+    private static MemorySegment<Byte>? ReadBlock(Stream ms, StringBuilder? log) => ReadPacket(ms, log);
 
     private Object?[] ReadBlocks(Stream ms, StringBuilder? log)
     {
@@ -443,7 +443,7 @@ public class RedisClient : DisposeBase
         return arr;
     }
 
-    private static IMemoryOwner<Byte>? ReadPacket(Stream ms, StringBuilder? log)
+    private static MemorySegment<Byte>? ReadPacket(Stream ms, StringBuilder? log)
     {
         var len = ReadLine(ms).ToInt(-1);
         log?.Append(len);
@@ -474,7 +474,7 @@ public class RedisClient : DisposeBase
         //log?.AppendFormat(" {0}", pk.ToStr(null, 0, 1024)?.TrimEnd());
 
         //return pk;
-        return owner;
+        return new MemorySegment<Byte>(owner, p - 2);
     }
 
     private static String ReadLine(Stream ms)
@@ -671,10 +671,10 @@ public class RedisClient : DisposeBase
             return true;
         }
 
-        if (value is IMemoryOwner<Byte> owner)
+        if (value is MemorySegment<Byte> segment)
         {
-            target = Host.Encoder.Decode(owner.GetSpan(), type);
-            owner.Dispose();
+            target = Host.Encoder.Decode(segment.GetSpan(), type);
+            segment.Dispose();
 
             return true;
         }
@@ -695,10 +695,10 @@ public class RedisClient : DisposeBase
             {
                 if (objs[i] is Packet pk3)
                     arr.SetValue(Host.Encoder.Decode(pk3, elmType), i);
-                else if (objs[i] is IMemoryOwner<Byte> owner2)
+                else if (objs[i] is MemorySegment<Byte> segment2)
                 {
-                    arr.SetValue(Host.Encoder.Decode(owner2.GetSpan(), elmType), i);
-                    owner2.Dispose();
+                    arr.SetValue(Host.Encoder.Decode(segment2.GetSpan(), elmType), i);
+                    segment2.Dispose();
                 }
                 else if (objs[i] != null && objs[i].GetType().As(elmType))
                     arr.SetValue(objs[i], i);
