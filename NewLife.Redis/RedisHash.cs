@@ -62,8 +62,8 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
     {
         value = default!;
 
-        var pk = Execute((r, k) => r.Execute<Packet>("HGET", Key, key!));
-        if (pk == null || pk.Total == 0) return false;
+        using var pk = Execute((r, k) => r.Execute<IPacket>("HGET", Key, key!));
+        if (pk == null || pk.Length == 0) return false;
 
         value = Redis.Encoder.Decode<TValue>(pk)!;
         //value = (TValue?)Redis.Encoder.Decode(pk, typeof(TValue))!;
@@ -151,13 +151,15 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
     /// <returns></returns>
     public IDictionary<TKey, TValue> GetAll()
     {
-        var rs = Execute((r, k) => r.Execute<Packet[]>("HGETALL", Key));
+        var rs = Execute((r, k) => r.Execute<IPacket[]>("HGETALL", Key));
 
         var dic = new Dictionary<TKey, TValue>();
         for (var i = 0; i < rs.Length; i++)
         {
-            var key = Redis.Encoder.Decode<TKey>(rs[i]);
-            var value = Redis.Encoder.Decode<TValue>(rs[++i]);
+            using var pk = rs[i];
+            using var pk2 = rs[++i];
+            var key = Redis.Encoder.Decode<TKey>(pk);
+            var value = Redis.Encoder.Decode<TValue>(pk2);
             dic[key] = value;
         }
 
@@ -199,15 +201,15 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
             var rs = Execute((r, k) => r.Execute<Object[]>("HSCAN", Key, p, "MATCH", model.Pattern + "", "COUNT", count));
             if (rs == null || rs.Length != 2) break;
 
-            model.Position = (rs[0] as Packet).ToStr().ToInt();
+            model.Position = (rs[0] as IPacket)!.ToStr().ToInt();
 
             var ps = rs[1] as Object[];
             for (var i = 0; i < ps.Length - 1; i += 2)
             {
                 if (count-- > 0)
                 {
-                    var key = (ps[i] as Packet).ToStr().ChangeType<TKey>();
-                    var val = (ps[i + 1] as Packet).ToStr().ChangeType<TValue>();
+                    var key = (ps[i] as IPacket)!.ToStr().ChangeType<TKey>();
+                    var val = (ps[i + 1] as IPacket)!.ToStr().ChangeType<TValue>();
                     yield return new KeyValuePair<TKey, TValue>(key, val);
                 }
             }

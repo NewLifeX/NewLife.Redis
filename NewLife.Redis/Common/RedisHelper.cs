@@ -15,7 +15,7 @@ public static class RedisHelper
     internal static Object AttachTraceId(this Redis redis, Object msg)
     {
         // 消息为空或者特殊类型，不接受注入
-        if (msg == null || msg is Byte[] || msg is Packet) return msg;
+        if (msg == null || msg is Byte[] || msg is Packet || msg is IPacket) return msg;
 
         // 字符串或复杂类型以外的消息，不接受注入
         var code = Type.GetTypeCode(msg.GetType());

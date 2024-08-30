@@ -111,7 +111,7 @@ public class RedisQueue<T> : QueueBase, IProducerConsumer<T>
 
         if (timeout > 0 && Redis.Timeout < timeout * 1000) Redis.Timeout = (timeout + 1) * 1000;
 
-        var rs = Execute((rc, k) => rc.Execute<Packet[]>("BRPOP", Key, timeout), true);
+        var rs = Execute((rc, k) => rc.Execute<IPacket[]>("BRPOP", Key, timeout), true);
         return rs == null || rs.Length < 2 ? default : (T?)Redis.Encoder.Decode(rs[1], typeof(T));
     }
 
@@ -125,7 +125,7 @@ public class RedisQueue<T> : QueueBase, IProducerConsumer<T>
 
         if (timeout > 0 && Redis.Timeout < timeout * 1000) Redis.Timeout = (timeout + 1) * 1000;
 
-        var rs = await ExecuteAsync((rc, k) => rc.ExecuteAsync<Packet[]>("BRPOP", new Object[] { Key, timeout }, cancellationToken), true);
+        var rs = await ExecuteAsync((rc, k) => rc.ExecuteAsync<IPacket[]>("BRPOP", new Object[] { Key, timeout }, cancellationToken), true);
         return rs == null || rs.Length < 2 ? default : (T?)Redis.Encoder.Decode(rs[1], typeof(T));
     }
 

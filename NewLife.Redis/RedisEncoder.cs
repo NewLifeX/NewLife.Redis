@@ -1,5 +1,4 @@
 ﻿using System.Text;
-using NewLife.Collections;
 using NewLife.Data;
 using NewLife.Reflection;
 using NewLife.Serialization;
@@ -45,66 +44,69 @@ public class RedisJsonEncoder //: IPacketEncoder
     /// <summary>数值转数据包</summary>
     /// <param name="value"></param>
     /// <returns></returns>
-    public virtual Object Encode(Object value)
+    public virtual IPacket? Encode(Object value)
     {
-        if (value == null) return Pool.Empty;
+        if (value == null) return null;
 
-        if (value is Packet pk) return pk.ToArray();
-        if (value is Byte[] buf) return buf;
-        if (value is IAccessor acc) return acc.ToPacket().ToArray();
+        if (value is IPacket pk) return pk;
+        if (value is IAccessor acc) value = acc.ToPacket();
+        if (value is Packet pk2) value = pk2.ToArray();
+        if (value is Byte[] buf) return new MemorySegment(buf);
 
         var type = value.GetType();
-        return type.GetTypeCode() switch
+        var str = type.GetTypeCode() switch
         {
             TypeCode.Object => JsonHost.Write(value),
             TypeCode.String => (value as String)!,
             TypeCode.DateTime => ((DateTime)value).ToString("yyyy-MM-dd HH:mm:ss.fff"),
             _ => value + "",
         };
+
+        return new MemorySegment(str.GetBytes());
     }
 
-    /// <summary>数据包转对象</summary>
-    /// <param name="pk"></param>
-    /// <param name="type"></param>
-    /// <returns></returns>
-    public virtual Object? Decode(Packet pk, Type type)
-    {
-        //if (pk == null) return null;
+    ///// <summary>数据包转对象</summary>
+    ///// <param name="pk"></param>
+    ///// <param name="type"></param>
+    ///// <returns></returns>
+    //public virtual Object? Decode(Packet pk, Type type)
+    //{
+    //    //if (pk == null) return null;
 
-        try
-        {
-            if (type == typeof(Packet)) return pk;
-            if (type == typeof(Byte[])) return pk.ReadBytes();
-            if (type.As<IAccessor>()) return type.AccessorRead(pk);
+    //    try
+    //    {
+    //        if (type == typeof(Packet)) return pk;
+    //        if (type == typeof(Byte[])) return pk.ReadBytes();
+    //        if (type.As<IAccessor>()) return type.AccessorRead(pk);
 
-            // 支持可空类型，遇到无数据时返回null
-            var ntype = Nullable.GetUnderlyingType(type);
-            if (pk.Total == 0 && ntype != null && ntype != type) return null;
-            if (ntype != null) type = ntype;
+    //        // 支持可空类型，遇到无数据时返回null
+    //        var ntype = Nullable.GetUnderlyingType(type);
+    //        if (pk.Total == 0 && ntype != null && ntype != type) return null;
+    //        if (ntype != null) type = ntype;
 
-            //var str = pk.ToStr().Trim('\"');
-            var str = pk.ToStr();
-            if (type.GetTypeCode() == TypeCode.String) return str;
+    //        //var str = pk.ToStr().Trim('\"');
+    //        var str = pk.ToStr();
+    //        if (type.GetTypeCode() == TypeCode.String) return str;
 
-            //if (type.GetTypeCode() != TypeCode.Object) return str.ChangeType(type);
-            if (type.GetTypeCode() != TypeCode.Object)
-            {
-                if (type == typeof(Boolean) && str == "OK") return true;
+    //        //if (type.GetTypeCode() != TypeCode.Object) return str.ChangeType(type);
+    //        if (type.GetTypeCode() != TypeCode.Object)
+    //        {
+    //            if (type == typeof(Boolean) && str == "OK") return true;
 
-                //return Convert.ChangeType(str, type);
-                return str.ChangeType(type);
-            }
+    //            //return Convert.ChangeType(str, type);
+    //            return str.ChangeType(type);
+    //        }
 
-            //return str.ToJsonEntity(type);
-            return JsonHost.Read(str, type);
-        }
-        catch
-        {
-            if (ThrowOnError) throw;
+    //        //return str.ToJsonEntity(type);
+    //        return JsonHost.Read(str, type);
+    //    }
+    //    catch
+    //    {
+    //        if (ThrowOnError) throw;
 
-            return null;
-        }
-    }
+    //        return null;
+    //    }
+    //}
 
     /// <summary>数值转数据包</summary>
     /// <param name="value"></param>
@@ -139,6 +141,8 @@ public class RedisJsonEncoder //: IPacketEncoder
 
         return Encoding.UTF8.GetBytes(str.AsSpan(), span);
     }
+
+    public virtual Object? Decode(IPacket pk, Type type) => Decode(pk.GetSpan(), type);
 
     /// <summary>数据包转对象</summary>
     /// <param name="span"></param>
@@ -180,5 +184,7 @@ public class RedisJsonEncoder //: IPacketEncoder
 
 public static class RedisJsonEncoderHelper
 {
-    public static T Decode<T>(this RedisJsonEncoder encoder, Packet pk) => (T)encoder.Decode(pk, typeof(T))!;
+    //public static T Decode<T>(this RedisJsonEncoder encoder, Packet pk) => (T)encoder.Decode(pk, typeof(T))!;
+
+    public static T Decode<T>(this RedisJsonEncoder encoder, IPacket pk) => (T)encoder.Decode(pk, typeof(T))!;
 }

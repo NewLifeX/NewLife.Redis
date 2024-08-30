@@ -678,11 +678,11 @@ public class FullRedis : Redis
                 var rs = Execute(r => r.Execute<Object[]>("SCAN", p, "MATCH", GetKey(model.Pattern + ""), "COUNT", count), node);
                 if (rs == null || rs.Length != 2) break;
 
-                model.Position = (rs[0] as Packet)?.ToStr().ToInt() ?? 0;
+                model.Position = (rs[0] as IPacket)?.ToStr().ToInt() ?? 0;
 
                 if (rs[1] is Object[] ps)
                 {
-                    foreach (Packet item in ps)
+                    foreach (IPacket item in ps)
                     {
                         if (count-- > 0) yield return item.ToStr();
                     }

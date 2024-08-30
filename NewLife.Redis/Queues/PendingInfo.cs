@@ -1,6 +1,4 @@
-﻿using NewLife.Data;
-
-namespace NewLife.Caching.Queues;
+﻿namespace NewLife.Caching.Queues;
 
 /// <summary>等待信息</summary>
 public class PendingInfo
@@ -27,8 +25,8 @@ public class PendingInfo
         if (vs == null || vs.Length < 3) return;
 
         Count = vs[0].ToInt();
-        StartId = (vs[1] as Packet)?.ToStr();
-        EndId = (vs[2] as Packet)?.ToStr();
+        StartId = (vs[1] as IPacket)?.ToStr();
+        EndId = (vs[2] as IPacket)?.ToStr();
 
         var dic = new Dictionary<String, Int32>();
         if (vs.Length >= 4 && vs[3] is Object[] vs2)
@@ -37,10 +35,10 @@ public class PendingInfo
             {
                 if (vs3 != null && vs3.Length == 2)
                 {
-                    var consumer = (vs3[0] as Packet)?.ToStr();
+                    var consumer = (vs3[0] as IPacket)?.ToStr();
                     if (!consumer.IsNullOrEmpty())
                     {
-                        var count = (vs3[1] as Packet)?.ToStr().ToInt() ?? 0;
+                        var count = (vs3[1] as IPacket)?.ToStr().ToInt() ?? 0;
                         dic[consumer] = count;
                     }
                 }

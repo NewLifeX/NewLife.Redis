@@ -232,15 +232,15 @@ public class RedisSortedSet<T> : RedisBase
             var rs = Execute((r, k) => r.Execute<Object[]>("ZSCAN", Key, position, "MATCH", pattern + "", "COUNT", count));
             if (rs == null || rs.Length != 2) break;
 
-            position = (rs[0] as Packet).ToStr().ToInt();
+            position = (rs[0] as IPacket)!.ToStr().ToInt();
 
             var ps = rs[1] as Object[];
             for (var i = 0; i < ps.Length - 1; i += 2)
             {
                 if (count-- > 0)
                 {
-                    var item = (ps[i] as Packet).ToStr().ChangeType<T>();
-                    var score = (ps[i + 1] as Packet).ToStr().ToDouble();
+                    var item = (ps[i] as IPacket)!.ToStr().ChangeType<T>();
+                    var score = (ps[i + 1] as IPacket)!.ToStr().ToDouble();
                     yield return new KeyValuePair<T, Double>(item, score);
                 }
             }

@@ -90,17 +90,19 @@ public class RedisStat : DisposeBase
         if (!_redis.Rename(key, newKey, false)) return;
 
         _redis.Remove($"exists:{key}");
-        var rs = _redis.Execute(newKey, (r,k) => r.Execute<Packet[]>("HGETALL", k));
-
-        var dic = new Dictionary<String, Int32>();
-        for (var i = 0; i < rs.Length; i++)
+        var rs = _redis.Execute(newKey, (r,k) => r.Execute<IPacket[]>("HGETALL", k));
+        if (rs != null)
         {
-            var k = rs[i].ToStr();
-            var v = rs[++i].ToStr().ToInt();
-            dic[k] = v;
-        }
+            var dic = new Dictionary<String, Int32>();
+            for (var i = 0; i < rs.Length; i++)
+            {
+                var k = rs[i].ToStr();
+                var v = rs[++i].ToStr().ToInt();
+                dic[k] = v;
+            }
 
-        OnSave(key, dic);
+            OnSave(key, dic);
+        }
 
         _redis.Remove(newKey);
     }

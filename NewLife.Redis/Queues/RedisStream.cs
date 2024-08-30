@@ -675,12 +675,12 @@ XREAD count 3 streams stream_key 0-0
         var list = new List<Message>();
         foreach (var item in vs)
         {
-            if (item is Object[] vs3 && vs3.Length == 2 && vs3[0] is Packet pkId && vs3[1] is Object[] vs4)
+            if (item is Object[] vs3 && vs3.Length == 2 && vs3[0] is IPacket pkId && vs3[1] is Object[] vs4)
             {
                 list.Add(new Message
                 {
                     Id = pkId.ToStr(),
-                    Body = vs4.Select(e => (e as Packet)?.ToStr() ?? "").ToArray(),
+                    Body = vs4.Select(e => (e as IPacket)?.ToStr() ?? "").ToArray(),
                 });
             }
         }
@@ -877,7 +877,7 @@ XREAD count 3 streams stream_key 0-0
     public ConsumerInfo[] GetConsumers(String group)
     {
         var rs = Execute((rc, k) => rc.Execute<Object[]>("XINFO", "CONSUMERS", Key, group), false);
-        if (rs == null) return new ConsumerInfo[0];
+        if (rs == null) return [];
 
         var cs = new ConsumerInfo[rs.Length];
         for (var i = 0; i < rs.Length; i++)

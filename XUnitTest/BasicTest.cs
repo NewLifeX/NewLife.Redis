@@ -23,6 +23,7 @@ public class BasicTest
         _redis = new FullRedis();
         _redis.Init(config);
         _redis.Db = 2;
+        _redis.Retry = 0;
         _redis.Log = XTrace.Log;
 
 #if DEBUG

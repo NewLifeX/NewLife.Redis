@@ -188,18 +188,19 @@ public class RedisClient : DisposeBase
 
             for (var i = 0; i < args!.Length; i++)
             {
-                Byte[] buf = null!;
+                // 参数值可能是String和IPacket类型
                 var size = 0;
                 var str = args[i] as String;
+                var buf = args[i] as Byte[];
+                using var pk = args[i] as IPacket;
                 if (str != null)
-                {
                     size = Encoding.UTF8.GetByteCount(str);
-                }
-                else
-                {
-                    buf = (args[i] as Byte[])!;
+                else if (pk != null)
+                    size = pk.Length;
+                else if (buf != null)
                     size = buf.Length;
-                }
+                else
+                    throw new InvalidOperationException();
 
                 // 指令日志。简单类型显示原始值，复杂类型显示序列化后字符串
                 if (log != null && args != null)
@@ -207,7 +208,13 @@ public class RedisClient : DisposeBase
                     log.Append(' ');
                     if (str != null)
                         log.Append(str);
-                    else
+                    else if (pk != null)
+                    {
+                        var span = pk.GetSpan();
+                        if (span.Length > 1024) span = span[..1024];
+                        log.AppendFormat("[{0}]{1}", size, span.ToStr()?.TrimEnd());
+                    }
+                    else if (buf != null)
                         log.AppendFormat("[{0}]{1}", size, buf.ToStr(null, 0, 1024)?.TrimEnd());
                 }
 
@@ -217,7 +224,9 @@ public class RedisClient : DisposeBase
                 writer.Write(_NewLine);
                 if (str != null)
                     writer.Write(str);
-                else
+                else if (pk != null)
+                    writer.Write(pk.GetSpan());
+                else if (buf != null)
                     writer.Write(buf);
 
                 writer.Write(_NewLine);
@@ -327,8 +336,8 @@ public class RedisClient : DisposeBase
         if (!cmd.IsNullOrEmpty())
         {
             // 验证登录
-            CheckLogin(cmd);
-            CheckSelect(cmd);
+            await CheckLogin(cmd);
+            await CheckSelect(cmd);
 
             // 参数编码为字符串或字节数组
             if (args != null)
@@ -364,12 +373,12 @@ public class RedisClient : DisposeBase
         return rs.FirstOrDefault();
     }
 
-    private void CheckLogin(String? cmd)
+    private async Task CheckLogin(String? cmd)
     {
         if (Logined) return;
         if (cmd.EqualIgnoreCase("Auth")) return;
 
-        if (!Host.Password.IsNullOrEmpty() && !Auth(Host.UserName, Host.Password))
+        if (!Host.Password.IsNullOrEmpty() && !(await Auth(Host.UserName, Host.Password)))
             throw new Exception("登录失败！");
 
         Logined = true;
@@ -377,13 +386,13 @@ public class RedisClient : DisposeBase
     }
 
     private Int32 _selected = -1;
-    private void CheckSelect(String? cmd)
+    private async Task CheckSelect(String? cmd)
     {
         var db = Host.Db;
         if (_selected == db) return;
         if (cmd.EqualIgnoreCase("Auth", "Select", "Info")) return;
 
-        if (db > 0 && (Host is not FullRedis rds || !rds.Mode.EqualIgnoreCase("cluster", "sentinel"))) Select(db);
+        if (db > 0 && (Host is not FullRedis rds || !rds.Mode.EqualIgnoreCase("cluster", "sentinel"))) await Select(db);
 
         _selected = db;
     }
@@ -407,7 +416,7 @@ public class RedisClient : DisposeBase
         }
     }
 
-    private static MemorySegment<Byte>? ReadBlock(Stream ms, StringBuilder? log) => ReadPacket(ms, log);
+    private static Object? ReadBlock(Stream ms, StringBuilder? log) => ReadPacket(ms, log);
 
     private Object?[] ReadBlocks(Stream ms, StringBuilder? log)
     {
@@ -443,7 +452,7 @@ public class RedisClient : DisposeBase
         return arr;
     }
 
-    private static MemorySegment<Byte>? ReadPacket(Stream ms, StringBuilder? log)
+    private static Object? ReadPacket(Stream ms, StringBuilder? log)
     {
         var len = ReadLine(ms).ToInt(-1);
         log?.Append(len);
@@ -454,27 +463,34 @@ public class RedisClient : DisposeBase
             return null;
         }
         if (len <= 0) return null;
-        //if (len <= 0) throw new InvalidDataException();
-
         len += 2;
+
+        //// 很多时候，数据长度为1，特殊优化
+        //if (len == 3)
+        //{
+        //    var rs = ms.ReadByte();
+        //    // 再读取两个换行符，网络流不支持Seek
+        //    //ms.Seek(2, SeekOrigin.Current);
+        //    ms.ReadByte();
+        //    ms.ReadByte();
+        //    return rs;
+        //}
+
+        // 从内存池借出，包装到MemorySegment中，一路向上传递，用完后Dispose还到池里
         var owner = MemoryPool<Byte>.Shared.Rent(len);
         var span = owner.GetSpan();
-        //var buf = new Byte[len];
+
         var p = 0;
         while (p < len)
         {
             // 等待，直到读完需要的数据，避免大包丢数据
-            var count = ms.Read(span.Slice(p));
+            var count = ms.Read(span.Slice(p, len - p));
             if (count <= 0) break;
 
             p += count;
         }
 
-        //var pk = new Packet(buf, 0, p - 2);
-        //log?.AppendFormat(" {0}", pk.ToStr(null, 0, 1024)?.TrimEnd());
-
-        //return pk;
-        return new MemorySegment<Byte>(owner, p - 2);
+        return new MemorySegment(owner, p - 2);
     }
 
     private static String ReadLine(Stream ms)
@@ -513,6 +529,8 @@ public class RedisClient : DisposeBase
                     total += 16 + Encoding.UTF8.GetByteCount(str);
                 else if (item is Byte[] buf)
                     total += 16 + buf.Length;
+                else if (item is IPacket pk)
+                    total += 16 + pk.Length;
             }
         }
 
@@ -521,7 +539,7 @@ public class RedisClient : DisposeBase
     #endregion
 
     #region 主要方法
-    /// <summary>执行命令。返回字符串、Packet、Packet[]</summary>
+    /// <summary>执行命令。返回字符串、IPacket、IPacket[]</summary>
     /// <param name="cmd"></param>
     /// <param name="args"></param>
     /// <returns></returns>
@@ -665,16 +683,10 @@ public class RedisClient : DisposeBase
             }
         }
 
-        if (value is Packet pk)
+        if (value is IPacket pk)
         {
             target = Host.Encoder.Decode(pk, type);
-            return true;
-        }
-
-        if (value is MemorySegment<Byte> segment)
-        {
-            target = Host.Encoder.Decode(segment.GetSpan(), type);
-            segment.Dispose();
+            pk.Dispose();
 
             return true;
         }
@@ -682,7 +694,7 @@ public class RedisClient : DisposeBase
         if (value is Object[] objs)
         {
             if (type == typeof(Object[])) { target = value; return true; }
-            if (type == typeof(Packet[])) { target = objs.Cast<Packet>().ToArray(); return true; }
+            if (type == typeof(IPacket[])) { target = objs.Cast<IPacket>().ToArray(); return true; }
 
             // 遇到空结果时返回默认值
             if (objs.Length == 0) return false;
@@ -693,12 +705,10 @@ public class RedisClient : DisposeBase
             var arr = Array.CreateInstance(elmType, objs.Length);
             for (var i = 0; i < objs.Length; i++)
             {
-                if (objs[i] is Packet pk3)
-                    arr.SetValue(Host.Encoder.Decode(pk3, elmType), i);
-                else if (objs[i] is MemorySegment<Byte> segment2)
+                if (objs[i] is IPacket pk4)
                 {
-                    arr.SetValue(Host.Encoder.Decode(segment2.GetSpan(), elmType), i);
-                    segment2.Dispose();
+                    arr.SetValue(Host.Encoder.Decode(pk4, elmType), i);
+                    pk4.Dispose();
                 }
                 else if (objs[i] != null && objs[i].GetType().As(elmType))
                     arr.SetValue(objs[i], i);
@@ -719,22 +729,22 @@ public class RedisClient : DisposeBase
 
     /// <summary>结束管道模式</summary>
     /// <param name="requireResult">要求结果</param>
-    public virtual Object?[]? StopPipeline(Boolean requireResult)
+    public virtual async Task<Object?[]?> StopPipeline(Boolean requireResult)
     {
         var ps = _ps;
         if (ps == null) return null;
 
         _ps = null;
 
-        var ns = GetStreamAsync(true).Result;
+        var ns = await GetStreamAsync(true);
         if (ns == null) return null;
 
         using var span = Host.Tracer?.NewSpan($"redis:{Name}:Pipeline", null);
         try
         {
             // 验证登录
-            CheckLogin(null);
-            CheckSelect(null);
+            await CheckLogin(null);
+            await CheckSelect(null);
 
             // 估算数据包大小，从内存池借出
             var total = 0;
@@ -771,13 +781,13 @@ public class RedisClient : DisposeBase
             span?.SetTag(cmds);
 
             // 整体发出
-            if (memory.Length > 0) ns.WriteAsync(memory).GetAwaiter().GetResult();
+            if (memory.Length > 0) await ns.WriteAsync(memory);
             if (total < MAX_POOL_SIZE) Pool.Shared.Return(buffer);
 
             if (!requireResult) return new Object[ps.Count];
 
             // 获取响应
-            var list = GetResponseAsync(ns, ps.Count).Result;
+            var list = await GetResponseAsync(ns, ps.Count);
             for (var i = 0; i < list.Count; i++)
             {
                 var rs = list[i];
@@ -811,22 +821,22 @@ public class RedisClient : DisposeBase
     #region 基础功能
     /// <summary>心跳</summary>
     /// <returns></returns>
-    public Boolean Ping() => Execute<String>("PING") == "PONG";
+    public async Task<Boolean> Ping() => await ExecuteAsync<String>("PING") == "PONG";
 
     /// <summary>选择Db</summary>
     /// <param name="db"></param>
     /// <returns></returns>
-    public Boolean Select(Int32 db) => Execute<String>("SELECT", db + "") == "OK";
+    public async Task<Boolean> Select(Int32 db) => await ExecuteAsync<String>("SELECT", db + "") == "OK";
 
     /// <summary>验证密码</summary>
     /// <param name="username"></param>
     /// <param name="password"></param>
     /// <returns></returns>
-    public Boolean Auth(String? username, String password)
+    public async Task<Boolean> Auth(String? username, String password)
     {
         var rs = username.IsNullOrEmpty() ?
-            Execute<String>("AUTH", password) :
-            Execute<String>("AUTH", username, password);
+            await ExecuteAsync<String>("AUTH", password) :
+            await ExecuteAsync<String>("AUTH", username, password);
 
         return rs == "OK";
     }
@@ -879,7 +889,11 @@ public class RedisClient : DisposeBase
 
         for (var i = 0; i < ks.Length && i < rs.Length; i++)
         {
-            if (rs[i] is Packet pk) dic[ks[i]] = (T?)Host.Encoder.Decode(pk, typeof(T));
+            if (rs[i] is IPacket pk)
+            {
+                dic[ks[i]] = (T?)Host.Encoder.Decode(pk, typeof(T));
+                pk.Dispose();
+            }
         }
 
         return dic;

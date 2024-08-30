@@ -631,7 +631,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         // 管道处理不需要重试
         try
         {
-            return rds.StopPipeline(requireResult);
+            return rds.StopPipeline(requireResult).Result;
         }
         finally
         {

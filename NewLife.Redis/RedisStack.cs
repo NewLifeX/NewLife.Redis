@@ -1,6 +1,4 @@
-﻿using NewLife.Data;
-
-namespace NewLife.Caching;
+﻿namespace NewLife.Caching;
 
 /// <summary>Redis栈，右进右出</summary>
 /// <typeparam name="T"></typeparam>
@@ -82,7 +80,7 @@ public class RedisStack<T> : RedisBase, IProducerConsumer<T>
     {
         if (timeout < 0) return Execute((rc, k) => rc.Execute<T>("RPOP", Key), true);
 
-        var rs = Execute((rc, k) => rc.Execute<Packet[]>("BRPOP", Key, timeout), true);
+        var rs = Execute((rc, k) => rc.Execute<IPacket[]>("BRPOP", Key, timeout), true);
         return rs == null || rs.Length < 2 ? default : (T?)Redis.Encoder.Decode(rs[1], typeof(T));
     }
 
@@ -94,7 +92,7 @@ public class RedisStack<T> : RedisBase, IProducerConsumer<T>
     {
         if (timeout < 0) return await ExecuteAsync((rc, k) => rc.ExecuteAsync<T>("RPOP", Key), true);
 
-        var rs = await ExecuteAsync((rc, k) => rc.ExecuteAsync<Packet[]>("BRPOP", new Object[] { Key, timeout }, cancellationToken), true);
+        var rs = await ExecuteAsync((rc, k) => rc.ExecuteAsync<IPacket[]>("BRPOP", new Object[] { Key, timeout }, cancellationToken), true);
         return rs == null || rs.Length < 2 ? default : (T?)Redis.Encoder.Decode(rs[1], typeof(T));
     }
 

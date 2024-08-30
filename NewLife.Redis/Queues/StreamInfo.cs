@@ -1,6 +1,4 @@
-﻿using NewLife.Data;
-
-namespace NewLife.Caching.Queues;
+﻿namespace NewLife.Caching.Queues;
 
 /// <summary>消息流信息</summary>
 public class StreamInfo
@@ -41,27 +39,27 @@ public class StreamInfo
     {
         for (var i = 0; i < vs.Length - 1; i += 2)
         {
-            var key = (vs[i] as Packet)!.ToStr();
+            var key = (vs[i] as IPacket)!.ToStr();
             var value = vs[i + 1];
             switch (key)
             {
                 case "length": Length = value.ToInt(); break;
                 case "radix-tree-keys": RadixTreeKeys = value.ToInt(); break;
                 case "radix-tree-nodes": RadixTreeNodes = value.ToInt(); break;
-                case "last-generated-id": LastGeneratedId = (value as Packet)?.ToStr(); break;
+                case "last-generated-id": LastGeneratedId = (value as IPacket)?.ToStr(); break;
                 case "groups": Groups = value.ToInt(); break;
                 case "first-entry":
                     if (value is Object[] fs)
                     {
-                        if (fs[0] is Packet pk) FirstId = pk.ToStr();
-                        if (fs[1] is Object[] objs) FirstValues = objs.Select(e => (e as Packet)?.ToStr()).ToArray();
+                        if (fs[0] is IPacket pk) FirstId = pk.ToStr();
+                        if (fs[1] is Object[] objs) FirstValues = objs.Select(e => (e as IPacket)?.ToStr()).ToArray();
                     }
                     break;
                 case "last-entry":
                     if (value is Object[] ls)
                     {
-                        if (ls[0] is Packet pk) LastId = pk.ToStr();
-                        if (ls[1] is Object[] objs) LastValues = objs.Select(e => (e as Packet)?.ToStr()).ToArray();
+                        if (ls[0] is IPacket pk) LastId = pk.ToStr();
+                        if (ls[1] is Object[] objs) LastValues = objs.Select(e => (e as IPacket)?.ToStr()).ToArray();
                     }
                     break;
             }

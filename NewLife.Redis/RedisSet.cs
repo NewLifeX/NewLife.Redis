@@ -120,10 +120,10 @@ public class RedisSet<T> : RedisBase, ICollection<T>
             var rs = Execute((r, k) => r.Execute<Object[]>("SSCAN", Key, p, "MATCH", model.Pattern + "", "COUNT", count));
             if (rs == null || rs.Length != 2) break;
 
-            model.Position = (rs[0] as Packet).ToStr().ToInt();
+            model.Position = (rs[0] as IPacket).ToStr().ToInt();
 
             var ps = rs[1] as Object[];
-            foreach (Packet item in ps)
+            foreach (IPacket item in ps)
             {
                 if (count-- > 0) yield return item.ToStr();
             }
