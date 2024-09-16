@@ -1,4 +1,5 @@
 ﻿using NewLife.Caching.Models;
+using NewLife.Data;
 
 namespace NewLife.Caching;
 

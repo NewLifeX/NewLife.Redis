@@ -62,7 +62,7 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
     {
         value = default!;
 
-        using var pk = Execute((r, k) => r.Execute<IPacket>("HGET", Key, key!));
+        var pk = Execute((r, k) => r.Execute<IPacket>("HGET", Key, key!));
         if (pk == null || pk.Length == 0) return false;
 
         value = Redis.Encoder.Decode<TValue>(pk)!;
@@ -156,8 +156,8 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
         var dic = new Dictionary<TKey, TValue>();
         for (var i = 0; i < rs.Length; i++)
         {
-            using var pk = rs[i];
-            using var pk2 = rs[++i];
+            var pk = rs[i];
+            var pk2 = rs[++i];
             var key = Redis.Encoder.Decode<TKey>(pk);
             var value = Redis.Encoder.Decode<TValue>(pk2);
             dic[key] = value;

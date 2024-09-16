@@ -1,4 +1,6 @@
-﻿namespace NewLife.Caching.Queues;
+﻿using NewLife.Data;
+
+namespace NewLife.Caching.Queues;
 
 /// <summary>消息流信息</summary>
 public class StreamInfo

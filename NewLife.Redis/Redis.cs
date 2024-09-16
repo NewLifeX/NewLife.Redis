@@ -747,6 +747,15 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     [return: MaybeNull]
     public override T Get<T>(String key) => Execute(key, (rds, k) => rds.Execute<T>("GET", k));
 
+    /// <summary>移除缓存项</summary>
+    /// <param name="key">键</param>
+    public override Int32 Remove(String key)
+    {
+        if (key.IsNullOrEmpty()) return 0;
+
+        return Execute(key, (rds, k) => rds.Execute<Int32>("DEL", k), true);
+    }
+
     /// <summary>批量移除缓存项</summary>
     /// <param name="keys">键集合</param>
     public override Int32 Remove(params String[] keys)
@@ -1045,15 +1054,15 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     }
 
     /// <summary>累加测试</summary>
-    /// <param name="key">键</param>
+    /// <param name="keys">键</param>
     /// <param name="times">次数</param>
     /// <param name="threads">线程</param>
     /// <param name="rand">随机读写</param>
     /// <param name="batch">批量操作</param>
-    protected override Int64 BenchInc(String key, Int64 times, Int32 threads, Boolean rand, Int32 batch)
+    protected override Int64 BenchInc(String[] keys, Int64 times, Int32 threads, Boolean rand, Int32 batch)
     {
         if (rand && batch > 10) times /= 10;
-        return base.BenchInc(key, times, threads, rand, batch);
+        return base.BenchInc(keys, times, threads, rand, batch);
     }
     #endregion
 

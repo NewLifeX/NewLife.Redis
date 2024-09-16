@@ -40,6 +40,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Common\IPacket.cs" />
+    <Compile Remove="Common\MemorySegment.cs" />
     <Compile Remove="SpanWriter.cs" />
   </ItemGroup>
 
@@ -51,7 +53,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="11.0.2024.829-beta1428" />
+    <PackageReference Include="NewLife.Core" Version="11.0.2024.915-beta0601" />
   </ItemGroup>
 
   <ItemGroup>

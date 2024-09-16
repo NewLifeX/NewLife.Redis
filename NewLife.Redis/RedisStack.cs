@@ -1,4 +1,6 @@
-﻿namespace NewLife.Caching;
+﻿using NewLife.Data;
+
+namespace NewLife.Caching;
 
 /// <summary>Redis栈，右进右出</summary>
 /// <typeparam name="T"></typeparam>

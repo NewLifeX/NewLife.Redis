@@ -1,4 +1,6 @@
-﻿namespace NewLife.Caching.Queues;
+﻿using NewLife.Data;
+
+namespace NewLife.Caching.Queues;
 
 /// <summary>消费者信息</summary>
 public class ConsumerInfo

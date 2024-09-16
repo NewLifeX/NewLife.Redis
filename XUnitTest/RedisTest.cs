@@ -203,7 +203,7 @@ public class RedisTest
 
         // 写入一个无效字符串
         XTrace.WriteLine("写入一个无效字符串");
-        ic.Set(key, "xxx", 3);
+        ic.Set(key, "xxx", 30);
 
         var v5 = ic.Get<User>(key);
         Assert.Null(v5);
@@ -286,10 +286,10 @@ public class RedisTest
         var key = "buf";
 
         var str = "学无先后达者为师";
-        var pk = new Packet(str.GetBytes());
+        var pk = new ArrayPacket(str.GetBytes());
 
         ic.Set(key, pk);
-        var pk2 = ic.Get<Packet>(key);
+        var pk2 = ic.Get<IPacket>(key);
 
         Assert.Equal(pk.ToHex(), pk2.ToHex());
     }
@@ -387,10 +387,10 @@ public class RedisTest
 
         if (rs != null)
         {
-            position = (rs[0] as Packet).ToStr().ToInt();
+            position = (rs[0] as IPacket).ToStr().ToInt();
 
             var ps = rs[1] as Object[];
-            var ss = ps.Select(e => (e as Packet).ToStr()).ToArray();
+            var ss = ps.Select(e => (e as IPacket).ToStr()).ToArray();
             return ss;
         }
 
