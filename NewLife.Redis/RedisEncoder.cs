@@ -1,6 +1,4 @@
-﻿using System;
-using System.Text;
-using NewLife.Data;
+﻿using NewLife.Data;
 using NewLife.Reflection;
 using NewLife.Serialization;
 
@@ -107,5 +105,5 @@ public static class RedisJsonEncoderHelper
 {
     //public static T Decode<T>(this RedisJsonEncoder encoder, Packet pk) => (T)encoder.Decode(pk, typeof(T))!;
 
-    public static T Decode<T>(this RedisJsonEncoder encoder, IPacket pk) => (T)encoder.Decode(pk, typeof(T))!;
+    public static T Decode<T>(this IPacketEncoder encoder, IPacket pk) => (T)encoder.Decode(pk, typeof(T))!;
 }

@@ -29,6 +29,8 @@ class Program
             XTrace.WriteException(ex);
         }
 
+        Runtime.FreeMemory();
+
         Console.WriteLine("OK!");
         Console.ReadKey();
     }

@@ -1,4 +1,5 @@
-﻿using NewLife.Log;
+﻿using NewLife.Data;
+using NewLife.Log;
 
 namespace NewLife.Caching.Queues;
 
@@ -21,7 +22,7 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
     /// <summary>
     /// 编码器
     /// </summary>
-    public RedisJsonEncoder Encoder { set; get; } = new RedisJsonEncoder();
+    public IPacketEncoder Encoder { set; get; } = new RedisJsonEncoder();
 
     /// <summary>
     /// 读写超时(默认15000ms)
@@ -70,7 +71,7 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
     /// </summary>
     /// <param name="ignoreErrMsg">忽略异常消息(在对消息进行解析时发生异常，依然对当前消息进行消费)</param>
     /// <param name="encoder">编码器</param>
-    public MultipleConsumerGroupsQueue(Boolean ignoreErrMsg = true, RedisJsonEncoder? encoder = null)
+    public MultipleConsumerGroupsQueue(Boolean ignoreErrMsg = true, IPacketEncoder? encoder = null)
     {
         if (encoder != null)
             Encoder = encoder;

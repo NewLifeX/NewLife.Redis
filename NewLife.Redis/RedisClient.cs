@@ -187,24 +187,49 @@ public class RedisClient : DisposeBase
 
             for (var i = 0; i < args.Length; i++)
             {
-                var pk = Host.Encoder.Encode(args[i]);
-                var size = pk.Length;
+                // 参数值可能是String和IPacket类型
+                var size = 0;
+                var str = args[i] as String;
+                var buf = args[i] as Byte[];
+                var pk = args[i] as IPacket;
+                if (str != null)
+                    size = Encoding.UTF8.GetByteCount(str);
+                else if (buf != null)
+                    size = buf.Length;
+                else if (pk != null)
+                    size = pk.Total;
+                else
+                {
+                    pk = Host.Encoder.Encode(args[i]);
+                    size = pk.Length;
+                }
 
                 // 指令日志。简单类型显示原始值，复杂类型显示序列化后字符串
-                if (log != null)
+                if (log != null && args != null)
                 {
                     log.Append(' ');
-                    if (args[i] is String str)
+                    if (str != null)
                         log.Append(str);
-                    else
-                        log.AppendFormat("[{0}]{1}", size, pk.GetSpan().ToHex());
+                    else if (buf != null)
+                        log.AppendFormat("[{0}]{1}", size, buf.ToStr(null, 0, 1024)?.TrimEnd());
+                    else if (pk != null)
+                        log.AppendFormat("[{0}]{1}", size, pk.GetSpan().ToHex(1024));
                 }
 
                 //str = "${0}\r\n".F(item.Length);
                 writer.Write((Byte)'$');
-                writer.Write(size.ToString(), -1);
+                //writer.Write(size.ToString(), -1);
+
+                // 把数字size转为字节
+                writer.WriteAsString(size);
+
                 writer.Write(_NewLine);
-                writer.Write(pk.GetSpan());
+                if (str != null)
+                    writer.Write(str, -1);
+                else if (buf != null)
+                    writer.Write(buf);
+                else
+                    writer.Write(pk.GetSpan());
 
                 writer.Write(_NewLine);
             }
@@ -497,6 +522,8 @@ public class RedisClient : DisposeBase
                     total += 16 + buf.Length;
                 else if (item is IPacket pk)
                     total += 16 + pk.Length;
+                else if (item.GetType().GetTypeCode() != TypeCode.Object)
+                    total += 16 + 20;
                 else
                     total += 16 + Host.Encoder.Encode(item).Length;
             }

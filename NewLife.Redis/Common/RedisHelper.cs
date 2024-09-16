@@ -1,4 +1,5 @@
 ﻿using System.Buffers;
+using NewLife.Buffers;
 using NewLife.Data;
 using NewLife.Log;
 
@@ -85,5 +86,21 @@ public static class RedisHelper
         {
             ArrayPool<Byte>.Shared.Return(array);
         }
+    }
+
+    internal static void WriteAsString(this ref SpanWriter writer, Int64 num)
+    {
+        Span<Byte> buf = stackalloc Byte[16];
+
+        // 从右向左填充数字
+        var n = 0;
+        do
+        {
+            buf[^++n] = (Byte)(num % 10 + '0');
+            num /= 10;
+        } while (num > 0);
+
+        buf.Slice(buf.Length - n, n).CopyTo(writer.GetSpan());
+        writer.Advance(n);
     }
 }

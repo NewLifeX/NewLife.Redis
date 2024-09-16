@@ -55,7 +55,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     public Int32 AutoPipeline { get; set; }
 
     /// <summary>编码器。决定对象存储在redis中的格式，默认json</summary>
-    public RedisJsonEncoder Encoder { get; set; } = new RedisJsonEncoder();
+    public IPacketEncoder Encoder { get; set; } = new RedisJsonEncoder();
 
     /// <summary>Json序列化主机</summary>
     public IJsonHost JsonHost { get; set; } = null!;
@@ -1034,13 +1034,14 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         return base.Bench(rand, batch);
     }
 
-    /// <summary>使用指定线程测试指定次数</summary>
-    /// <param name="times">次数</param>
-    /// <param name="threads">线程</param>
-    /// <param name="rand">随机读写</param>
-    /// <param name="batch">批量操作</param>
-    public override Int64 BenchOne(Int64 times, Int32 threads, Boolean rand, Int32 batch)
+    /// <summary>获取每个线程测试次数</summary>
+    /// <param name="rand"></param>
+    /// <param name="batch"></param>
+    /// <returns></returns>
+    protected override Int32 GetTimesPerThread(Boolean rand, Int32 batch)
     {
+        var times = base.GetTimesPerThread(rand, batch);
+
         if (!rand)
         {
             if (batch > 10) times *= 10;
@@ -1050,7 +1051,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             if (batch > 10) times *= 10;
         }
 
-        return base.BenchOne(times, threads, rand, batch);
+        return times;
     }
 
     /// <summary>累加测试</summary>
