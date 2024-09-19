@@ -413,7 +413,7 @@ public class RedisClient : DisposeBase
     private Object?[] ReadBlocks(Stream ms, StringBuilder? log)
     {
         // 结果集数量
-        var len = ReadLine(ms).ToInt(-1);
+        var len = ReadLength(ms);
         log?.Append(len);
         if (len < 0) return [];
 
@@ -446,7 +446,7 @@ public class RedisClient : DisposeBase
 
     private static IPacket? ReadPacket(Stream ms, StringBuilder? log)
     {
-        var len = ReadLine(ms).ToInt(-1);
+        var len = ReadLength(ms);
         log?.Append(len);
         if (len == 0)
         {
@@ -507,6 +507,35 @@ public class RedisClient : DisposeBase
         }
 
         return sb.Return(true);
+    }
+
+    private static Int32 ReadLength(Stream ms)
+    {
+        Span<Char> span = stackalloc Char[32];
+        var k = 0;
+        while (true)
+        {
+            var b = ms.ReadByte();
+            if (b < 0) break;
+
+            if (b == '\r')
+            {
+                var b2 = ms.ReadByte();
+                if (b2 < 0) break;
+                if (b2 == '\n') break;
+
+                span[k++] = (Char)b;
+                span[k++] = (Char)b2;
+            }
+            else
+                span[k++] = (Char)b;
+        }
+
+#if NETFRAMEWORK || NETSTANDARD2_0
+        return Int32.TryParse(span[..k].ToString(), out var rs) ? rs : -1;
+#else
+        return Int32.TryParse(span[..k], out var rs) ? rs : -1;
+#endif
     }
 
     private Int32 GetCommandSize(String cmd, Object[]? args)
