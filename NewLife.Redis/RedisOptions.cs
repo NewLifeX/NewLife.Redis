@@ -19,6 +19,9 @@ public class RedisOptions
     /// <summary>数据库</summary>
     public Int32 Db { get; set; }
 
+    /// <summary>用户名。Redis6.0支持</summary>
+    public String? UserName { get; set; }
+
     /// <summary>密码</summary>
     public String? Password { get; set; }
 
