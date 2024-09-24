@@ -71,7 +71,7 @@ public class PubSub : RedisBase
 
         await client.ExecuteAsync<String[]>("SUBSCRIBE", channels);
 
-        Redis.Pool.Put(client);
+        Redis.Pool.Return(client);
     }
 
     ///// <summary>退订给定的频道</summary>

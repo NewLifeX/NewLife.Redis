@@ -480,7 +480,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             }
             finally
             {
-                Pool.Put(client);
+                Pool.Return(client);
 
                 Counter?.StopCount(sw);
             }
@@ -524,7 +524,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             }
             finally
             {
-                pool.Put(client);
+                pool.Return(client);
 
                 Counter?.StopCount(sw);
             }
@@ -593,7 +593,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             }
             finally
             {
-                Pool.Put(client);
+                Pool.Return(client);
 
                 Counter?.StopCount(sw);
             }
@@ -639,7 +639,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             if (!requireResult) Thread.Sleep(10);
 
             rds.Reset();
-            Pool.Put(rds);
+            Pool.Return(rds);
 
             Counter?.StopCount(sw);
         }

@@ -10,9 +10,9 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
-    <PackageReference Include="NewLife.Core" Version="11.0.2024.915-beta0601" />
+    <PackageReference Include="NewLife.Core" Version="11.0.2024.923-beta0014" />
     <PackageReference Include="NewLife.UnitTest" Version="1.0.2023.1204" />
-    <PackageReference Include="xunit" Version="2.9.0" />
+    <PackageReference Include="xunit" Version="2.9.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

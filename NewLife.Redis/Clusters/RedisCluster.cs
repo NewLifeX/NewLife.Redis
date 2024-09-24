@@ -273,7 +273,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
         }
         finally
         {
-            pool.Put(client);
+            pool.Return(client);
         }
     }
 
@@ -310,7 +310,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
         }
         finally
         {
-            pool.Put(client);
+            pool.Return(client);
         }
     }
 

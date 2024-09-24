@@ -291,7 +291,7 @@ public class FullRedis : Redis
             }
             finally
             {
-                pool.Put(client);
+                pool.Return(client);
 
                 Counter?.StopCount(sw);
             }
@@ -374,7 +374,7 @@ public class FullRedis : Redis
         }
         finally
         {
-            pool.Put(client);
+            pool.Return(client);
         }
     }
 
@@ -432,7 +432,7 @@ public class FullRedis : Redis
             }
             finally
             {
-                pool.Put(client);
+                pool.Return(client);
 
                 Counter?.StopCount(sw);
             }

@@ -213,7 +213,7 @@ public class RedisClient : DisposeBase
                     else if (buf != null)
                         log.AppendFormat("[{0}]{1}", size, buf.ToStr(null, 0, 1024)?.TrimEnd());
                     else if (pk != null)
-                        log.AppendFormat("[{0}]{1}", size, pk.GetSpan().ToHex(1024));
+                        log.AppendFormat("[{0}]{1}", size, pk.ToHex(1024));
                 }
 
                 //str = "${0}\r\n".F(item.Length);
@@ -567,13 +567,13 @@ public class RedisClient : DisposeBase
     /// <param name="cmd"></param>
     /// <param name="args"></param>
     /// <returns></returns>
-    public virtual String? Execute(String cmd, params Object[] args) => Execute<String>(cmd, args);
+    public virtual String? Execute(String cmd, params Object?[] args) => Execute<String>(cmd, args);
 
     /// <summary>执行命令。返回基本类型、对象、对象数组</summary>
     /// <param name="cmd"></param>
     /// <param name="args"></param>
     /// <returns></returns>
-    public virtual TResult? Execute<TResult>(String cmd, params Object[] args)
+    public virtual TResult? Execute<TResult>(String cmd, params Object?[] args)
     {
         // 管道模式
         if (_ps != null)
