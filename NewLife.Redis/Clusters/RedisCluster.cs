@@ -12,7 +12,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
     IList<IRedisNode> IRedisCluster.Nodes => Nodes.Select(x => (IRedisNode)x).ToList();
 
     /// <summary>节点改变事件</summary>
-    public event EventHandler NodeChanged;
+    public event EventHandler? NodeChanged;
 
     /// <summary>集群节点</summary>
     public ClusterNode[]? Nodes { get; private set; }

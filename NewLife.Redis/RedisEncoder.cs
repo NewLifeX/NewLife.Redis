@@ -63,6 +63,10 @@ public class RedisJsonEncoder : IPacketEncoder
         return (ArrayPacket)str.GetBytes();
     }
 
+    /// <summary>解码数据包为目标类型</summary>
+    /// <param name="pk"></param>
+    /// <param name="type"></param>
+    /// <returns></returns>
     public virtual Object? Decode(IPacket pk, Type type)
     {
         try
@@ -101,9 +105,15 @@ public class RedisJsonEncoder : IPacketEncoder
     }
 }
 
+/// <summary>编解码助手</summary>
 public static class RedisJsonEncoderHelper
 {
     //public static T Decode<T>(this RedisJsonEncoder encoder, Packet pk) => (T)encoder.Decode(pk, typeof(T))!;
 
+    /// <summary>解码数据包</summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="encoder"></param>
+    /// <param name="pk"></param>
+    /// <returns></returns>
     public static T Decode<T>(this IPacketEncoder encoder, IPacket pk) => (T)encoder.Decode(pk, typeof(T))!;
 }

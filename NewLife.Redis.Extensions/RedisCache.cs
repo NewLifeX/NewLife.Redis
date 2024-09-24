@@ -60,7 +60,7 @@ public class RedisCache : FullRedis, IDistributedCache, IDisposable
             base.Set(key, value);
         else
             if (options.AbsoluteExpiration != null)
-                base.Set(key, value, options.AbsoluteExpiration.Value - DateTime.Now);
+            base.Set(key, value, options.AbsoluteExpiration.Value - DateTime.Now);
         else if (options.AbsoluteExpirationRelativeToNow != null)
             base.Set(key, value, options.AbsoluteExpirationRelativeToNow.Value);
         else if (options.SlidingExpiration != null)
@@ -99,7 +99,7 @@ public class RedisCache : FullRedis, IDistributedCache, IDisposable
     /// 删除
     /// </summary>
     /// <param name="key"></param>
-    public void Remove(String key) => base.Remove(key);
+    public new void Remove(String key) => base.Remove(key);
 
     /// <summary>
     /// 异步删除

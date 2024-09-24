@@ -128,7 +128,7 @@ public class RedisList<T> : RedisBase, IList<T>
     /// <returns>队列元素总数</returns>
     public Int32 RPUSH(IEnumerable<T> values)
     {
-        var args = new List<Object>
+        var args = new List<Object?>
         {
             Key
         };
@@ -144,7 +144,7 @@ public class RedisList<T> : RedisBase, IList<T>
     /// <returns>队列元素总数</returns>
     public Int32 LPUSH(IEnumerable<T> values)
     {
-        var args = new List<Object>
+        var args = new List<Object?>
         {
             Key
         };
@@ -157,11 +157,11 @@ public class RedisList<T> : RedisBase, IList<T>
 
     /// <summary>移除并返回最右边一个元素</summary>
     /// <returns></returns>
-    public T RPOP() => Execute((rc, k) => rc.Execute<T>("RPOP", Key), true);
+    public T? RPOP() => Execute((rc, k) => rc.Execute<T>("RPOP", Key), true);
 
     /// <summary>移除并返回最左边一个元素</summary>
     /// <returns></returns>
-    public T LPOP() => Execute((rc, k) => rc.Execute<T>("LPOP", Key), true);
+    public T? LPOP() => Execute((rc, k) => rc.Execute<T>("LPOP", Key), true);
 
     /// <summary>移除并返回最右边一个元素，并插入目标列表左边，原子操作</summary>
     /// <remarks>
@@ -169,7 +169,7 @@ public class RedisList<T> : RedisBase, IList<T>
     /// </remarks>
     /// <param name="destKey">目标列表</param>
     /// <returns></returns>
-    public T RPOPLPUSH(String destKey) => Execute((rc, k) => rc.Execute<T>("RPOPLPUSH", Key, GetKey(destKey)), true);
+    public T? RPOPLPUSH(String destKey) => Execute((rc, k) => rc.Execute<T>("RPOPLPUSH", Key, GetKey(destKey)), true);
 
     /// <summary>移除并返回最右边一个元素，并插入目标列表左边，原子操作</summary>
     /// <remarks>
@@ -178,7 +178,7 @@ public class RedisList<T> : RedisBase, IList<T>
     /// <param name="destKey">目标列表</param>
     /// <param name="timeout">超时时间，默认0秒永远阻塞；负数表示直接返回，不阻塞。</param>
     /// <returns></returns>
-    public T BRPOPLPUSH(String destKey, Int32 timeout) => Execute((rc, k) => rc.Execute<T>("BRPOPLPUSH", Key, GetKey(destKey), timeout), true);
+    public T? BRPOPLPUSH(String destKey, Int32 timeout) => Execute((rc, k) => rc.Execute<T>("BRPOPLPUSH", Key, GetKey(destKey), timeout), true);
 
     /// <summary>在指定元素之前插入</summary>
     /// <param name="pivot"></param>

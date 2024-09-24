@@ -157,7 +157,7 @@ public class RedisClient : DisposeBase
     /// <param name="cmd"></param>
     /// <param name="args"></param>
     /// <returns></returns>
-    protected virtual Int32 GetRequest(Memory<Byte> memory, String cmd, Object[]? args)
+    protected virtual Int32 GetRequest(Memory<Byte> memory, String cmd, Object?[]? args)
     {
         // *<number of arguments>\r\n$<number of bytes of argument 1>\r\n<argument data>\r\n
         // *1\r\n$4\r\nINFO\r\n
@@ -200,12 +200,16 @@ public class RedisClient : DisposeBase
                     size = pk.Total;
                 else
                 {
-                    pk = Host.Encoder.Encode(args[i]);
-                    size = pk.Length;
+                    var arg = args[i];
+                    if (arg != null)
+                    {
+                        pk = Host.Encoder.Encode(arg);
+                        size = pk.Length;
+                    }
                 }
 
                 // 指令日志。简单类型显示原始值，复杂类型显示序列化后字符串
-                if (log != null && args != null)
+                if (log != null)
                 {
                     log.Append(' ');
                     if (str != null)
@@ -228,7 +232,7 @@ public class RedisClient : DisposeBase
                     writer.Write(str, -1);
                 else if (buf != null)
                     writer.Write(buf);
-                else
+                else if (pk != null)
                     writer.Write(pk.GetSpan());
 
                 writer.Write(_NewLine);
@@ -325,7 +329,7 @@ public class RedisClient : DisposeBase
     /// <param name="args">参数数组</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    protected virtual async Task<Object?> ExecuteCommandAsync(String cmd, Object[]? args, CancellationToken cancellationToken)
+    protected virtual async Task<Object?> ExecuteCommandAsync(String cmd, Object?[]? args, CancellationToken cancellationToken)
     {
         var isQuit = cmd == "QUIT";
 
@@ -538,14 +542,16 @@ public class RedisClient : DisposeBase
 #endif
     }
 
-    private Int32 GetCommandSize(String cmd, Object[]? args)
+    private Int32 GetCommandSize(String cmd, Object?[]? args)
     {
         var total = 16 + cmd.Length;
         if (args != null)
         {
             foreach (var item in args)
             {
-                if (item is String str)
+                if (item == null)
+                    total += 4;
+                else if (item is String str)
                     total += 16 + Encoding.UTF8.GetByteCount(str);
                 else if (item is Byte[] buf)
                     total += 16 + buf.Length;
@@ -595,7 +601,7 @@ public class RedisClient : DisposeBase
     /// <param name="args"></param>
     /// <param name="value"></param>
     /// <returns></returns>
-    public virtual Boolean TryExecute<TResult>(String cmd, Object[] args, out TResult? value)
+    public virtual Boolean TryExecute<TResult>(String cmd, Object?[] args, out TResult? value)
     {
         var rs = ExecuteAsync(cmd, args).Result;
         if (rs is TResult rs2)
@@ -620,7 +626,7 @@ public class RedisClient : DisposeBase
     /// <param name="args">参数数组</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    public virtual async Task<Object?> ExecuteAsync(String cmd, Object[] args, CancellationToken cancellationToken = default)
+    public virtual async Task<Object?> ExecuteAsync(String cmd, Object?[] args, CancellationToken cancellationToken = default)
     {
         // 埋点名称，支持二级命令
         var act = cmd.EqualIgnoreCase("cluster", "xinfo", "xgroup", "xreadgroup") ? $"{cmd}-{args?.FirstOrDefault()}" : cmd;
@@ -640,14 +646,14 @@ public class RedisClient : DisposeBase
     /// <param name="cmd">命令</param>
     /// <param name="args">参数数组</param>
     /// <returns></returns>
-    public virtual async Task<TResult?> ExecuteAsync<TResult>(String cmd, params Object[] args) => await ExecuteAsync<TResult>(cmd, args, CancellationToken.None);
+    public virtual async Task<TResult?> ExecuteAsync<TResult>(String cmd, params Object?[] args) => await ExecuteAsync<TResult>(cmd, args, CancellationToken.None);
 
     /// <summary>异步执行命令。返回基本类型、对象、对象数组</summary>
     /// <param name="cmd">命令</param>
     /// <param name="args">参数数组</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    public virtual async Task<TResult?> ExecuteAsync<TResult>(String cmd, Object[] args, CancellationToken cancellationToken)
+    public virtual async Task<TResult?> ExecuteAsync<TResult>(String cmd, Object?[] args, CancellationToken cancellationToken)
     {
         // 管道模式
         if (_ps != null)
@@ -817,10 +823,10 @@ public class RedisClient : DisposeBase
         }
     }
 
-    private class Command(String name, Object[] args, Type type)
+    private class Command(String name, Object?[] args, Type type)
     {
         public String Name { get; } = name;
-        public Object[] Args { get; } = args;
+        public Object?[] Args { get; } = args;
         public Type Type { get; } = type;
     }
     #endregion

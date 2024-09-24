@@ -100,7 +100,7 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
     /// <returns></returns>
     public Int32 HDel(params TKey[] fields)
     {
-        var args = new List<Object>
+        var args = new List<Object?>
         {
             Key
         };
@@ -115,9 +115,9 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
     /// <summary>只在 key 指定的哈希集中不存在指定的字段时，设置字段的值</summary>
     /// <param name="fields"></param>
     /// <returns></returns>
-    public TValue[] HMGet(params TKey[] fields)
+    public TValue[]? HMGet(params TKey[] fields)
     {
-        var args = new List<Object>
+        var args = new List<Object?>
         {
             Key
         };
@@ -134,7 +134,7 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
     /// <returns></returns>
     public Boolean HMSet(IEnumerable<KeyValuePair<TKey, TValue>> keyValues)
     {
-        var args = new List<Object>
+        var args = new List<Object?>
         {
             Key
         };
@@ -151,9 +151,10 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
     /// <returns></returns>
     public IDictionary<TKey, TValue> GetAll()
     {
-        var rs = Execute((r, k) => r.Execute<IPacket[]>("HGETALL", Key));
-
         var dic = new Dictionary<TKey, TValue>();
+        var rs = Execute((r, k) => r.Execute<IPacket[]>("HGETALL", Key));
+        if (rs == null || rs.Length == 0) return dic;
+
         for (var i = 0; i < rs.Length; i++)
         {
             var pk = rs[i];
@@ -203,14 +204,15 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
 
             model.Position = (rs[0] as IPacket)!.ToStr().ToInt();
 
-            var ps = rs[1] as Object[];
+            if (rs[1] is not Object[] ps) break;
+
             for (var i = 0; i < ps.Length - 1; i += 2)
             {
                 if (count-- > 0)
                 {
                     var key = (ps[i] as IPacket)!.ToStr().ChangeType<TKey>();
                     var val = (ps[i + 1] as IPacket)!.ToStr().ChangeType<TValue>();
-                    yield return new KeyValuePair<TKey, TValue>(key, val);
+                    if (key != null) yield return new KeyValuePair<TKey, TValue>(key, val!);
                 }
             }
 
