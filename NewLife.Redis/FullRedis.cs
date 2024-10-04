@@ -64,6 +64,13 @@ public class FullRedis : Redis
     public FullRedis(String server, String password, Int32 db) : base(server, password, db) { }
 
     /// <summary>实例化增强版Redis</summary>
+    /// <param name="server">服务器</param>
+    /// <param name="userName">用户名。Redis6.0支持</param>
+    /// <param name="password">密码</param>
+    /// <param name="db"></param>
+    public FullRedis(String server, String userName, String password, Int32 db) : base(server, userName, password, db) { }
+
+    /// <summary>实例化增强版Redis</summary>
     /// <param name="options"></param>
     public FullRedis(RedisOptions options)
     {
@@ -71,6 +78,7 @@ public class FullRedis : Redis
             Name = options.InstanceName;
 
         Server = options.Server;
+        UserName = options.UserName;
         Password = options.Password;
         Db = options.Db;
         if (options.Timeout > 0)
