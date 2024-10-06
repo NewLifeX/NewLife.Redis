@@ -1062,6 +1062,19 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <param name="batch">批量操作</param>
     protected override Int64 BenchInc(String[] keys, Int64 times, Int32 threads, Boolean rand, Int32 batch)
     {
+        //if (rand && batch > 10) times /= 10;
+        return base.BenchRemove(keys, times, threads, rand, batch);
+    }
+
+    /// <summary>删除测试</summary>
+    /// <param name="keys"></param>
+    /// <param name="times"></param>
+    /// <param name="threads"></param>
+    /// <param name="rand"></param>
+    /// <param name="batch"></param>
+    /// <returns></returns>
+    protected override Int64 BenchRemove(String[] keys, Int64 times, Int32 threads, Boolean rand, Int32 batch)
+    {
         if (rand && batch > 10) times /= 10;
         return base.BenchInc(keys, times, threads, rand, batch);
     }
