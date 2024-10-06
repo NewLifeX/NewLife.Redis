@@ -29,7 +29,7 @@
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Redis</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>默认使用System.Text.Json序列化；支持DateOnly/TimeOnly</PackageReleaseNotes>
+    <PackageReleaseNotes>内存优化，在高并发场合减少内存分配</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -53,7 +53,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="11.0.2024.923-beta0014" />
+    <PackageReference Include="NewLife.Core" Version="11.0.2024.1001" />
   </ItemGroup>
 
   <ItemGroup>

@@ -560,7 +560,7 @@ public class RedisClient : DisposeBase
                 else if (item.GetType().GetTypeCode() != TypeCode.Object)
                     total += 16 + 20;
                 else
-                    total += 16 + Host.Encoder.Encode(item).Length;
+                    total += 16 + Host.Encoder.Encode(item)?.Length ?? 0;
             }
         }
 

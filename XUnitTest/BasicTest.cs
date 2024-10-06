@@ -7,7 +7,7 @@ using NewLife.Log;
 using Xunit;
 
 // 所有测试用例放入一个汇编级集合，除非单独指定Collection特性
-[assembly: CollectionBehavior(CollectionBehavior.CollectionPerAssembly)]
+[assembly: CollectionBehavior(CollectionBehavior.CollectionPerClass)]
 
 namespace XUnitTest;
 

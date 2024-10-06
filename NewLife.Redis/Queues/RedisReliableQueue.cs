@@ -238,11 +238,17 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
 
             var rs2 = rds.StopPipeline(true);
             foreach (var item in rs2)
+            {
                 rs += (Int32)item;
+            }
         }
         else
+        {
             foreach (var item in keys)
+            {
                 rs += Execute((r, k) => r.Execute<Int32>("LREM", AckKey, 1, item), true);
+            }
+        }
 
         return rs;
     }

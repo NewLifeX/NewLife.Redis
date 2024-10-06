@@ -13,6 +13,7 @@ using Xunit;
 
 namespace XUnitTest.Queues;
 
+[TestCaseOrderer("NewLife.UnitTest.DefaultOrderer", "NewLife.UnitTest")]
 public class StreamTests
 {
     private FullRedis _redis;
