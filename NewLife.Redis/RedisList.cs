@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NewLife.Caching;
 
@@ -22,7 +23,7 @@ public class RedisList<T> : RedisBase, IList<T>
     /// <returns></returns>
     public T this[Int32 index]
     {
-        get => Execute((r, k) => r.Execute<T>("LINDEX", Key, index));
+        get => Execute((r, k) => r.Execute<T>("LINDEX", Key, index))!;
         set => Execute((r, k) => r.Execute<String>("LSET", Key, index, value), true);
     }
 
@@ -196,7 +197,7 @@ public class RedisList<T> : RedisBase, IList<T>
     /// <param name="start"></param>
     /// <param name="stop"></param>
     /// <returns></returns>
-    public T[] LRange(Int32 start, Int32 stop) => Execute((r, k) => r.Execute<T[]>("LRANGE", Key, start, stop));
+    public T[] LRange(Int32 start, Int32 stop) => Execute((r, k) => r.Execute<T[]>("LRANGE", Key, start, stop)) ?? [];
 
     /// <summary>获取所有元素</summary>
     /// <returns></returns>
