@@ -93,6 +93,7 @@ public class FullRedis : Redis
     /// <param name="provider">服务提供者，将要解析IConfigProvider</param>
     /// <param name="name">缓存名称，也是配置中心key</param>
     public FullRedis(IServiceProvider provider, String name) : base(provider, name) { }
+
     /// <summary>按照配置服务实例化Redis，用于NETCore依赖注入</summary>
     /// <param name="provider">服务提供者，将要解析IConfigProvider</param>
     /// <param name="options">Redis链接配置</param>

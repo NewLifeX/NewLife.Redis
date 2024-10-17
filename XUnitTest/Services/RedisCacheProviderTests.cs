@@ -1,5 +1,6 @@
 ﻿using System;
 using NewLife.Caching.Services;
+using NewLife.Configuration;
 using NewLife.Model;
 using Xunit;
 
@@ -10,7 +11,10 @@ public class RedisCacheProviderTests
     [Fact]
     public void Ctor()
     {
-        var sp = ObjectContainer.Provider;
+        var services = ObjectContainer.Current;
+        services.AddSingleton<IConfigProvider>(JsonConfigProvider.LoadAppSettings());
+
+        var sp = services.BuildServiceProvider();
 
         var provider = new RedisCacheProvider(sp);
         Assert.NotNull(provider.Cache);

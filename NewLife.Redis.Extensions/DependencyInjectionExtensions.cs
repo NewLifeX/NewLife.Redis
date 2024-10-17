@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using NewLife;
 using NewLife.Caching;
 using NewLife.Caching.Services;
+using NewLife.Configuration;
 using NewLife.Log;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -22,6 +23,7 @@ public static class DependencyInjectionExtensions
 
         if (redis == null) return services.AddRedisCacheProvider();
 
+        services.AddBasic();
         services.TryAddSingleton<ICache>(redis);
         services.AddSingleton<Redis>(redis);
         services.AddSingleton(redis);
@@ -118,6 +120,7 @@ public static class DependencyInjectionExtensions
         if (setupAction == null)
             throw new ArgumentNullException(nameof(setupAction));
 
+        services.AddBasic();
         services.AddOptions();
         services.Configure(setupAction);
         //services.Add(ServiceDescriptor.Singleton<ICache, FullRedis>());
@@ -154,6 +157,7 @@ public static class DependencyInjectionExtensions
         if (setupAction == null)
             throw new ArgumentNullException(nameof(setupAction));
 
+        services.AddBasic();
         services.AddOptions();
         services.Configure(setupAction);
         services.AddSingleton(sp => new FullRedis(sp, sp.GetRequiredService<IOptions<RedisOptions>>().Value));
@@ -166,6 +170,7 @@ public static class DependencyInjectionExtensions
     /// <returns></returns>
     public static IServiceCollection AddRedisCacheProvider(this IServiceCollection services)
     {
+        services.AddBasic();
         services.AddSingleton<ICacheProvider, RedisCacheProvider>();
         services.TryAddSingleton<ICache>(p => p.GetRequiredService<ICacheProvider>().Cache);
         services.TryAddSingleton<Redis>(p =>
@@ -184,5 +189,15 @@ public static class DependencyInjectionExtensions
         });
 
         return services;
+    }
+
+    static void AddBasic(this IServiceCollection services)
+    {
+        // 注册依赖项
+        services.TryAddSingleton<ILog>(XTrace.Log);
+        services.TryAddSingleton<ITracer>(DefaultTracer.Instance ??= new DefaultTracer());
+
+        if (!services.Any(e => e.ServiceType == typeof(IConfigProvider)))
+            services.TryAddSingleton<IConfigProvider>(JsonConfigProvider.LoadAppSettings());
     }
 }
