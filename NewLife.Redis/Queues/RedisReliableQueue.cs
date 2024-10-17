@@ -146,7 +146,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
     {
         RetryAck();
 
-        if (timeout > 0 && Redis.Timeout < timeout * 1000) Redis.Timeout = (timeout + 1) * 1000;
+        if (timeout > 0 && Redis.Timeout < (timeout + 1) * 1000) Redis.Timeout = (timeout + 1) * 1000;
 
         var rs = timeout >= 0 ?
             Execute((rc, k) => rc.Execute<T>("BRPOPLPUSH", Key, AckKey, timeout), true) :
