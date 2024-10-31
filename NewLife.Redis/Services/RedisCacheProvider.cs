@@ -31,7 +31,8 @@ public class RedisCacheProvider : CacheProvider
     /// <param name="serviceProvider"></param>
     public RedisCacheProvider(IServiceProvider serviceProvider)
     {
-        var config = serviceProvider.GetRequiredService<IConfigProvider>();
+        var config = serviceProvider?.GetService<IConfigProvider>();
+        config ??= JsonConfigProvider.LoadAppSettings();
         if (config != null) Init(config, serviceProvider);
     }
     #endregion
