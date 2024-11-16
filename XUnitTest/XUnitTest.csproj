@@ -10,7 +10,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
-    <PackageReference Include="NewLife.Core" Version="11.0.2024.1113" />
+    <PackageReference Include="NewLife.Core" Version="11.0.2024.1115" />
     <PackageReference Include="NewLife.UnitTest" Version="1.0.2024.1006" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
