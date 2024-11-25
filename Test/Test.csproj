@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net45;net461;net8.0</TargetFrameworks>
+    <TargetFrameworks>net45;net461;net8.0;net9.0</TargetFrameworks>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2024 新生命开发团队</Copyright>
     <VersionPrefix>1.0</VersionPrefix>
