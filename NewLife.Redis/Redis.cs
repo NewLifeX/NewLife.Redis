@@ -631,7 +631,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         // 管道处理不需要重试
         try
         {
-            return rds.StopPipeline(requireResult).Result;
+            return rds.StopPipeline(requireResult).ConfigureAwait(false).GetAwaiter().GetResult();
         }
         finally
         {
@@ -1062,8 +1062,8 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <param name="batch">批量操作</param>
     protected override Int64 BenchInc(String[] keys, Int64 times, Int32 threads, Boolean rand, Int32 batch)
     {
-        //if (rand && batch > 10) times /= 10;
-        return base.BenchRemove(keys, times, threads, rand, batch);
+        if (rand && batch > 10) times /= 10;
+        return base.BenchInc(keys, times, threads, rand, batch);
     }
 
     /// <summary>删除测试</summary>
@@ -1075,8 +1075,8 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <returns></returns>
     protected override Int64 BenchRemove(String[] keys, Int64 times, Int32 threads, Boolean rand, Int32 batch)
     {
-        if (rand && batch > 10) times /= 10;
-        return base.BenchInc(keys, times, threads, rand, batch);
+        if (rand && batch > 10) times *= 10;
+        return base.BenchRemove(keys, times, threads, rand, batch);
     }
     #endregion
 

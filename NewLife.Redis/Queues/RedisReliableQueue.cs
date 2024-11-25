@@ -263,16 +263,23 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
     public RedisDelayQueue<T> InitDelay()
     {
         if (_delay == null)
+        {
             lock (this)
-                if (_delay == null)
-                    _delay = new RedisDelayQueue<T>(Redis, $"{Key}:Delay");
+            {
+                _delay ??= new RedisDelayQueue<T>(Redis, $"{Key}:Delay");
+            }
+        }
         if (_delayTask == null || _delayTask.IsCompleted)
+        {
             lock (this)
+            {
                 if (_delayTask == null || _delayTask.IsCompleted)
                 {
                     _source = new CancellationTokenSource();
                     _delayTask = Task.Run(() => _delay.TransferAsync(this, null, _source.Token));
                 }
+            }
+        }
 
         return _delay;
     }

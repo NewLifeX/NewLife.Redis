@@ -118,7 +118,9 @@ public class RedisClient : DisposeBase
             };
 
             var uri = Server;
-            await tc.ConnectAsync(uri.Address, uri.Port);
+            var addrs = uri.GetAddresses();
+            DefaultSpan.Current?.AppendTag($"addrs={addrs.Join()} port={uri.Port}");
+            await tc.ConnectAsync(addrs, uri.Port);
 
             Client = tc;
             ns = tc.GetStream();
@@ -394,7 +396,7 @@ public class RedisClient : DisposeBase
     /// <summary>重置。干掉历史残留数据</summary>
     public void Reset()
     {
-        var ns = GetStreamAsync(false).Result;
+        var ns = GetStreamAsync(false).ConfigureAwait(false).GetAwaiter().GetResult();
         if (ns == null) return;
 
         // 干掉历史残留数据
@@ -588,7 +590,7 @@ public class RedisClient : DisposeBase
             return default;
         }
 
-        var rs = ExecuteAsync(cmd, args).Result;
+        var rs = ExecuteAsync(cmd, args).ConfigureAwait(false).GetAwaiter().GetResult();
         if (rs == null) return default;
         if (rs is TResult rs2) return rs2;
         if (TryChangeType(rs, typeof(TResult), out var target)) return (TResult?)target;
@@ -603,7 +605,7 @@ public class RedisClient : DisposeBase
     /// <returns></returns>
     public virtual Boolean TryExecute<TResult>(String cmd, Object?[] args, out TResult? value)
     {
-        var rs = ExecuteAsync(cmd, args).Result;
+        var rs = ExecuteAsync(cmd, args).ConfigureAwait(false).GetAwaiter().GetResult();
         if (rs is TResult rs2)
         {
             value = rs2;
