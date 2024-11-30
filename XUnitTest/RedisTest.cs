@@ -517,9 +517,9 @@ public class RedisTest
 
         ic.MaxMessageSize = 1028;
 
-        var ex = Assert.Throws<AggregateException>(() => ic.Set("ttt", Rand.NextString(1029)));
-        var ex2 = ex.GetTrue() as InvalidOperationException;
-        Assert.NotNull(ex2);
-        Assert.Equal("命令[SET]的数据包大小[1060]超过最大限制[1028]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。", ex2.Message);
+        var ex = Assert.Throws<InvalidOperationException>(() => ic.Set("ttt", Rand.NextString(1029)));
+        //var ex2 = ex.GetTrue() as InvalidOperationException;
+        Assert.NotNull(ex);
+        Assert.Equal("命令[SET]的数据包大小[1060]超过最大限制[1028]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。", ex.Message);
     }
 }

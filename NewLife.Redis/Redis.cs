@@ -547,7 +547,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             if (rds == null && AutoPipeline > 0) rds = StartPipeline();
             if (rds != null)
             {
-                var rs = await func(rds, key);
+                var rs = await func(rds, key).ConfigureAwait(false);
 
                 // 命令数足够，自动提交
                 if (AutoPipeline > 0 && rds.PipelineCommands >= AutoPipeline)
@@ -575,7 +575,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             try
             {
                 client.Reset();
-                return await func(client, key);
+                return await func(client, key).ConfigureAwait(false);
             }
             catch (RedisException) { throw; }
             catch (Exception ex)
@@ -923,7 +923,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         T? v1 = default;
         var rs1 = Execute(key, (rds, k) =>
         {
-            var rs2 = rds.TryExecute("GET", new[] { k }, out T? v2);
+            var rs2 = rds.TryExecute("GET", [k], out T? v2);
             v1 = v2;
             return rs2;
         });

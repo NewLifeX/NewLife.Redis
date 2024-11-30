@@ -57,7 +57,7 @@ public class PubSub : RedisBase
         client.Reset();
 
         var channels = Key.Split(",", ";").Cast<Object>().ToArray();
-        await client.ExecuteAsync<String[]>("SUBSCRIBE", channels);
+        await client.ExecuteAsync<String[]>("SUBSCRIBE", channels, cancellationToken).ConfigureAwait(false);
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -65,11 +65,11 @@ public class PubSub : RedisBase
             var source2 = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, source.Token);
 
             //var rs = await client.ExecuteAsync<String[]>(null, new Object[] { new Object() }, source2.Token);
-            var rs = await client.ReadMoreAsync<String[]>(source2.Token);
+            var rs = await client.ReadMoreAsync<String[]>(source2.Token).ConfigureAwait(false);
             if (rs != null && rs.Length == 3 && rs[0] == "message") onMessage(rs[1], rs[2]);
         }
 
-        await client.ExecuteAsync<String[]>("SUBSCRIBE", channels);
+        await client.ExecuteAsync<String[]>("SUBSCRIBE", channels, cancellationToken).ConfigureAwait(false);
 
         Redis.Pool.Return(client);
     }

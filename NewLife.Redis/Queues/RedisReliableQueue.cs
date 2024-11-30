@@ -168,8 +168,8 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
         if (timeout > 0 && Redis.Timeout < (timeout + 1) * 1000) Redis.Timeout = (timeout + 1) * 1000;
 
         var rs = timeout < 0 ?
-            await ExecuteAsync((rc, k) => rc.ExecuteAsync<T>("RPOPLPUSH", new Object[] { Key, AckKey }, cancellationToken), true) :
-            await ExecuteAsync((rc, k) => rc.ExecuteAsync<T>("BRPOPLPUSH", new Object[] { Key, AckKey, timeout }, cancellationToken), true);
+            await ExecuteAsync((rc, k) => rc.ExecuteAsync<T>("RPOPLPUSH", [Key, AckKey], cancellationToken), true).ConfigureAwait(false) :
+            await ExecuteAsync((rc, k) => rc.ExecuteAsync<T>("BRPOPLPUSH", [Key, AckKey, timeout], cancellationToken), true).ConfigureAwait(false);
 
         if (rs != null) _Status.Consumes++;
 
@@ -332,8 +332,8 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
 
         // 取出消息键
         var msgId = timeout < 0 ?
-            await ExecuteAsync((rc, k) => rc.ExecuteAsync<String>("RPOPLPUSH", Key, AckKey), true) :
-            await ExecuteAsync((rc, k) => rc.ExecuteAsync<String>("BRPOPLPUSH", Key, AckKey, timeout), true);
+            await ExecuteAsync((rc, k) => rc.ExecuteAsync<String>("RPOPLPUSH", Key, AckKey), true).ConfigureAwait(false) :
+            await ExecuteAsync((rc, k) => rc.ExecuteAsync<String>("BRPOPLPUSH", Key, AckKey, timeout), true).ConfigureAwait(false);
         if (msgId.IsNullOrEmpty()) return default;
 
         _Status.Consumes++;
@@ -347,7 +347,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
         }
 
         // 处理消息。如果消息已被删除，此时调用func将受到空引用
-        var rs = await func(messge);
+        var rs = await func(messge).ConfigureAwait(false);
 
         // 确认并删除消息
         Redis.Remove(msgId);

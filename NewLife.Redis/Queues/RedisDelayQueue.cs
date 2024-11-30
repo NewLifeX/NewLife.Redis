@@ -143,13 +143,13 @@ public class RedisDelayQueue<T> : QueueBase, IProducerConsumer<T>
         while (!cancellationToken.IsCancellationRequested)
         {
             var score = DateTime.UtcNow.ToInt();
-            var rs = await _sort.RangeByScoreAsync(0, score, 0, 1, cancellationToken);
+            var rs = await _sort.RangeByScoreAsync(0, score, 0, 1, cancellationToken).ConfigureAwait(false);
             if (rs != null && rs.Length > 0 && TryPop(rs[0])) return rs[0];
 
             // 是否需要等待
             if (timeout <= 0) break;
 
-            await Task.Delay(1000, cancellationToken);
+            await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
             timeout--;
         }
 
@@ -231,7 +231,7 @@ public class RedisDelayQueue<T> : QueueBase, IProducerConsumer<T>
             {
                 // 异步阻塞消费
                 var score = DateTime.UtcNow.ToInt();
-                var msgs = await _sort.RangeByScoreAsync(0, score, 0, 10, cancellationToken);
+                var msgs = await _sort.RangeByScoreAsync(0, score, 0, 10, cancellationToken).ConfigureAwait(false);
                 if (msgs != null && msgs.Length > 0)
                 {
                     // 删除消息后直接进入目标队列，无需进入Ack
@@ -248,8 +248,10 @@ public class RedisDelayQueue<T> : QueueBase, IProducerConsumer<T>
                     if (list.Count > 0) queue.Add(list.ToArray());
                 }
                 else
+                {
                     // 没有消息，歇一会
-                    await Task.Delay(TransferInterval * 1000, cancellationToken);
+                    await Task.Delay(TransferInterval * 1000, cancellationToken).ConfigureAwait(false);
+                }
             }
             catch (ThreadAbortException) { break; }
             catch (ThreadInterruptedException) { break; }

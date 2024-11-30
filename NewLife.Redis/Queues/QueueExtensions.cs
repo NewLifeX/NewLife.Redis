@@ -173,7 +173,7 @@ public static class QueueExtensions
             try
             {
                 // 异步阻塞消费
-                mqMsg = await queue.TakeOneAsync(timeout, cancellationToken);
+                mqMsg = await queue.TakeOneAsync(timeout, cancellationToken).ConfigureAwait(false);
                 if (mqMsg != null)
                 {
                     // 埋点
@@ -197,7 +197,7 @@ public static class QueueExtensions
                     }
 
                     // 处理消息
-                    if (msg != null) await onMessage(msg, mqMsg, cancellationToken);
+                    if (msg != null) await onMessage(msg, mqMsg, cancellationToken).ConfigureAwait(false);
 
                     // 确认消息
                     queue.Acknowledge(mqMsg);
@@ -205,7 +205,7 @@ public static class QueueExtensions
                 else
                 {
                     // 没有消息，歇一会
-                    await Task.Delay(1000, cancellationToken);
+                    await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (ThreadAbortException) { break; }
@@ -249,9 +249,9 @@ public static class QueueExtensions
     /// <param name="log">日志对象</param>
     /// <param name="idField">消息标识字段名，用于处理错误重试</param>
     /// <returns></returns>
-    public static async Task ConsumeAsync<T>(this RedisReliableQueue<String> queue, Action<T> onMessage, CancellationToken cancellationToken = default, ILog? log = null, String? idField = null)
+    public static Task ConsumeAsync<T>(this RedisReliableQueue<String> queue, Action<T> onMessage, CancellationToken cancellationToken = default, ILog? log = null, String? idField = null)
     {
-        await queue.ConsumeAsync<T>((m, k, t) => { onMessage(m); return Task.FromResult(0); }, cancellationToken, log, idField);
+        return queue.ConsumeAsync<T>((m, k, t) => { onMessage(m); return Task.FromResult(0); }, cancellationToken, log, idField);
     }
 
     /// <summary>队列消费大循环，处理消息后自动确认</summary>
@@ -297,7 +297,7 @@ public static class QueueExtensions
             try
             {
                 // 异步阻塞消费
-                mqMsg = await queue.TakeOneAsync(timeout, cancellationToken);
+                mqMsg = await queue.TakeOneAsync(timeout, cancellationToken).ConfigureAwait(false);
                 if (mqMsg != null)
                 {
                     // 埋点
@@ -312,7 +312,7 @@ public static class QueueExtensions
                 }
                 else
                     // 没有消息，歇一会
-                    await Task.Delay(1000, cancellationToken);
+                    await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
             }
             catch (ThreadAbortException) { break; }
             catch (ThreadInterruptedException) { break; }

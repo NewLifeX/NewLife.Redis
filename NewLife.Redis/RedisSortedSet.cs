@@ -189,7 +189,7 @@ public class RedisSortedSet<T> : RedisBase
     /// <param name="count">个数</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns></returns>
-    public async Task<T[]> RangeByScoreAsync(Double min, Double max, Int32 offset, Int32 count, CancellationToken cancellationToken = default) => await ExecuteAsync((r,k) => r.ExecuteAsync<T[]>("ZRANGEBYSCORE", new Object[] { Key, min, max, "LIMIT", offset, count }, cancellationToken));
+    public Task<T[]> RangeByScoreAsync(Double min, Double max, Int32 offset, Int32 count, CancellationToken cancellationToken = default) => ExecuteAsync((r, k) => r.ExecuteAsync<T[]>("ZRANGEBYSCORE", [Key, min, max, "LIMIT", offset, count], cancellationToken));
 
     /// <summary>返回指定分数区间的成员分数对，低分到高分排序</summary>
     /// <param name="min">低分，包含</param>

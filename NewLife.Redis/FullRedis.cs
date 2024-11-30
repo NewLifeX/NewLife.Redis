@@ -400,11 +400,11 @@ public class FullRedis : Redis
         key = GetKey(key);
 
         // 如果不支持集群，直接返回
-        if (Cluster == null) return await base.ExecuteAsync<T>(key, func, write);
+        if (Cluster == null) return await base.ExecuteAsync<T>(key, func, write).ConfigureAwait(false);
 
         var node = Cluster.SelectNode(key, write);
         //?? throw new XException($"集群[{Name}]没有可用节点");
-        if (node == null) return await base.ExecuteAsync<T>(key, func, write);
+        if (node == null) return await base.ExecuteAsync<T>(key, func, write).ConfigureAwait(false);
 
         // 统计性能
         var sw = Counter?.StartCount();
@@ -420,7 +420,7 @@ public class FullRedis : Redis
             try
             {
                 client.Reset();
-                var rs = await func(client, key);
+                var rs = await func(client, key).ConfigureAwait(false);
 
                 return rs;
             }

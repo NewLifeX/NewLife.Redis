@@ -288,7 +288,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
     /// <returns></returns>
     public async Task<T?> TakeOneAsync(Int32 timeout = 0, CancellationToken cancellationToken = default)
     {
-        var msg = await TakeMessageAsync(timeout, cancellationToken);
+        var msg = await TakeMessageAsync(timeout, cancellationToken).ConfigureAwait(false);
         if (msg == null) return default;
 
         return msg.GetBody<T>();
@@ -305,7 +305,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
     /// <returns></returns>
     public async Task<Message?> TakeMessageAsync(Int32 timeout = 0, CancellationToken cancellationToken = default)
     {
-        var rs = await TakeMessagesAsync(1, timeout, cancellationToken);
+        var rs = await TakeMessagesAsync(1, timeout, cancellationToken).ConfigureAwait(false);
         return rs?.FirstOrDefault();
     }
 
@@ -328,7 +328,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
             // 抢过来的消息，优先处理，可能需要多次消费才能消耗完
             if (_claims > 0)
             {
-                var rs2 = await ReadGroupAsync(group, Consumer, count, 3_000, "0", cancellationToken);
+                var rs2 = await ReadGroupAsync(group, Consumer, count, 3_000, "0", cancellationToken).ConfigureAwait(false);
                 if (rs2 != null && rs2.Count > 0)
                 {
                     _claims -= rs2.Count;
@@ -347,8 +347,8 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
         //var id = FromLastOffset ? "$" : ">";
 
         var rs = !group.IsNullOrEmpty() ?
-            await ReadGroupAsync(group, Consumer, count, t, ">", cancellationToken) :
-            await ReadAsync(StartId, count, t, cancellationToken);
+            await ReadGroupAsync(group, Consumer, count, t, ">", cancellationToken).ConfigureAwait(false) :
+            await ReadAsync(StartId, count, t, cancellationToken).ConfigureAwait(false);
         if (rs == null || rs.Count == 0)
         {
             // id为>时，消费从未传递给消费者的消息
@@ -357,7 +357,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
             // 使用消费组时，如果拿不到消息，则尝试当前消费者之前消费但没有确认的消息
             if (!group.IsNullOrEmpty())
             {
-                rs = await ReadGroupAsync(group, Consumer, count, 3_000, "0", cancellationToken);
+                rs = await ReadGroupAsync(group, Consumer, count, 3_000, "0", cancellationToken).ConfigureAwait(false);
                 if (rs == null || rs.Count == 0) return null;
 
                 XTrace.WriteLine("[{0}]处理历史：{1}", group, rs.Join(",", e => e.Id));
@@ -569,7 +569,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
         var rs = count > 0 ?
             Execute((rc, k) => rc.Execute<Object[]>("XRANGE", Key, startId, endId, "COUNT", count), false) :
             Execute((rc, k) => rc.Execute<Object[]>("XRANGE", Key, startId, endId), false);
-        if (rs == null) return new Message[0];
+        if (rs == null) return [];
 
         return Parse(rs);
     }
@@ -630,7 +630,7 @@ XREAD count 3 streams stream_key 0-0
             if (vs[1] is Object[] vs2) return Parse(vs2);
         }
 
-        return new Message[0];
+        return [];
     }
 
     /// <summary>异步原始独立消费</summary>
@@ -661,13 +661,13 @@ XREAD count 3 streams stream_key 0-0
         args.Add(Key);
         args.Add(startId);
 
-        var rs = await ExecuteAsync((rc, k) => rc.ExecuteAsync<Object[]>("XREAD", args.ToArray(), cancellationToken), true);
+        var rs = await ExecuteAsync((rc, k) => rc.ExecuteAsync<Object[]>("XREAD", args.ToArray(), cancellationToken), true).ConfigureAwait(false);
         if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
         {
             if (vs[1] is Object[] vs2) return Parse(vs2);
         }
 
-        return new Message[0];
+        return [];
     }
 
     private IList<Message> Parse(Object[] vs)
@@ -721,7 +721,7 @@ XREAD count 3 streams stream_key 0-0
         var rs = count > 0 ?
             Execute((rc, k) => rc.Execute<Object[]>("XPENDING", Key, group, startId, endId, count), false) :
             Execute((rc, k) => rc.Execute<Object[]>("XPENDING", Key, group, startId, endId), false);
-        if (rs == null) return new PendingItem[0];
+        if (rs == null) return [];
 
         var list = new List<PendingItem>();
         foreach (var item in rs.Cast<Object[]>())
@@ -808,7 +808,7 @@ XREAD count 3 streams stream_key 0-0
             if (vs[1] is Object[] vs2) return Parse(vs2);
         }
 
-        return new Message[0];
+        return [];
     }
 
     /// <summary>异步消费组消费</summary>
@@ -829,14 +829,14 @@ XREAD count 3 streams stream_key 0-0
         if (id.IsNullOrEmpty()) id = ">";
 
         var rs = count > 0 ?
-            await ExecuteAsync((rc, k) => rc.ExecuteAsync<Object[]>("XREADGROUP", ["GROUP", group, consumer, "BLOCK", block, "COUNT", count, "STREAMS", Key, id], cancellationToken), true) :
-            await ExecuteAsync((rc, k) => rc.ExecuteAsync<Object[]>("XREADGROUP", ["GROUP", group, consumer, "BLOCK", block, "STREAMS", Key, id], cancellationToken), true);
+            await ExecuteAsync((rc, k) => rc.ExecuteAsync<Object[]>("XREADGROUP", ["GROUP", group, consumer, "BLOCK", block, "COUNT", count, "STREAMS", Key, id], cancellationToken), true).ConfigureAwait(false) :
+            await ExecuteAsync((rc, k) => rc.ExecuteAsync<Object[]>("XREADGROUP", ["GROUP", group, consumer, "BLOCK", block, "STREAMS", Key, id], cancellationToken), true).ConfigureAwait(false);
         if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
         {
             if (vs[1] is Object[] vs2) return Parse(vs2);
         }
 
-        return new Message[0];
+        return [];
     }
     #endregion
 
@@ -859,7 +859,7 @@ XREAD count 3 streams stream_key 0-0
     public GroupInfo[] GetGroups()
     {
         var rs = Execute((rc, k) => rc.Execute<Object[]>("XINFO", "GROUPS", Key), false);
-        if (rs == null) return new GroupInfo[0];
+        if (rs == null) return [];
 
         var gs = new GroupInfo[rs.Length];
         for (var i = 0; i < rs.Length; i++)
@@ -922,7 +922,7 @@ XREAD count 3 streams stream_key 0-0
             try
             {
                 // 异步阻塞消费
-                var mqMsg = await TakeMessageAsync(timeout, cancellationToken);
+                var mqMsg = await TakeMessageAsync(timeout, cancellationToken).ConfigureAwait(false);
                 if (mqMsg != null && !mqMsg.Id.IsNullOrEmpty())
                 {
                     // 埋点
@@ -943,7 +943,7 @@ XREAD count 3 streams stream_key 0-0
                     var msg = mqMsg.GetBody<T>();
 
                     // 处理消息
-                    if (msg != null) await onMessage(msg, mqMsg, cancellationToken);
+                    if (msg != null) await onMessage(msg, mqMsg, cancellationToken).ConfigureAwait(false);
 
                     // 确认消息
                     Acknowledge(mqMsg.Id);
@@ -951,7 +951,7 @@ XREAD count 3 streams stream_key 0-0
                 else
                 {
                     // 没有消息，歇一会
-                    await Task.Delay(1000, cancellationToken);
+                    await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (ThreadAbortException) { break; }
@@ -983,7 +983,7 @@ XREAD count 3 streams stream_key 0-0
     /// <param name="onMessage">消息处理。如果处理消息时抛出异常，消息将延迟后回到队列</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns></returns>
-    public async Task ConsumeAsync(Action<T> onMessage, CancellationToken cancellationToken = default) => await ConsumeAsync((m, k, t) =>
+    public Task ConsumeAsync(Action<T> onMessage, CancellationToken cancellationToken = default) => ConsumeAsync((m, k, t) =>
     {
         onMessage(m);
         return Task.FromResult(0);
@@ -1023,7 +1023,7 @@ XREAD count 3 streams stream_key 0-0
             try
             {
                 // 异步阻塞消费
-                var mqMsgs = await TakeMessagesAsync(batchSize, timeout, cancellationToken);
+                var mqMsgs = await TakeMessagesAsync(batchSize, timeout, cancellationToken).ConfigureAwait(false);
                 if (mqMsgs != null && mqMsgs.Count > 0)
                 {
                     // 埋点
@@ -1044,7 +1044,7 @@ XREAD count 3 streams stream_key 0-0
                     var msgs = mqMsgs.Select(e => e.GetBody<T>()!).ToArray();
 
                     // 处理消息
-                    await onMessage(msgs, mqMsgs.ToArray(), cancellationToken);
+                    await onMessage(msgs, mqMsgs.ToArray(), cancellationToken).ConfigureAwait(false);
 
                     // 确认消息
                     Acknowledge(mqMsgs.Select(e => e.Id!).ToArray());
@@ -1052,7 +1052,7 @@ XREAD count 3 streams stream_key 0-0
                 else
                 {
                     // 没有消息，歇一会
-                    await Task.Delay(1000, cancellationToken);
+                    await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (ThreadAbortException) { break; }
@@ -1086,10 +1086,7 @@ XREAD count 3 streams stream_key 0-0
     /// <param name="batchSize">批大小。默认100</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns></returns>
-    public async Task ConsumeAsync(Func<T[], Task> onMessage, Int32 batchSize = 100, CancellationToken cancellationToken = default) => await ConsumeAsync(async (m, k, t) =>
-    {
-        await onMessage(m);
-    }, batchSize, cancellationToken);
+    public Task ConsumeAsync(Func<T[], Task> onMessage, Int32 batchSize = 100, CancellationToken cancellationToken = default) => ConsumeAsync((m, k, t) => onMessage(m), batchSize, cancellationToken);
 
     /// <summary>队列批量消费大循环，批量处理消息后自动确认</summary>
     /// <remarks>批量消费最大的问题是部分消费成功，需要用户根据实际情况妥善处理</remarks>
@@ -1097,7 +1094,7 @@ XREAD count 3 streams stream_key 0-0
     /// <param name="batchSize">批大小。默认100</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns></returns>
-    public async Task ConsumeAsync(Action<T[]> onMessage, Int32 batchSize = 100, CancellationToken cancellationToken = default) => await ConsumeAsync((m, k, t) =>
+    public Task ConsumeAsync(Action<T[]> onMessage, Int32 batchSize = 100, CancellationToken cancellationToken = default) => ConsumeAsync((m, k, t) =>
     {
         onMessage(m);
         return Task.FromResult(0);

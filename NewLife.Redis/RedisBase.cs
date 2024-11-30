@@ -40,6 +40,6 @@ public abstract class RedisBase
     /// <param name="func"></param>
     /// <param name="write">是否写入操作</param>
     /// <returns></returns>
-    public virtual async Task<T> ExecuteAsync<T>(Func<RedisClient, String, Task<T>> func, Boolean write = false) => await Redis.ExecuteAsync(Key, func, write);
+    public virtual Task<T> ExecuteAsync<T>(Func<RedisClient, String, Task<T>> func, Boolean write = false) => Redis.ExecuteAsync(Key, func, write);
     #endregion
 }

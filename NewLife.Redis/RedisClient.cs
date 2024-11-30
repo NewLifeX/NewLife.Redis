@@ -120,7 +120,7 @@ public class RedisClient : DisposeBase
             var uri = Server;
             var addrs = uri.GetAddresses();
             DefaultSpan.Current?.AppendTag($"addrs={addrs.Join()} port={uri.Port}");
-            await tc.ConnectAsync(addrs, uri.Port);
+            await tc.ConnectAsync(addrs, uri.Port).ConfigureAwait(false);
 
             Client = tc;
             ns = tc.GetStream();
@@ -130,7 +130,7 @@ public class RedisClient : DisposeBase
             if (sp != SslProtocols.None)
             {
                 var sslStream = new SslStream(ns, false, OnCertificateValidationCallback);
-                await sslStream.AuthenticateAsClientAsync(uri.Host ?? uri.Address + "", [], sp, false);
+                await sslStream.AuthenticateAsClientAsync(uri.Host ?? uri.Address + "", [], sp, false).ConfigureAwait(false);
 
                 ns = sslStream;
             }
@@ -272,7 +272,7 @@ public class RedisClient : DisposeBase
             // 取巧进行异步操作，只要异步读取到第一个字节，后续同步读取
             if (cancellationToken == CancellationToken.None)
                 cancellationToken = new CancellationTokenSource(Timeout > 0 ? Timeout : Host.Timeout).Token;
-            var n = await ms.ReadAsync(buf, 0, 1, cancellationToken);
+            var n = await ms.ReadAsync(buf, 0, 1, cancellationToken).ConfigureAwait(false);
             if (n <= 0) return list;
 
             header = (Char)buf[0];
@@ -335,14 +335,14 @@ public class RedisClient : DisposeBase
     {
         var isQuit = cmd == "QUIT";
 
-        var ns = await GetStreamAsync(!isQuit);
+        var ns = await GetStreamAsync(!isQuit).ConfigureAwait(false);
         if (ns == null) return null;
 
         if (!cmd.IsNullOrEmpty())
         {
             // 验证登录
-            await CheckLogin(cmd);
-            await CheckSelect(cmd);
+            await CheckLogin(cmd).ConfigureAwait(false);
+            await CheckSelect(cmd).ConfigureAwait(false);
 
             // 估算数据包大小，从内存池借出
             var total = GetCommandSize(cmd, args);
@@ -355,14 +355,14 @@ public class RedisClient : DisposeBase
             var max = Host.MaxMessageSize;
             if (max > 0 && memory.Length >= max) throw new InvalidOperationException($"命令[{cmd}]的数据包大小[{memory.Length}]超过最大限制[{max}]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。");
 
-            if (memory.Length > 0) await ns.WriteAsync(memory, cancellationToken);
+            if (memory.Length > 0) await ns.WriteAsync(memory, cancellationToken).ConfigureAwait(false);
 
             if (total < MAX_POOL_SIZE) Pool.Shared.Return(buffer);
 
-            await ns.FlushAsync(cancellationToken);
+            await ns.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        var rs = await GetResponseAsync(ns, 1, cancellationToken);
+        var rs = await GetResponseAsync(ns, 1, cancellationToken).ConfigureAwait(false);
 
         if (isQuit) Logined = false;
 
@@ -374,7 +374,7 @@ public class RedisClient : DisposeBase
         if (Logined) return;
         if (cmd.EqualIgnoreCase("Auth")) return;
 
-        if (!Host.Password.IsNullOrEmpty() && !(await Auth(Host.UserName, Host.Password)))
+        if (!Host.Password.IsNullOrEmpty() && !(await Auth(Host.UserName, Host.Password).ConfigureAwait(false)))
             throw new Exception("登录失败！");
 
         Logined = true;
@@ -388,7 +388,7 @@ public class RedisClient : DisposeBase
         if (_selected == db) return;
         if (cmd.EqualIgnoreCase("Auth", "Select", "Info")) return;
 
-        if (db > 0 && (Host is not FullRedis rds || !rds.Mode.EqualIgnoreCase("cluster", "sentinel"))) await Select(db);
+        if (db > 0 && (Host is not FullRedis rds || !rds.Mode.EqualIgnoreCase("cluster", "sentinel"))) await Select(db).ConfigureAwait(false);
 
         _selected = db;
     }
@@ -635,7 +635,7 @@ public class RedisClient : DisposeBase
         using var span = cmd.IsNullOrEmpty() ? null : Host.Tracer?.NewSpan($"redis:{Name}:{act}", args);
         try
         {
-            return await ExecuteCommandAsync(cmd, args, cancellationToken);
+            return await ExecuteCommandAsync(cmd, args, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -648,7 +648,7 @@ public class RedisClient : DisposeBase
     /// <param name="cmd">命令</param>
     /// <param name="args">参数数组</param>
     /// <returns></returns>
-    public virtual async Task<TResult?> ExecuteAsync<TResult>(String cmd, params Object?[] args) => await ExecuteAsync<TResult>(cmd, args, CancellationToken.None);
+    public virtual Task<TResult?> ExecuteAsync<TResult>(String cmd, params Object?[] args) => ExecuteAsync<TResult>(cmd, args, CancellationToken.None);
 
     /// <summary>异步执行命令。返回基本类型、对象、对象数组</summary>
     /// <param name="cmd">命令</param>
@@ -664,7 +664,7 @@ public class RedisClient : DisposeBase
             return default;
         }
 
-        var rs = await ExecuteAsync(cmd, args, cancellationToken);
+        var rs = await ExecuteAsync(cmd, args, cancellationToken).ConfigureAwait(false);
         if (rs == null) return default;
         if (rs is TResult rs2) return rs2;
         if (TryChangeType(rs, typeof(TResult), out var target)) return (TResult?)target;
@@ -677,10 +677,10 @@ public class RedisClient : DisposeBase
     /// <returns></returns>
     public virtual async Task<TResult?> ReadMoreAsync<TResult>(CancellationToken cancellationToken)
     {
-        var ns = await GetStreamAsync(false);
+        var ns = await GetStreamAsync(false).ConfigureAwait(false);
         if (ns == null) return default;
 
-        var rss = await GetResponseAsync(ns, 1, cancellationToken);
+        var rss = await GetResponseAsync(ns, 1, cancellationToken).ConfigureAwait(false);
         var rs = rss.FirstOrDefault();
 
         //var rs = ExecuteCommand(null, null, null);
@@ -769,15 +769,15 @@ public class RedisClient : DisposeBase
 
         _ps = null;
 
-        var ns = await GetStreamAsync(true);
+        var ns = await GetStreamAsync(true).ConfigureAwait(false);
         if (ns == null) return null;
 
         using var span = Host.Tracer?.NewSpan($"redis:{Name}:Pipeline", null);
         try
         {
             // 验证登录
-            await CheckLogin(null);
-            await CheckSelect(null);
+            await CheckLogin(null).ConfigureAwait(false);
+            await CheckSelect(null).ConfigureAwait(false);
 
             // 估算数据包大小，从内存池借出
             var total = 0;
@@ -803,13 +803,13 @@ public class RedisClient : DisposeBase
             span?.SetTag(cmds);
 
             // 整体发出
-            if (memory.Length > 0) await ns.WriteAsync(memory);
+            if (memory.Length > 0) await ns.WriteAsync(memory).ConfigureAwait(false);
             if (total < MAX_POOL_SIZE) Pool.Shared.Return(buffer);
 
             if (!requireResult) return new Object[ps.Count];
 
             // 获取响应
-            var list = await GetResponseAsync(ns, ps.Count);
+            var list = await GetResponseAsync(ns, ps.Count).ConfigureAwait(false);
             for (var i = 0; i < list.Count; i++)
             {
                 var rs = list[i];
@@ -836,12 +836,12 @@ public class RedisClient : DisposeBase
     #region 基础功能
     /// <summary>心跳</summary>
     /// <returns></returns>
-    public async Task<Boolean> Ping() => await ExecuteAsync<String>("PING") == "PONG";
+    public async Task<Boolean> Ping() => await ExecuteAsync<String>("PING").ConfigureAwait(false) == "PONG";
 
     /// <summary>选择Db</summary>
     /// <param name="db"></param>
     /// <returns></returns>
-    public async Task<Boolean> Select(Int32 db) => await ExecuteAsync<String>("SELECT", db + "") == "OK";
+    public async Task<Boolean> Select(Int32 db) => await ExecuteAsync<String>("SELECT", db + "").ConfigureAwait(false) == "OK";
 
     /// <summary>验证密码</summary>
     /// <param name="username"></param>
@@ -850,8 +850,8 @@ public class RedisClient : DisposeBase
     public async Task<Boolean> Auth(String? username, String password)
     {
         var rs = username.IsNullOrEmpty() ?
-            await ExecuteAsync<String>("AUTH", password) :
-            await ExecuteAsync<String>("AUTH", username, password);
+            await ExecuteAsync<String>("AUTH", password).ConfigureAwait(false) :
+            await ExecuteAsync<String>("AUTH", username, password).ConfigureAwait(false);
 
         return rs == "OK";
     }
