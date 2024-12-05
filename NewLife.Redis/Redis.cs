@@ -149,8 +149,9 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         var log = provider.GetService<ILog>();
         if (log != null) Log = log;
 
-        var configProvider = provider.GetRequiredService<IConfigProvider>();
-        configProvider.Bind(this, true, name);
+        var config = provider.GetService<IConfigProvider>();
+        config ??= JsonConfigProvider.LoadAppSettings();
+        config.Bind(this, true, name);
     }
 
     /// <summary>实例化Redis，指定名称，支持从环境变量Redis_{Name}读取配置，或者逐个属性配置</summary>

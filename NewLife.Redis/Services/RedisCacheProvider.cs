@@ -57,8 +57,8 @@ public class RedisCacheProvider : CacheProvider
 
                 redis ??= new FullRedis(serviceProvider, "RedisCache")
                 {
-                    Log = serviceProvider.GetRequiredService<ILog>(),
-                    Tracer = serviceProvider.GetRequiredService<ITracer>(),
+                    Log = serviceProvider.GetService<ILog>()!,
+                    Tracer = serviceProvider.GetService<ITracer>(),
                 };
             }
             else
@@ -80,8 +80,8 @@ public class RedisCacheProvider : CacheProvider
 
                 redis ??= new FullRedis(serviceProvider, "RedisQueue")
                 {
-                    Log = serviceProvider.GetRequiredService<ILog>(),
-                    Tracer = serviceProvider.GetRequiredService<ITracer>(),
+                    Log = serviceProvider.GetService<ILog>()!,
+                    Tracer = serviceProvider.GetService<ITracer>(),
                 };
             }
             else
