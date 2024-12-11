@@ -11,9 +11,7 @@
     <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
     <Version>$(VersionPrefix).$(VersionSuffix)</Version>
     <FileVersion>$(Version)</FileVersion>
-    <AssemblyVersion>$(VersionPrefix).*</AssemblyVersion>
-    <Deterministic>false</Deterministic>
-    <OutputPath>..\..\Bin\Console</OutputPath>
+    <OutputPath>..\..\Bin\Benchmark</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
@@ -25,7 +23,8 @@
     <Using Include="NewLife.Reflection" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="NewLife.Stardust" Version="3.1.2024.1004" />
+    <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
+    <PackageReference Include="NewLife.Stardust" Version="3.2.2024.1211" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\NewLife.Redis\NewLife.Redis.csproj" />
