@@ -13,7 +13,7 @@
     <PackageReference Include="NewLife.Core" Version="11.1.2024.1206" />
     <PackageReference Include="NewLife.UnitTest" Version="1.0.2024.1006" />
     <PackageReference Include="xunit" Version="2.9.2" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>

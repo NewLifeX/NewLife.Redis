@@ -4,7 +4,7 @@
     <AssemblyName>NewLife.Redis</AssemblyName>
     <RootNamespace>NewLife.Caching</RootNamespace>
     <AssemblyTitle>新生命Redis客户端组件</AssemblyTitle>
-    <Description>Redis基础操作、消息队列，经过日均100亿次调用量的项目验证。旧版NET45找2021年</Description>
+    <Description>Redis基础操作、消息队列，经过日均100亿次调用量的项目验证</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2024 新生命开发团队</Copyright>
     <VersionPrefix>6.0</VersionPrefix>
