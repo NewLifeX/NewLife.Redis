@@ -6,7 +6,7 @@
     <AssemblyTitle>应用后台任务</AssemblyTitle>
     <Description>数据处理、定时任务、MQ生产消费、系统监控等超长独立工作的后台任务</Description>
     <Company>新生命开发团队</Company>
-    <Copyright>©2002-2024 NewLife</Copyright>
+    <Copyright>©2002-2025 NewLife</Copyright>
     <VersionPrefix>1.0</VersionPrefix>
     <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
     <Version>$(VersionPrefix).$(VersionSuffix)</Version>
