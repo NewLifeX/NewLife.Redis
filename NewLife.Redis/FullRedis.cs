@@ -574,6 +574,25 @@ public class FullRedis : Redis
     /// <returns></returns>
     public override IDictionary<String, T> GetDictionary<T>(String key) => new RedisHash<String, T>(this, key);
 
+   /// <summary>
+   /// 获取哈希表所有数据
+   /// </summary>
+   /// <typeparam name="T"></typeparam>
+   /// <param name="key"></param>
+   /// <returns></returns>
+   public IDictionary<String, T> GetHashAll<T>(String key)
+   {
+       var hashMap = new RedisHash<String, T>(this, key);
+       var nCount = hashMap!.Count();
+       var sModel = new SearchModel()
+       {
+           Pattern = "*",
+           Position = 0,
+           Count = nCount
+       };
+       return hashMap!.Search(sModel).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+   }
+   
     /// <summary>获取队列，快速LIST结构，无需确认</summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="topic">消息队列主题</param>
