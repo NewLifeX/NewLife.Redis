@@ -474,8 +474,11 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
                 // 网络异常时，自动切换到其它节点
                 if (ex is AggregateException ae) ex = ae.InnerException;
-                if (ex is SocketException or IOException && _servers != null && i < _servers.Length)
+                if (NoDelay(ex))
+                {
+                    if (_servers == null || i >= _servers.Length) throw;
                     _idxServer++;
+                }
                 else
                     Thread.Sleep(delay *= 2);
             }
@@ -487,6 +490,11 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             }
         } while (true);
     }
+
+    /// <summary>网络IO类异常，无需等待，因为遇到此类异常时重发请求也是错</summary>
+    /// <param name="ex"></param>
+    /// <returns></returns>
+    internal Boolean NoDelay(Exception ex) => ex is SocketException or IOException or InvalidOperationException;
 
     /// <summary>直接执行命令，不考虑集群读写</summary>
     /// <typeparam name="TResult">返回类型</typeparam>
@@ -518,8 +526,12 @@ public class Redis : Cache, IConfigMapping, ILogFeature
                 client.TryDispose();
 
                 // 网络异常时，自动切换到其它节点
-                if (ex is SocketException or IOException && _servers != null && i < _servers.Length)
+                if (ex is AggregateException ae) ex = ae.InnerException;
+                if (NoDelay(ex))
+                {
+                    if (_servers == null || i >= _servers.Length) throw;
                     _idxServer++;
+                }
                 else
                     Thread.Sleep(delay *= 2);
             }
@@ -587,8 +599,12 @@ public class Redis : Cache, IConfigMapping, ILogFeature
                 client.TryDispose();
 
                 // 网络异常时，自动切换到其它节点
-                if (ex is SocketException or IOException && _servers != null && i < _servers.Length)
+                if (ex is AggregateException ae) ex = ae.InnerException;
+                if (NoDelay(ex))
+                {
+                    if (_servers == null || i >= _servers.Length) throw;
                     _idxServer++;
+                }
                 else
                     Thread.Sleep(delay *= 2);
             }
@@ -632,7 +648,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         // 管道处理不需要重试
         try
         {
-            return rds.StopPipeline(requireResult).ConfigureAwait(false).GetAwaiter().GetResult();
+            return rds.StopPipeline(requireResult);
         }
         finally
         {

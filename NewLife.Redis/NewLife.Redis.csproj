@@ -7,7 +7,7 @@
     <Description>Redis基础操作、消息队列，经过日均100亿次调用量的项目验证</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2025 新生命开发团队</Copyright>
-    <VersionPrefix>6.0</VersionPrefix>
+    <VersionPrefix>6.1</VersionPrefix>
     <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
     <Version>$(VersionPrefix).$(VersionSuffix)</Version>
     <FileVersion>$(Version)</FileVersion>

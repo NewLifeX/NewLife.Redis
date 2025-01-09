@@ -335,7 +335,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         var now = DateTime.Now;
 
         // 读取指令网络异常时，换一个节点
-        if (exception is SocketException or IOException)
+        if (Redis.NoDelay(exception))
         {
             // 屏蔽旧节点一段时间
             if (node is RedisNode redisNode && ++redisNode.Error >= Redis.Retry)

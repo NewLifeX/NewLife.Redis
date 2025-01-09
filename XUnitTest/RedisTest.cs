@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
-using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using NewLife;
@@ -37,6 +34,9 @@ public class RedisTest
 #if DEBUG
         _redis.ClientLog = XTrace.Log;
 #endif
+
+        // 测试高级功能，如果keys过多，则清空
+        if (_redis.Count > 10000) _redis.Clear();
     }
 
     [TestOrder(0)]
@@ -516,6 +516,7 @@ public class RedisTest
         var ic = _redis;
 
         ic.MaxMessageSize = 1028;
+        //ic.Retry = 0;
 
         var ex = Assert.Throws<InvalidOperationException>(() => ic.Set("ttt", Rand.NextString(1029)));
         //var ex2 = ex.GetTrue() as InvalidOperationException;
