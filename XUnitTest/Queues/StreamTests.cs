@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using NewLife;
 using NewLife.Caching;
 using NewLife.Caching.Queues;
 using NewLife.Log;
