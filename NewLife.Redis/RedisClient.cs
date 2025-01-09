@@ -309,12 +309,14 @@ public class RedisClient : DisposeBase
     /// <returns></returns>
     protected virtual IList<Object?> GetResponse(Stream ns, Int32 count)
     {
+        var ms = new BufferedStream(ns);
+
         Char header;
         var buf = Pool.Shared.Rent(1);
         try
         {
             // 取巧进行异步操作，只要异步读取到第一个字节，后续同步读取
-            var n = ns.Read(buf, 0, 1);
+            var n = ms.Read(buf, 0, 1);
             if (n <= 0) return [];
 
             header = (Char)buf[0];
@@ -324,7 +326,7 @@ public class RedisClient : DisposeBase
             Pool.Shared.Return(buf);
         }
 
-        return ParseResponse(ns, count, header);
+        return ParseResponse(ms, count, header);
     }
 
     /// <summary>异步接收响应</summary>
