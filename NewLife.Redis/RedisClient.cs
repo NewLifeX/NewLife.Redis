@@ -313,7 +313,7 @@ public class RedisClient : DisposeBase
         //var ms = new BufferedStream(ns);
         var ms = ns;
 
-        using var pk = new OwnerPacket(MAX_POOL_SIZE);
+        using var pk = new OwnerPacket(8192);
 
         var n = ms.Read(pk.Buffer, pk.Offset, pk.Length);
         if (n <= 0) return [];
@@ -333,7 +333,7 @@ public class RedisClient : DisposeBase
     protected virtual async Task<IList<Object?>> GetResponseAsync(Stream ns, Int32 count, CancellationToken cancellationToken = default)
     {
         var ms = ns;
-        using var pk = new OwnerPacket(MAX_POOL_SIZE);
+        using var pk = new OwnerPacket(8192);
 
         // 取巧进行异步操作，只要异步读取到第一个字节，后续同步读取
         if (cancellationToken == CancellationToken.None)
