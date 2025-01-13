@@ -12,6 +12,7 @@ public class BasicBenchmark
 {
     public FullRedis Redis { get; set; }
 
+    private String _key;
     private String[] _keys;
 
     [GlobalSetup]
@@ -26,12 +27,29 @@ public class BasicBenchmark
 
         Redis = rds;
 
+        _key = Rand.NextString(16);
         var ks = new String[100_000];
         for (var i = 0; i < ks.Length; i++)
         {
             ks[i] = Rand.NextString(16);
         }
         _keys = ks;
+
+        rds.Set(_key, _key);
+        var v = rds.Get<String>(_key);
+        rds.Remove(_key);
+    }
+
+    [Benchmark]
+    public void SetTest()
+    {
+        var rds = Redis;
+        var value = Rand.NextString(16);
+
+        for (var i = 0; i < _keys.Length; i++)
+        {
+            rds.Set(_keys[i], value);
+        }
     }
 
     [Benchmark]
@@ -46,14 +64,13 @@ public class BasicBenchmark
     }
 
     [Benchmark]
-    public void SetTest()
+    public void RemoveTest()
     {
         var rds = Redis;
-        var value = Rand.NextString(16);
 
         for (var i = 0; i < _keys.Length; i++)
         {
-            rds.Set(_keys[i], value);
+            rds.Remove(_keys[i]);
         }
     }
 }
