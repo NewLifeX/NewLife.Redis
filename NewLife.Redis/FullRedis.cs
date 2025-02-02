@@ -319,10 +319,14 @@ public class FullRedis : Redis
 
         InitCluster();
 
-        keys = keys.Select(GetKey).ToArray();
+        //keys = keys.Select(GetKey).ToArray();
+        for (var i = 0; i < keys.Length; i++)
+        {
+            keys[i] = GetKey(keys[i]);
+        }
 
         // 如果不支持集群，或者只有一个key，直接执行
-        if (Cluster == null || keys.Length == 1) return [Execute(keys.FirstOrDefault(), (rds, k) => func(rds, keys), write)];
+        if (Cluster == null || keys.Length == 1) return [Execute(keys[0], (rds, k) => func(rds, keys), write)];
 
         // 计算每个key所在的节点
         var dic = new Dictionary<String, List<String>>();
@@ -470,23 +474,16 @@ public class FullRedis : Redis
     {
         if (keys == null || keys.Length == 0) return 0;
 
-        //keys = keys.Select(GetKey).ToArray();
+        if (keys.Length == 1) return base.Remove(keys[0]);
+
+        InitCluster();
+        if (Cluster != null) return Execute(keys, (rds, ks) => rds.Execute<Int32>("DEL", ks), true).Sum();
+
         for (var i = 0; i < keys.Length; i++)
         {
             keys[i] = GetKey(keys[i]);
         }
-        if (keys.Length == 1) return base.Remove(keys[0]);
-
-        InitCluster();
-
-        if (Cluster != null)
-        {
-            return Execute(keys, (rds, ks) => rds.Execute<Int32>("DEL", ks), true).Sum();
-        }
-        else
-        {
-            return Execute(keys[0], (rds, k) => rds.Execute<Int32>("DEL", keys), true);
-        }
+        return Execute(keys[0], (rds, k) => rds.Execute<Int32>("DEL", keys), true);
     }
     #endregion
 
@@ -499,12 +496,17 @@ public class FullRedis : Redis
     {
         if (keys == null || !keys.Any()) return new Dictionary<String, T>();
 
-        var keys2 = keys.ToArray();
+        var keys2 = keys as String[] ?? keys.ToArray();
+        for (var i = 0; i < keys2.Length; i++)
+        {
+            keys2[i] = GetKey(keys2[i]);
+        }
+        if (keys2.Length == 1) return new Dictionary<String, T> { [keys2[0]] = Get<T>(keys2[0])! };
 
-        keys2 = keys2.Select(GetKey).ToArray();
-        if (keys2.Length == 1 || Cluster == null) return base.GetAll<T>(keys2);
+        InitCluster();
 
-        //Execute(keys.FirstOrDefault(), (rds, k) => rds.GetAll<T>(keys));
+        if (Cluster == null) return base.GetAll<T>(keys2);
+
         var rs = Execute(keys2, (rds, ks) => rds.GetAll<T>(ks), false);
 
         var dic = new Dictionary<String, T?>();
@@ -542,9 +544,14 @@ public class FullRedis : Redis
             return;
         }
 
-        var keys = values.Keys.Select(GetKey).ToArray();
-        //Execute(values.FirstOrDefault().Key, (rds, k) => rds.SetAll(values), true);
-        var rs = Execute(keys, (rds, ks) => rds.SetAll(ks.ToDictionary(e => e, e => values[e])), true);
+        var keys = values.Keys.ToArray();
+
+        // 非集群模式
+        InitCluster();
+        if (Cluster == null)
+            Execute(keys[0], (rds, ks) => rds.SetAll(values), true);
+        else
+            Execute(keys, (rds, ks) => rds.SetAll(ks.ToDictionary(e => e, e => values[e])), true);
 
         // 使用管道批量设置过期时间
         if (expire > 0)

@@ -809,7 +809,13 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <typeparam name="T"></typeparam>
     /// <param name="keys"></param>
     /// <returns></returns>
-    public override IDictionary<String, T> GetAll<T>(IEnumerable<String> keys) => Execute(keys.FirstOrDefault(), (rds, k) => rds.GetAll<T>(keys));
+    public override IDictionary<String, T> GetAll<T>(IEnumerable<String> keys)
+    {
+        var ks = keys as String[] ?? keys.ToArray();
+        if (ks.Length == 0) return new Dictionary<String, T>();
+
+        return Execute(ks[0], (rds, k) => rds.GetAll<T>(ks));
+    }
 
     /// <summary>批量设置缓存项</summary>
     /// <typeparam name="T"></typeparam>

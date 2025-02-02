@@ -1023,20 +1023,18 @@ public class RedisClient : DisposeBase
     /// <typeparam name="T"></typeparam>
     /// <param name="keys"></param>
     /// <returns></returns>
-    public IDictionary<String, T?> GetAll<T>(IEnumerable<String> keys)
+    public IDictionary<String, T?> GetAll<T>(String[] keys)
     {
-        if (keys == null || !keys.Any()) throw new ArgumentNullException(nameof(keys));
+        if (keys == null || keys.Length == 0) throw new ArgumentNullException(nameof(keys));
 
-        var ks = keys.ToArray();
+        var dic = new Dictionary<String, T?>(keys.Length);
+        if (Execute<Object[]>("MGET", keys) is not Object[] rs) return dic;
 
-        var dic = new Dictionary<String, T?>(ks.Length);
-        if (Execute<Object[]>("MGET", ks) is not Object[] rs) return dic;
-
-        for (var i = 0; i < ks.Length && i < rs.Length; i++)
+        for (var i = 0; i < keys.Length && i < rs.Length; i++)
         {
             if (rs[i] is IPacket pk)
             {
-                dic[ks[i]] = (T?)Host.Encoder.Decode(pk, typeof(T));
+                dic[keys[i]] = (T?)Host.Encoder.Decode(pk, typeof(T));
             }
         }
 
