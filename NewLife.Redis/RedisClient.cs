@@ -999,16 +999,17 @@ public class RedisClient : DisposeBase
     {
         if (values == null || values.Count == 0) throw new ArgumentNullException(nameof(values));
 
-        var ps = new List<Object>();
+        var k = 0;
+        var ps = new Object[values.Count * 2];
         foreach (var item in values)
         {
-            ps.Add(item.Key);
+            ps[k++] = item.Key;
 
             if (item.Value == null) throw new NullReferenceException();
-            ps.Add(item.Value);
+            ps[k++] = item.Value;
         }
 
-        var rs = Execute<String>("MSET", ps.ToArray());
+        var rs = Execute<String>("MSET", ps);
         if (rs != "OK")
         {
             using var span = Host.Tracer?.NewSpan($"redis:{Name}:ErrorSetAll", values);
