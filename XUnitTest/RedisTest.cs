@@ -294,6 +294,24 @@ public class RedisTest
         Assert.Equal(pk.ToHex(), pk2.ToHex());
     }
 
+    /// <summary>超大数据包</summary>
+    /// <remarks>https://github.com/NewLifeX/NewLife.Redis/issues/149</remarks>
+    [TestOrder(31)]
+    [Fact(DisplayName = "超大数据包")]
+    public void TestBigPacket()
+    {
+        var ic = _redis;
+        var key = "buf";
+        var buf = Rand.NextBytes(8192 + 1);
+
+        var pk = new ArrayPacket(buf);
+
+        ic.Set(key, pk);
+        var pk2 = ic.Get<IPacket>(key);
+
+        Assert.Equal(pk.ToHex(), pk2.ToHex());
+    }
+
     [TestOrder(40)]
     [Fact(DisplayName = "管道")]
     public void TestPipeline()

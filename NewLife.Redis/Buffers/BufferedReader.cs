@@ -72,8 +72,9 @@ public ref struct BufferedReader
         var remain = FreeCapacity;
         if (remain < size)
         {
+            // 申请指定大小的数据包缓冲区，实际大小可能更大
             var idx = 0;
-            var pk = new OwnerPacket(_bufferSize);
+            var pk = new OwnerPacket(size <= _bufferSize ? _bufferSize : size);
             if (_data != null && remain > 0)
             {
                 if (!_data.TryGetArray(out var arr)) throw new NotSupportedException();
@@ -90,8 +91,10 @@ public ref struct BufferedReader
             //var n = _stream.ReadExactly(pk.Buffer, pk.Offset + idx, pk.Length - idx);
             while (idx < size)
             {
-                var n = _stream.Read(pk.Buffer, pk.Offset + idx, pk.Length - idx);
-                if (n < 0) break;
+                // 实际缓冲区大小可能大于申请大小，充分利用缓冲区，避免多次读取
+                var len = pk.Buffer.Length - pk.Offset;
+                var n = _stream.Read(pk.Buffer, pk.Offset + idx, len - idx);
+                if (n <= 0) break;
 
                 idx += n;
             }

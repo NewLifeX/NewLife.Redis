@@ -577,11 +577,11 @@ public class RedisClient : DisposeBase
             return null;
         }
         if (len <= 0) return null;
-        len += 2;
 
         // 读取数据包，并跳过换行符
-        var pk = reader.ReadPacket(len - 2);
-        reader.Advance(2);
+        var pk = reader.ReadPacket(len);
+        if (reader.FreeCapacity >= 2) reader.Advance(2);
+
         return pk;
     }
 
