@@ -723,7 +723,7 @@ public class FullRedis : Redis
                 {
                     foreach (IPacket item in ps)
                     {
-                        if (count-- > 0) yield return item.ToStr();
+                        if (item != null && count-- > 0) yield return item.ToStr();
                     }
                 }
 
