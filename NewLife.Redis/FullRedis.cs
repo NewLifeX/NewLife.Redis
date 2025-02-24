@@ -4,11 +4,12 @@ using System.Text;
 using NewLife.Caching.Clusters;
 using NewLife.Caching.Models;
 using NewLife.Caching.Queues;
+using NewLife.Caching.Services;
 using NewLife.Collections;
 using NewLife.Data;
 using NewLife.Log;
+using NewLife.Messaging;
 using NewLife.Model;
-using NewLife.Serialization;
 
 namespace NewLife.Caching;
 
@@ -645,6 +646,9 @@ public class FullRedis : Redis
     /// <param name="key"></param>
     /// <returns></returns>
     public virtual RedisSortedSet<T> GetSortedSet<T>(String key) => new(this, key);
+
+    /// <summary>获取事件总线</summary>
+    public override IEventBus<T> GetEventBus<T>(String topic, String clientId = "") => new RedisEventBus<T>(this, topic, clientId);
     #endregion
 
     #region 字符串操作
