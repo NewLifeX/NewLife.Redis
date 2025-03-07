@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.Intrinsics.Arm;
+
 using NewLife.Caching;
 using NewLife.Log;
 using Xunit;
@@ -92,6 +95,18 @@ public class HashTest
         Assert.Equal(org1, hash["org1"]);
 
         Assert.Equal(org5, hash["org5"]);
+    }
+
+    [Fact]
+    public void CheckHashTest()
+    {
+        var key = $"NewLife:eventinfo:adsfasdfasdfdsaf";
+
+        var hash = _redis.GetDictionary<EventInfo>(key);
+        Assert.NotNull(hash);
+
+        var l = hash as RedisHash<String, String>;
+        l["0"] = "0";
     }
 }
 
