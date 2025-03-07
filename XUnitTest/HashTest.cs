@@ -106,6 +106,12 @@ public class HashTest
         Assert.NotNull(hash);
 
         var l = hash as RedisHash<String, String>;
+
+        foreach(var item in l.GetAll())
+        {
+            XTrace.WriteLine(item.Key);
+        }
+
         l["0"] = "0";
     }
 }
