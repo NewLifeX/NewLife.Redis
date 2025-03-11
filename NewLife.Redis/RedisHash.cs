@@ -68,6 +68,8 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
         value = Redis.Encoder.Decode<TValue>(pk)!;
         //value = (TValue?)Redis.Encoder.Decode(pk, typeof(TValue))!;
 
+        if (typeof(TValue) != typeof(IPacket)) pk.TryDispose();
+
         return true;
     }
 
@@ -163,6 +165,8 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
             var value = Redis.Encoder.Decode<TValue>(pk2);
             dic[key] = value;
         }
+
+        if (typeof(TKey) != typeof(IPacket) && typeof(TValue) != typeof(IPacket)) rs.TryDispose();
 
         return dic;
     }

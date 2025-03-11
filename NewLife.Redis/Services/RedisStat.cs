@@ -90,7 +90,7 @@ public class RedisStat : DisposeBase
         if (!_redis.Rename(key, newKey, false)) return;
 
         _redis.Remove($"exists:{key}");
-        var rs = _redis.Execute(newKey, (r,k) => r.Execute<IPacket[]>("HGETALL", k));
+        var rs = _redis.Execute(newKey, (r, k) => r.Execute<IPacket[]>("HGETALL", k));
         if (rs != null)
         {
             var dic = new Dictionary<String, Int32>();
@@ -103,6 +103,8 @@ public class RedisStat : DisposeBase
 
             OnSave(key, dic);
         }
+
+        rs.TryDispose();
 
         _redis.Remove(newKey);
     }
