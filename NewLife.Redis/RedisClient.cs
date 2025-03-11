@@ -1,6 +1,5 @@
 ﻿using System.Buffers;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
@@ -690,8 +689,9 @@ public class RedisClient : DisposeBase
             if (rs is TResult rs2) return rs2;
             if (TryChangeType(rs, typeof(TResult), out var target))
             {
-                // 释放内部申请的OwnerPacket
-                rs.TryDispose();
+                //!!! 外部调用者可能需要直接使用内部申请的OwnerPacket，所以这里不释放
+                //// 释放内部申请的OwnerPacket
+                //rs.TryDispose();
                 return (TResult?)target;
             }
 
@@ -727,8 +727,9 @@ public class RedisClient : DisposeBase
             if (rs == null) return false;
             if (TryChangeType(rs, typeof(TResult), out var target))
             {
-                // 释放内部申请的OwnerPacket
-                rs.TryDispose();
+                //!!! 外部调用者可能需要直接使用内部申请的OwnerPacket，所以这里不释放
+                //// 释放内部申请的OwnerPacket
+                //rs.TryDispose();
                 value = (TResult?)target;
                 return true;
             }
@@ -788,8 +789,9 @@ public class RedisClient : DisposeBase
         if (rs is TResult rs2) return rs2;
         if (TryChangeType(rs, typeof(TResult), out var target))
         {
-            // 释放内部申请的OwnerPacket
-            rs.TryDispose();
+            //!!! 外部调用者可能需要直接使用内部申请的OwnerPacket，所以这里不释放
+            //// 释放内部申请的OwnerPacket
+            //rs.TryDispose();
             return (TResult?)target;
         }
 
@@ -939,8 +941,9 @@ public class RedisClient : DisposeBase
                 var rs = list[i];
                 if (rs != null && TryChangeType(rs, ps[i].Type, out var target) && target != null)
                 {
-                    // 释放内部申请的OwnerPacket
-                    rs.TryDispose();
+                    //!!! 外部调用者可能需要直接使用内部申请的OwnerPacket，所以这里不释放
+                    //// 释放内部申请的OwnerPacket
+                    //rs.TryDispose();
                     list[i] = target;
                 }
             }

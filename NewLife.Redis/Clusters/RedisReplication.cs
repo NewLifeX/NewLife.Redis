@@ -1,5 +1,4 @@
-﻿using System.Net.Sockets;
-using NewLife.Log;
+﻿using NewLife.Log;
 using NewLife.Net;
 using NewLife.Threading;
 
@@ -13,7 +12,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     IList<IRedisNode> IRedisCluster.Nodes => Nodes.Select(x => (IRedisNode)x).ToList();
 
     /// <summary>节点改变事件</summary>
-    public event EventHandler NodeChanged;
+    public event EventHandler? NodeChanged;
 
     /// <summary>集群节点</summary>
     public RedisNode[]? Nodes { get; protected set; }
