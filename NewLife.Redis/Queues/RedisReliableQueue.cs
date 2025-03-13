@@ -146,7 +146,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
     {
         RetryAck();
 
-        if (timeout > 0 && Redis.Timeout < timeout * 1000) Redis.Timeout = (timeout + 1) * 1000;
+        if (timeout > 0 && Redis.Timeout < (timeout + 1) * 1000) Redis.Timeout = (timeout + 1) * 1000;
 
         var rs = timeout >= 0 ?
             Execute((rc, k) => rc.Execute<T>("BRPOPLPUSH", Key, AckKey, timeout), true) :
@@ -165,11 +165,11 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
     {
         RetryAck();
 
-        if (timeout > 0 && Redis.Timeout < timeout * 1000) Redis.Timeout = (timeout + 1) * 1000;
+        if (timeout > 0 && Redis.Timeout < (timeout + 1) * 1000) Redis.Timeout = (timeout + 1) * 1000;
 
         var rs = timeout < 0 ?
-            await ExecuteAsync((rc, k) => rc.ExecuteAsync<T>("RPOPLPUSH", new Object[] { Key, AckKey }, cancellationToken), true) :
-            await ExecuteAsync((rc, k) => rc.ExecuteAsync<T>("BRPOPLPUSH", new Object[] { Key, AckKey, timeout }, cancellationToken), true);
+            await ExecuteAsync((rc, k) => rc.ExecuteAsync<T>("RPOPLPUSH", [Key, AckKey], cancellationToken), true).ConfigureAwait(false) :
+            await ExecuteAsync((rc, k) => rc.ExecuteAsync<T>("BRPOPLPUSH", [Key, AckKey, timeout], cancellationToken), true).ConfigureAwait(false);
 
         if (rs != null) _Status.Consumes++;
 
@@ -238,11 +238,17 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
 
             var rs2 = rds.StopPipeline(true);
             foreach (var item in rs2)
+            {
                 rs += (Int32)item;
+            }
         }
         else
+        {
             foreach (var item in keys)
+            {
                 rs += Execute((r, k) => r.Execute<Int32>("LREM", AckKey, 1, item), true);
+            }
+        }
 
         return rs;
     }
@@ -257,16 +263,23 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
     public RedisDelayQueue<T> InitDelay()
     {
         if (_delay == null)
+        {
             lock (this)
-                if (_delay == null)
-                    _delay = new RedisDelayQueue<T>(Redis, $"{Key}:Delay");
+            {
+                _delay ??= new RedisDelayQueue<T>(Redis, $"{Key}:Delay");
+            }
+        }
         if (_delayTask == null || _delayTask.IsCompleted)
+        {
             lock (this)
+            {
                 if (_delayTask == null || _delayTask.IsCompleted)
                 {
                     _source = new CancellationTokenSource();
                     _delayTask = Task.Run(() => _delay.TransferAsync(this, null, _source.Token));
                 }
+            }
+        }
 
         return _delay;
     }
@@ -319,8 +332,8 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
 
         // 取出消息键
         var msgId = timeout < 0 ?
-            await ExecuteAsync((rc, k) => rc.ExecuteAsync<String>("RPOPLPUSH", Key, AckKey), true) :
-            await ExecuteAsync((rc, k) => rc.ExecuteAsync<String>("BRPOPLPUSH", Key, AckKey, timeout), true);
+            await ExecuteAsync((rc, k) => rc.ExecuteAsync<String>("RPOPLPUSH", Key, AckKey), true).ConfigureAwait(false) :
+            await ExecuteAsync((rc, k) => rc.ExecuteAsync<String>("BRPOPLPUSH", Key, AckKey, timeout), true).ConfigureAwait(false);
         if (msgId.IsNullOrEmpty()) return default;
 
         _Status.Consumes++;
@@ -334,7 +347,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
         }
 
         // 处理消息。如果消息已被删除，此时调用func将受到空引用
-        var rs = await func(messge);
+        var rs = await func(messge).ConfigureAwait(false);
 
         // 确认并删除消息
         Redis.Remove(msgId);

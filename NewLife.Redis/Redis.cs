@@ -149,8 +149,9 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         var log = provider.GetService<ILog>();
         if (log != null) Log = log;
 
-        var configProvider = provider.GetRequiredService<IConfigProvider>();
-        configProvider.Bind(this, true, name);
+        var config = provider.GetService<IConfigProvider>();
+        config ??= JsonConfigProvider.LoadAppSettings();
+        config.Bind(this, true, name);
     }
 
     /// <summary>实例化Redis，指定名称，支持从环境变量Redis_{Name}读取配置，或者逐个属性配置</summary>
@@ -473,8 +474,11 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
                 // 网络异常时，自动切换到其它节点
                 if (ex is AggregateException ae) ex = ae.InnerException;
-                if (ex is SocketException or IOException && _servers != null && i < _servers.Length)
+                if (NoDelay(ex))
+                {
+                    if (_servers == null || i >= _servers.Length) throw;
                     _idxServer++;
+                }
                 else
                     Thread.Sleep(delay *= 2);
             }
@@ -486,6 +490,11 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             }
         } while (true);
     }
+
+    /// <summary>网络IO类异常，无需等待，因为遇到此类异常时重发请求也是错</summary>
+    /// <param name="ex"></param>
+    /// <returns></returns>
+    internal Boolean NoDelay(Exception ex) => ex is SocketException or IOException or InvalidOperationException;
 
     /// <summary>直接执行命令，不考虑集群读写</summary>
     /// <typeparam name="TResult">返回类型</typeparam>
@@ -517,8 +526,12 @@ public class Redis : Cache, IConfigMapping, ILogFeature
                 client.TryDispose();
 
                 // 网络异常时，自动切换到其它节点
-                if (ex is SocketException or IOException && _servers != null && i < _servers.Length)
+                if (ex is AggregateException ae) ex = ae.InnerException;
+                if (NoDelay(ex))
+                {
+                    if (_servers == null || i >= _servers.Length) throw;
                     _idxServer++;
+                }
                 else
                     Thread.Sleep(delay *= 2);
             }
@@ -547,7 +560,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             if (rds == null && AutoPipeline > 0) rds = StartPipeline();
             if (rds != null)
             {
-                var rs = await func(rds, key);
+                var rs = await func(rds, key).ConfigureAwait(false);
 
                 // 命令数足够，自动提交
                 if (AutoPipeline > 0 && rds.PipelineCommands >= AutoPipeline)
@@ -575,7 +588,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             try
             {
                 client.Reset();
-                return await func(client, key);
+                return await func(client, key).ConfigureAwait(false);
             }
             catch (RedisException) { throw; }
             catch (Exception ex)
@@ -586,8 +599,12 @@ public class Redis : Cache, IConfigMapping, ILogFeature
                 client.TryDispose();
 
                 // 网络异常时，自动切换到其它节点
-                if (ex is SocketException or IOException && _servers != null && i < _servers.Length)
+                if (ex is AggregateException ae) ex = ae.InnerException;
+                if (NoDelay(ex))
+                {
+                    if (_servers == null || i >= _servers.Length) throw;
                     _idxServer++;
+                }
                 else
                     Thread.Sleep(delay *= 2);
             }
@@ -631,7 +648,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         // 管道处理不需要重试
         try
         {
-            return rds.StopPipeline(requireResult).Result;
+            return rds.StopPipeline(requireResult);
         }
         finally
         {
@@ -792,7 +809,13 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <typeparam name="T"></typeparam>
     /// <param name="keys"></param>
     /// <returns></returns>
-    public override IDictionary<String, T> GetAll<T>(IEnumerable<String> keys) => Execute(keys.FirstOrDefault(), (rds, k) => rds.GetAll<T>(keys));
+    public override IDictionary<String, T> GetAll<T>(IEnumerable<String> keys)
+    {
+        var ks = keys as String[] ?? keys.ToArray();
+        if (ks.Length == 0) return new Dictionary<String, T>();
+
+        return Execute(ks[0], (rds, k) => rds.GetAll<T>(ks));
+    }
 
     /// <summary>批量设置缓存项</summary>
     /// <typeparam name="T"></typeparam>
@@ -923,7 +946,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         T? v1 = default;
         var rs1 = Execute(key, (rds, k) =>
         {
-            var rs2 = rds.TryExecute("GET", new[] { k }, out T? v2);
+            var rs2 = rds.TryExecute("GET", [k], out T? v2);
             v1 = v2;
             return rs2;
         });
@@ -1064,6 +1087,19 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     {
         if (rand && batch > 10) times /= 10;
         return base.BenchInc(keys, times, threads, rand, batch);
+    }
+
+    /// <summary>删除测试</summary>
+    /// <param name="keys"></param>
+    /// <param name="times"></param>
+    /// <param name="threads"></param>
+    /// <param name="rand"></param>
+    /// <param name="batch"></param>
+    /// <returns></returns>
+    protected override Int64 BenchRemove(String[] keys, Int64 times, Int32 threads, Boolean rand, Int32 batch)
+    {
+        if (rand && batch > 10) times *= 10;
+        return base.BenchRemove(keys, times, threads, rand, batch);
     }
     #endregion
 

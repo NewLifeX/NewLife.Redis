@@ -14,6 +14,7 @@ using Xunit;
 namespace XUnitTest.Queues;
 
 //[Collection("Queue")]
+[TestCaseOrderer("NewLife.UnitTest.DefaultOrderer", "NewLife.UnitTest")]
 public class ReliableQueueTests
 {
     private readonly FullRedis _redis;
@@ -672,13 +673,12 @@ public class ReliableQueueTests
     {
         var queue = _redis.GetReliableQueue<RedisMessage<MyModel>>("TakeOneNotDataAsync");
         queue.RetryInterval = 60;//重新处理确认队列中死信的间隔。默认60s
-        RedisMessage<MyModel>? message = await queue.TakeOneAsync(10);
+        var message = await queue.TakeOneAsync(3);
         Assert.Null(message);
-
 
         var queue2 = _redis.GetReliableQueue<Int32>("TakeOneNotDataAsync_Int32");
         queue2.RetryInterval = 60;//重新处理确认队列中死信的间隔。默认60s
-        int messageInt = await queue2.TakeOneAsync(10);
+        var messageInt = await queue2.TakeOneAsync(3);
         Assert.Equal(0, messageInt);
     }
 }

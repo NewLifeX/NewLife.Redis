@@ -85,7 +85,7 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
     /// <summary>迭代</summary>
     public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
     {
-        foreach (var item in Search("*", 10000))
+        foreach (var item in Search("*", 1000000))
         {
             yield return item;
         }

@@ -1,11 +1,13 @@
 ﻿using System.Buffers;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using NewLife.Buffers;
+using NewLife.Caching.Buffers;
 using NewLife.Collections;
 using NewLife.Data;
 using NewLife.Log;
@@ -87,6 +89,63 @@ public class RedisClient : DisposeBase
     /// <summary>新建连接获取数据流</summary>
     /// <param name="create">新建连接</param>
     /// <returns></returns>
+    private Stream? GetStream(Boolean create)
+    {
+        var tc = Client;
+        var ns = _stream;
+
+        // 判断连接是否可用
+        var active = false;
+        try
+        {
+            active = ns != null && tc is { Connected: true } && ns is { CanWrite: true, CanRead: true };
+        }
+        catch { }
+
+        // 如果连接不可用，则重新建立连接
+        if (!active)
+        {
+            Logined = false;
+
+            Client = null;
+            tc.TryDispose();
+            if (!create) return null;
+
+            var timeout = Timeout;
+            if (timeout == 0) timeout = Host.Timeout;
+            tc = new TcpClient
+            {
+                SendTimeout = timeout,
+                ReceiveTimeout = timeout
+            };
+
+            var uri = Server;
+            var addrs = uri.GetAddresses();
+            DefaultSpan.Current?.AppendTag($"addrs={addrs.Join()} port={uri.Port}");
+            tc.Connect(addrs, uri.Port);
+
+            Client = tc;
+            ns = tc.GetStream();
+
+            // 客户端SSL
+            var sp = Host.SslProtocol;
+            if (sp != SslProtocols.None)
+            {
+                var sslStream = new SslStream(ns, false, OnCertificateValidationCallback);
+                sslStream.AuthenticateAsClient(uri.Host ?? uri.Address + "", [], sp, false);
+
+                ns = sslStream;
+            }
+
+            _stream = ns;
+        }
+
+        return ns;
+    }
+
+    /// <summary>新建连接获取数据流</summary>
+    /// <param name="create">新建连接</param>
+    /// <returns></returns>
     private async Task<Stream?> GetStreamAsync(Boolean create)
     {
         var tc = Client;
@@ -118,7 +177,9 @@ public class RedisClient : DisposeBase
             };
 
             var uri = Server;
-            await tc.ConnectAsync(uri.Address, uri.Port);
+            var addrs = uri.GetAddresses();
+            DefaultSpan.Current?.AppendTag($"addrs={addrs.Join()} port={uri.Port}");
+            await tc.ConnectAsync(addrs, uri.Port).ConfigureAwait(false);
 
             Client = tc;
             ns = tc.GetStream();
@@ -128,7 +189,7 @@ public class RedisClient : DisposeBase
             if (sp != SslProtocols.None)
             {
                 var sslStream = new SslStream(ns, false, OnCertificateValidationCallback);
-                await sslStream.AuthenticateAsClientAsync(uri.Host ?? uri.Address + "", [], sp, false);
+                await sslStream.AuthenticateAsClientAsync(uri.Host ?? uri.Address + "", [], sp, false).ConfigureAwait(false);
 
                 ns = sslStream;
             }
@@ -243,12 +304,51 @@ public class RedisClient : DisposeBase
         return writer.Position;
     }
 
+    /// <summary>接收响应</summary>
+    /// <param name="ns">网络数据流</param>
+    /// <param name="count">响应个数</param>
+    /// <returns></returns>
+    protected virtual IList<Object?> GetResponse(Stream ns, Int32 count)
+    {
+        //var ms = new BufferedStream(ns);
+        var ms = ns;
+
+        using var pk = new OwnerPacket(8192);
+
+        var n = ms.Read(pk.Buffer, pk.Offset, pk.Length);
+        if (n <= 0) return [];
+
+        pk.Resize(n);
+
+        var reader = new BufferedReader(ms, pk, 8192);
+
+        return ParseResponse(ms, count, ref reader);
+    }
+
     /// <summary>异步接收响应</summary>
     /// <param name="ns">网络数据流</param>
     /// <param name="count">响应个数</param>
     /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
     protected virtual async Task<IList<Object?>> GetResponseAsync(Stream ns, Int32 count, CancellationToken cancellationToken = default)
+    {
+        var ms = ns;
+        using var pk = new OwnerPacket(8192);
+
+        // 取巧进行异步操作，只要异步读取到第一个字节，后续同步读取
+        if (cancellationToken == CancellationToken.None)
+            cancellationToken = new CancellationTokenSource(Timeout > 0 ? Timeout : Host.Timeout).Token;
+        var n = await ns.ReadAsync(pk.Buffer, pk.Offset, pk.Length, cancellationToken).ConfigureAwait(false);
+        if (n <= 0) return [];
+
+        pk.Resize(n);
+
+        var reader = new BufferedReader(ms, pk, 8192);
+
+        return ParseResponse(ms, count, ref reader);
+    }
+
+    private IList<Object?> ParseResponse(Stream ms, Int32 count, ref BufferedReader reader)
     {
         /*
          * 响应格式
@@ -260,51 +360,30 @@ public class RedisClient : DisposeBase
          */
 
         var list = new List<Object?>();
-        var ms = ns;
         var log = Log == null || Log == Logger.Null ? null : Pool.StringBuilder.Get();
 
-        Char header;
-        var buf = Pool.Shared.Rent(1);
-        try
-        {
-            // 取巧进行异步操作，只要异步读取到第一个字节，后续同步读取
-            if (cancellationToken == CancellationToken.None)
-                cancellationToken = new CancellationTokenSource(Timeout > 0 ? Timeout : Host.Timeout).Token;
-            var n = await ms.ReadAsync(buf, 0, 1, cancellationToken);
-            if (n <= 0) return list;
-
-            header = (Char)buf[0];
-        }
-        finally
-        {
-            Pool.Shared.Return(buf);
-        }
+        //var reader = new SpanReader(pk.GetSpan());
+        var header = (Char)reader.ReadByte();
 
         // 多行响应
         for (var i = 0; i < count; i++)
         {
             // 解析响应
-            if (i > 0)
-            {
-                var b = ms.ReadByte();
-                if (b == -1) break;
-
-                header = (Char)b;
-            }
+            if (i > 0) header = (Char)reader.ReadByte();
 
             log?.Append(header);
             if (header == '$')
             {
-                list.Add(ReadBlock(ms, log));
+                list.Add(ReadBlock(ref reader, log));
             }
             else if (header == '*')
             {
-                list.Add(ReadBlocks(ms, log));
+                list.Add(ReadBlocks(ref reader, log));
             }
             else
             {
                 // 字符串以换行为结束符
-                var str = ReadLine(ms);
+                var str = ReadLine(ref reader);
                 log?.Append(str);
 
                 if (header is '+' or ':')
@@ -324,23 +403,22 @@ public class RedisClient : DisposeBase
         return list;
     }
 
-    /// <summary>异步执行命令，发请求，取响应</summary>
+    /// <summary>执行命令，发请求，取响应</summary>
     /// <param name="cmd">命令</param>
     /// <param name="args">参数数组</param>
-    /// <param name="cancellationToken">取消通知</param>
     /// <returns></returns>
-    protected virtual async Task<Object?> ExecuteCommandAsync(String cmd, Object?[]? args, CancellationToken cancellationToken)
+    protected virtual Object? ExecuteCommand(String cmd, Object?[]? args)
     {
         var isQuit = cmd == "QUIT";
 
-        var ns = await GetStreamAsync(!isQuit);
+        var ns = GetStream(!isQuit);
         if (ns == null) return null;
 
         if (!cmd.IsNullOrEmpty())
         {
             // 验证登录
-            await CheckLogin(cmd);
-            await CheckSelect(cmd);
+            CheckLogin(cmd);
+            CheckSelect(cmd);
 
             // 估算数据包大小，从内存池借出
             var total = GetCommandSize(cmd, args);
@@ -353,26 +431,69 @@ public class RedisClient : DisposeBase
             var max = Host.MaxMessageSize;
             if (max > 0 && memory.Length >= max) throw new InvalidOperationException($"命令[{cmd}]的数据包大小[{memory.Length}]超过最大限制[{max}]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。");
 
-            if (memory.Length > 0) await ns.WriteAsync(memory, cancellationToken);
+            if (memory.Length > 0) ns.Write(memory);
 
             if (total < MAX_POOL_SIZE) Pool.Shared.Return(buffer);
 
-            await ns.FlushAsync(cancellationToken);
+            ns.Flush();
         }
 
-        var rs = await GetResponseAsync(ns, 1, cancellationToken);
+        var rs = GetResponse(ns, 1);
 
         if (isQuit) Logined = false;
 
         return rs.FirstOrDefault();
     }
 
-    private async Task CheckLogin(String? cmd)
+    /// <summary>异步执行命令，发请求，取响应</summary>
+    /// <param name="cmd">命令</param>
+    /// <param name="args">参数数组</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns></returns>
+    protected virtual async Task<Object?> ExecuteCommandAsync(String cmd, Object?[]? args, CancellationToken cancellationToken)
+    {
+        var isQuit = cmd == "QUIT";
+
+        var ns = await GetStreamAsync(!isQuit).ConfigureAwait(false);
+        if (ns == null) return null;
+
+        if (!cmd.IsNullOrEmpty())
+        {
+            // 验证登录
+            CheckLogin(cmd);
+            CheckSelect(cmd);
+
+            // 估算数据包大小，从内存池借出
+            var total = GetCommandSize(cmd, args);
+            var buffer = total < MAX_POOL_SIZE ? Pool.Shared.Rent(total) : new Byte[total];
+            var memory = buffer.AsMemory();
+
+            var p = GetRequest(memory, cmd, args);
+            memory = memory[..p];
+
+            var max = Host.MaxMessageSize;
+            if (max > 0 && memory.Length >= max) throw new InvalidOperationException($"命令[{cmd}]的数据包大小[{memory.Length}]超过最大限制[{max}]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。");
+
+            if (memory.Length > 0) await ns.WriteAsync(memory, cancellationToken).ConfigureAwait(false);
+
+            if (total < MAX_POOL_SIZE) Pool.Shared.Return(buffer);
+
+            await ns.FlushAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        var rs = await GetResponseAsync(ns, 1, cancellationToken).ConfigureAwait(false);
+
+        if (isQuit) Logined = false;
+
+        return rs.FirstOrDefault();
+    }
+
+    private void CheckLogin(String? cmd)
     {
         if (Logined) return;
         if (cmd.EqualIgnoreCase("Auth")) return;
 
-        if (!Host.Password.IsNullOrEmpty() && !(await Auth(Host.UserName, Host.Password)))
+        if (!Host.Password.IsNullOrEmpty() && !Auth(Host.UserName, Host.Password))
             throw new Exception("登录失败！");
 
         Logined = true;
@@ -380,13 +501,13 @@ public class RedisClient : DisposeBase
     }
 
     private Int32 _selected = -1;
-    private async Task CheckSelect(String? cmd)
+    private void CheckSelect(String? cmd)
     {
         var db = Host.Db;
         if (_selected == db) return;
         if (cmd.EqualIgnoreCase("Auth", "Select", "Info")) return;
 
-        if (db > 0 && (Host is not FullRedis rds || !rds.Mode.EqualIgnoreCase("cluster", "sentinel"))) await Select(db);
+        if (db > 0 && (Host is not FullRedis rds || !rds.Mode.EqualIgnoreCase("cluster", "sentinel"))) Select(db);
 
         _selected = db;
     }
@@ -394,7 +515,7 @@ public class RedisClient : DisposeBase
     /// <summary>重置。干掉历史残留数据</summary>
     public void Reset()
     {
-        var ns = GetStreamAsync(false).Result;
+        var ns = GetStream(false);
         if (ns == null) return;
 
         // 干掉历史残留数据
@@ -412,95 +533,68 @@ public class RedisClient : DisposeBase
         }
     }
 
-    private static IPacket? ReadBlock(Stream ms, StringBuilder? log) => ReadPacket(ms, log);
+    private static IPacket? ReadBlock(ref BufferedReader reader, StringBuilder? log) => ReadPacket(ref reader, log);
 
-    private Object?[] ReadBlocks(Stream ms, StringBuilder? log)
+    private Object?[] ReadBlocks(ref BufferedReader reader, StringBuilder? log)
     {
         // 结果集数量
-        var len = ReadLength(ms);
+        var len = ReadLength(ref reader);
         log?.Append(len);
         if (len < 0) return [];
 
         var arr = new Object?[len];
         for (var i = 0; i < len; i++)
         {
-            var b = ms.ReadByte();
-            if (b == -1) break;
-
-            var header = (Char)b;
+            var header = (Char)reader.ReadByte();
             log?.Append(' ');
             log?.Append(header);
             if (header == '$')
             {
-                arr[i] = ReadPacket(ms, log);
+                arr[i] = ReadPacket(ref reader, log);
             }
             else if (header is '+' or ':')
             {
-                arr[i] = ReadLine(ms);
+                arr[i] = ReadLine(ref reader);
                 log?.Append(arr[i]);
             }
             else if (header == '*')
             {
-                arr[i] = ReadBlocks(ms, log);
+                arr[i] = ReadBlocks(ref reader, log);
             }
         }
 
         return arr;
     }
 
-    private static IPacket? ReadPacket(Stream ms, StringBuilder? log)
+    private static IPacket? ReadPacket(ref BufferedReader reader, StringBuilder? log)
     {
-        var len = ReadLength(ms);
+        var len = ReadLength(ref reader);
         log?.Append(len);
         if (len == 0)
         {
             // 某些字段即使长度是0，还是要把换行符读走
-            ReadLine(ms);
+            ReadLine(ref reader);
             return null;
         }
         if (len <= 0) return null;
-        len += 2;
 
-        //// 很多时候，数据长度为1，特殊优化
-        //if (len == 3)
-        //{
-        //    var rs = ms.ReadByte();
-        //    // 再读取两个换行符，网络流不支持Seek
-        //    //ms.Seek(2, SeekOrigin.Current);
-        //    ms.ReadByte();
-        //    ms.ReadByte();
-        //    return rs;
-        //}
+        // 读取数据包，并跳过换行符
+        var pk = reader.ReadPacket(len);
+        if (reader.FreeCapacity >= 2) reader.Advance(2);
 
-        // 从内存池借出，包装到MemorySegment中，一路向上传递，用完后Dispose还到池里
-        var owner = new OwnerPacket(len);
-        var span = owner.GetSpan();
-
-        var p = 0;
-        while (p < len)
-        {
-            // 等待，直到读完需要的数据，避免大包丢数据
-            var count = ms.Read(span.Slice(p, len - p));
-            if (count <= 0) break;
-
-            p += count;
-        }
-
-        return owner.Slice(0, p - 2);
+        return pk;
     }
 
-    private static String ReadLine(Stream ms)
+    private static String ReadLine(ref BufferedReader reader)
     {
         var sb = Pool.StringBuilder.Get();
-        while (true)
+        var count = reader.FreeCapacity;
+        for (var i = 0; i < count; i++)
         {
-            var b = ms.ReadByte();
-            if (b < 0) break;
-
-            if (b == '\r')
+            var b = (Char)reader.ReadByte();
+            if (b == '\r' && i + 1 < count)
             {
-                var b2 = ms.ReadByte();
-                if (b2 < 0) break;
+                var b2 = (Char)reader.ReadByte();
                 if (b2 == '\n') break;
 
                 sb.Append((Char)b);
@@ -513,19 +607,17 @@ public class RedisClient : DisposeBase
         return sb.Return(true);
     }
 
-    private static Int32 ReadLength(Stream ms)
+    private static Int32 ReadLength(ref BufferedReader reader)
     {
         Span<Char> span = stackalloc Char[32];
         var k = 0;
-        while (true)
+        var count = reader.FreeCapacity;
+        for (var i = 0; i < count; i++)
         {
-            var b = ms.ReadByte();
-            if (b < 0) break;
-
-            if (b == '\r')
+            var b = (Char)reader.ReadByte();
+            if (b == '\r' && i + 1 < count)
             {
-                var b2 = ms.ReadByte();
-                if (b2 < 0) break;
+                var b2 = (Char)reader.ReadByte();
                 if (b2 == '\n') break;
 
                 span[k++] = (Char)b;
@@ -560,7 +652,7 @@ public class RedisClient : DisposeBase
                 else if (item.GetType().GetTypeCode() != TypeCode.Object)
                     total += 16 + 20;
                 else
-                    total += 16 + Host.Encoder.Encode(item).Length;
+                    total += 16 + Host.Encoder.Encode(item)?.Length ?? 0;
             }
         }
 
@@ -581,19 +673,35 @@ public class RedisClient : DisposeBase
     /// <returns></returns>
     public virtual TResult? Execute<TResult>(String cmd, params Object?[] args)
     {
-        // 管道模式
-        if (_ps != null)
+        // 埋点名称，支持二级命令
+        var act = cmd.EqualIgnoreCase("cluster", "xinfo", "xgroup", "xreadgroup") ? $"{cmd}-{args?.FirstOrDefault()}" : cmd;
+        using var span = cmd.IsNullOrEmpty() ? null : Host.Tracer?.NewSpan($"redis:{Name}:{act}", args);
+        try
         {
-            _ps.Add(new Command(cmd, args, typeof(TResult)));
+            // 管道模式
+            if (_ps != null)
+            {
+                _ps.Add(new Command(cmd, args, typeof(TResult)));
+                return default;
+            }
+
+            var rs = ExecuteCommand(cmd, args);
+            if (rs == null) return default;
+            if (rs is TResult rs2) return rs2;
+            if (TryChangeType(rs, typeof(TResult), out var target))
+            {
+                // 释放内部申请的OwnerPacket
+                rs.TryDispose();
+                return (TResult?)target;
+            }
+
             return default;
         }
-
-        var rs = ExecuteAsync(cmd, args).Result;
-        if (rs == null) return default;
-        if (rs is TResult rs2) return rs2;
-        if (TryChangeType(rs, typeof(TResult), out var target)) return (TResult?)target;
-
-        return default;
+        catch (Exception ex)
+        {
+            span?.SetError(ex, null);
+            throw;
+        }
     }
 
     /// <summary>尝试执行命令。返回基本类型、对象、对象数组</summary>
@@ -603,22 +711,35 @@ public class RedisClient : DisposeBase
     /// <returns></returns>
     public virtual Boolean TryExecute<TResult>(String cmd, Object?[] args, out TResult? value)
     {
-        var rs = ExecuteAsync(cmd, args).Result;
-        if (rs is TResult rs2)
+        // 埋点名称，支持二级命令
+        var act = cmd.EqualIgnoreCase("cluster", "xinfo", "xgroup", "xreadgroup") ? $"{cmd}-{args?.FirstOrDefault()}" : cmd;
+        using var span = cmd.IsNullOrEmpty() ? null : Host.Tracer?.NewSpan($"redis:{Name}:{act}", args);
+        try
         {
-            value = rs2;
-            return true;
-        }
+            var rs = ExecuteCommand(cmd, args);
+            if (rs is TResult rs2)
+            {
+                value = rs2;
+                return true;
+            }
 
-        value = default;
-        if (rs == null) return false;
-        if (TryChangeType(rs, typeof(TResult), out var target))
+            value = default;
+            if (rs == null) return false;
+            if (TryChangeType(rs, typeof(TResult), out var target))
+            {
+                // 释放内部申请的OwnerPacket
+                rs.TryDispose();
+                value = (TResult?)target;
+                return true;
+            }
+
+            return false;
+        }
+        catch (Exception ex)
         {
-            value = (TResult?)target;
-            return true;
+            span?.SetError(ex, null);
+            throw;
         }
-
-        return false;
     }
 
     /// <summary>异步执行命令。返回字符串、IPacket、IPacket[]</summary>
@@ -633,7 +754,7 @@ public class RedisClient : DisposeBase
         using var span = cmd.IsNullOrEmpty() ? null : Host.Tracer?.NewSpan($"redis:{Name}:{act}", args);
         try
         {
-            return await ExecuteCommandAsync(cmd, args, cancellationToken);
+            return await ExecuteCommandAsync(cmd, args, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -646,7 +767,7 @@ public class RedisClient : DisposeBase
     /// <param name="cmd">命令</param>
     /// <param name="args">参数数组</param>
     /// <returns></returns>
-    public virtual async Task<TResult?> ExecuteAsync<TResult>(String cmd, params Object?[] args) => await ExecuteAsync<TResult>(cmd, args, CancellationToken.None);
+    public virtual Task<TResult?> ExecuteAsync<TResult>(String cmd, params Object?[] args) => ExecuteAsync<TResult>(cmd, args, CancellationToken.None);
 
     /// <summary>异步执行命令。返回基本类型、对象、对象数组</summary>
     /// <param name="cmd">命令</param>
@@ -662,10 +783,15 @@ public class RedisClient : DisposeBase
             return default;
         }
 
-        var rs = await ExecuteAsync(cmd, args, cancellationToken);
+        var rs = await ExecuteAsync(cmd, args, cancellationToken).ConfigureAwait(false);
         if (rs == null) return default;
         if (rs is TResult rs2) return rs2;
-        if (TryChangeType(rs, typeof(TResult), out var target)) return (TResult?)target;
+        if (TryChangeType(rs, typeof(TResult), out var target))
+        {
+            // 释放内部申请的OwnerPacket
+            rs.TryDispose();
+            return (TResult?)target;
+        }
 
         return default;
     }
@@ -675,10 +801,10 @@ public class RedisClient : DisposeBase
     /// <returns></returns>
     public virtual async Task<TResult?> ReadMoreAsync<TResult>(CancellationToken cancellationToken)
     {
-        var ns = await GetStreamAsync(false);
+        var ns = await GetStreamAsync(false).ConfigureAwait(false);
         if (ns == null) return default;
 
-        var rss = await GetResponseAsync(ns, 1, cancellationToken);
+        var rss = await GetResponseAsync(ns, 1, cancellationToken).ConfigureAwait(false);
         var rs = rss.FirstOrDefault();
 
         //var rs = ExecuteCommand(null, null, null);
@@ -760,22 +886,22 @@ public class RedisClient : DisposeBase
 
     /// <summary>结束管道模式</summary>
     /// <param name="requireResult">要求结果</param>
-    public virtual async Task<Object?[]?> StopPipeline(Boolean requireResult)
+    public virtual Object?[]? StopPipeline(Boolean requireResult)
     {
         var ps = _ps;
         if (ps == null) return null;
 
         _ps = null;
 
-        var ns = await GetStreamAsync(true);
+        var ns = GetStream(true);
         if (ns == null) return null;
 
         using var span = Host.Tracer?.NewSpan($"redis:{Name}:Pipeline", null);
         try
         {
             // 验证登录
-            await CheckLogin(null);
-            await CheckSelect(null);
+            CheckLogin(null);
+            CheckSelect(null);
 
             // 估算数据包大小，从内存池借出
             var total = 0;
@@ -801,17 +927,22 @@ public class RedisClient : DisposeBase
             span?.SetTag(cmds);
 
             // 整体发出
-            if (memory.Length > 0) await ns.WriteAsync(memory);
+            if (memory.Length > 0) ns.Write(memory);
             if (total < MAX_POOL_SIZE) Pool.Shared.Return(buffer);
 
             if (!requireResult) return new Object[ps.Count];
 
             // 获取响应
-            var list = await GetResponseAsync(ns, ps.Count);
+            var list = GetResponse(ns, ps.Count);
             for (var i = 0; i < list.Count; i++)
             {
                 var rs = list[i];
-                if (rs != null && TryChangeType(rs, ps[i].Type, out var target) && target != null) list[i] = target;
+                if (rs != null && TryChangeType(rs, ps[i].Type, out var target) && target != null)
+                {
+                    // 释放内部申请的OwnerPacket
+                    rs.TryDispose();
+                    list[i] = target;
+                }
             }
 
             return list.ToArray();
@@ -823,10 +954,10 @@ public class RedisClient : DisposeBase
         }
     }
 
-    private class Command(String name, Object?[] args, Type type)
+    private class Command(String name, Object?[]? args, Type type)
     {
         public String Name { get; } = name;
-        public Object?[] Args { get; } = args;
+        public Object?[]? Args { get; } = args;
         public Type Type { get; } = type;
     }
     #endregion
@@ -834,22 +965,22 @@ public class RedisClient : DisposeBase
     #region 基础功能
     /// <summary>心跳</summary>
     /// <returns></returns>
-    public async Task<Boolean> Ping() => await ExecuteAsync<String>("PING") == "PONG";
+    public Boolean Ping() => Execute<String>("PING") == "PONG";
 
     /// <summary>选择Db</summary>
     /// <param name="db"></param>
     /// <returns></returns>
-    public async Task<Boolean> Select(Int32 db) => await ExecuteAsync<String>("SELECT", db + "") == "OK";
+    public Boolean Select(Int32 db) => Execute<String>("SELECT", db + "") == "OK";
 
     /// <summary>验证密码</summary>
     /// <param name="username"></param>
     /// <param name="password"></param>
     /// <returns></returns>
-    public async Task<Boolean> Auth(String? username, String password)
+    public Boolean Auth(String? username, String password)
     {
         var rs = username.IsNullOrEmpty() ?
-            await ExecuteAsync<String>("AUTH", password) :
-            await ExecuteAsync<String>("AUTH", username, password);
+            Execute<String>("AUTH", password) :
+            Execute<String>("AUTH", username, password);
 
         return rs == "OK";
     }
@@ -868,16 +999,17 @@ public class RedisClient : DisposeBase
     {
         if (values == null || values.Count == 0) throw new ArgumentNullException(nameof(values));
 
-        var ps = new List<Object>();
+        var k = 0;
+        var ps = new Object[values.Count * 2];
         foreach (var item in values)
         {
-            ps.Add(item.Key);
+            ps[k++] = item.Key;
 
             if (item.Value == null) throw new NullReferenceException();
-            ps.Add(item.Value);
+            ps[k++] = item.Value;
         }
 
-        var rs = Execute<String>("MSET", ps.ToArray());
+        var rs = Execute<String>("MSET", ps);
         if (rs != "OK")
         {
             using var span = Host.Tracer?.NewSpan($"redis:{Name}:ErrorSetAll", values);
@@ -891,20 +1023,18 @@ public class RedisClient : DisposeBase
     /// <typeparam name="T"></typeparam>
     /// <param name="keys"></param>
     /// <returns></returns>
-    public IDictionary<String, T?> GetAll<T>(IEnumerable<String> keys)
+    public IDictionary<String, T?> GetAll<T>(String[] keys)
     {
-        if (keys == null || !keys.Any()) throw new ArgumentNullException(nameof(keys));
+        if (keys == null || keys.Length == 0) throw new ArgumentNullException(nameof(keys));
 
-        var ks = keys.ToArray();
+        var dic = new Dictionary<String, T?>(keys.Length);
+        if (Execute<Object[]>("MGET", keys) is not Object[] rs) return dic;
 
-        var dic = new Dictionary<String, T?>(ks.Length);
-        if (Execute<Object[]>("MGET", ks) is not Object[] rs) return dic;
-
-        for (var i = 0; i < ks.Length && i < rs.Length; i++)
+        for (var i = 0; i < keys.Length && i < rs.Length; i++)
         {
             if (rs[i] is IPacket pk)
             {
-                dic[ks[i]] = (T?)Host.Encoder.Decode(pk, typeof(T));
+                dic[keys[i]] = (T?)Host.Encoder.Decode(pk, typeof(T));
             }
         }
 

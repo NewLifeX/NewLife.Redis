@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
-using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using NewLife;
@@ -37,6 +34,9 @@ public class RedisTest
 #if DEBUG
         _redis.ClientLog = XTrace.Log;
 #endif
+
+        // 测试高级功能，如果keys过多，则清空
+        if (_redis.Count > 10000) _redis.Clear();
     }
 
     [TestOrder(0)]
@@ -294,6 +294,24 @@ public class RedisTest
         Assert.Equal(pk.ToHex(), pk2.ToHex());
     }
 
+    /// <summary>超大数据包</summary>
+    /// <remarks>https://github.com/NewLifeX/NewLife.Redis/issues/149</remarks>
+    [TestOrder(31)]
+    [Fact(DisplayName = "超大数据包")]
+    public void TestBigPacket()
+    {
+        var ic = _redis;
+        var key = "buf";
+        var buf = Rand.NextBytes(8192 + 1);
+
+        var pk = new ArrayPacket(buf);
+
+        ic.Set(key, pk);
+        var pk2 = ic.Get<IPacket>(key);
+
+        Assert.Equal(pk.ToHex(), pk2.ToHex());
+    }
+
     [TestOrder(40)]
     [Fact(DisplayName = "管道")]
     public void TestPipeline()
@@ -516,10 +534,11 @@ public class RedisTest
         var ic = _redis;
 
         ic.MaxMessageSize = 1028;
+        //ic.Retry = 0;
 
-        var ex = Assert.Throws<AggregateException>(() => ic.Set("ttt", Rand.NextString(1029)));
-        var ex2 = ex.GetTrue() as InvalidOperationException;
-        Assert.NotNull(ex2);
-        Assert.Equal("命令[SET]的数据包大小[1060]超过最大限制[1028]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。", ex2.Message);
+        var ex = Assert.Throws<InvalidOperationException>(() => ic.Set("ttt", Rand.NextString(1029)));
+        //var ex2 = ex.GetTrue() as InvalidOperationException;
+        Assert.NotNull(ex);
+        Assert.Equal("命令[SET]的数据包大小[1060]超过最大限制[1028]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。", ex.Message);
     }
 }

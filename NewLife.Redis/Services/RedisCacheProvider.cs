@@ -32,6 +32,7 @@ public class RedisCacheProvider : CacheProvider
     public RedisCacheProvider(IServiceProvider serviceProvider)
     {
         var config = serviceProvider?.GetService<IConfigProvider>();
+        config ??= JsonConfigProvider.LoadAppSettings();
         if (config != null) Init(config, serviceProvider);
     }
     #endregion
@@ -46,40 +47,50 @@ public class RedisCacheProvider : CacheProvider
         var queueConn = config["RedisQueue"];
 
         // 实例化全局缓存和队列，如果未设置队列，则使用缓存对象
+        FullRedis? redis = null;
         if (!cacheConn.IsNullOrEmpty())
         {
             if (serviceProvider != null)
             {
-                _redis = new FullRedis(serviceProvider, "RedisCache")
+                redis = serviceProvider.GetService<FullRedis>();
+                if (redis != null && redis.Name != "RedisCache") redis = null;
+
+                redis ??= new FullRedis(serviceProvider, "RedisCache")
                 {
-                    Log = serviceProvider.GetRequiredService<ILog>(),
-                    Tracer = serviceProvider.GetRequiredService<ITracer>(),
+                    Log = serviceProvider.GetService<ILog>()!,
+                    Tracer = serviceProvider.GetService<ITracer>(),
                 };
             }
             else
             {
-                _redis = new FullRedis { Name = "RedisCache", Log = XTrace.Log };
-                _redis.Init(cacheConn);
+                redis = new FullRedis { Name = "RedisCache", Log = XTrace.Log };
+                redis.Init(cacheConn);
             }
 
-            _redisQueue = _redis;
-            Cache = _redis;
+            _redis = redis;
+            _redisQueue = redis;
+            Cache = redis;
         }
         if (!queueConn.IsNullOrEmpty())
         {
             if (serviceProvider != null)
             {
-                _redisQueue = new FullRedis(serviceProvider, "RedisQueue")
+                redis = serviceProvider.GetService<FullRedis>();
+                if (redis != null && redis.Name != "RedisQueue") redis = null;
+
+                redis ??= new FullRedis(serviceProvider, "RedisQueue")
                 {
-                    Log = serviceProvider.GetRequiredService<ILog>(),
-                    Tracer = serviceProvider.GetRequiredService<ITracer>(),
+                    Log = serviceProvider.GetService<ILog>()!,
+                    Tracer = serviceProvider.GetService<ITracer>(),
                 };
             }
             else
             {
-                _redisQueue = new FullRedis { Name = "RedisQueue", Log = XTrace.Log };
-                _redisQueue.Init(queueConn);
+                redis = new FullRedis { Name = "RedisQueue", Log = XTrace.Log };
+                redis.Init(queueConn);
             }
+
+            _redisQueue = redis;
         }
     }
 
@@ -99,15 +110,19 @@ public class RedisCacheProvider : CacheProvider
         {
             IProducerConsumer<T>? queue = null;
             if (group.IsNullOrEmpty())
+            {
                 queue = _redisQueue.GetQueue<T>(topic);
+
+                XTrace.WriteLine("[{0}]队列消息数：{1}", topic, queue.Count);
+            }
             else
             {
                 var rs = _redisQueue.GetStream<T>(topic);
                 rs.Group = group;
                 queue = rs;
-            }
 
-            XTrace.WriteLine("[{0}]队列消息数：{1}", topic, queue.Count);
+                XTrace.WriteLine("[{0}/{2}]队列消息数：{1}", topic, queue.Count, group);
+            }
 
             return queue;
         }

@@ -4,11 +4,12 @@ using System.Text;
 using NewLife.Caching.Clusters;
 using NewLife.Caching.Models;
 using NewLife.Caching.Queues;
+using NewLife.Caching.Services;
 using NewLife.Collections;
 using NewLife.Data;
 using NewLife.Log;
+using NewLife.Messaging;
 using NewLife.Model;
-using NewLife.Serialization;
 
 namespace NewLife.Caching;
 
@@ -93,6 +94,7 @@ public class FullRedis : Redis
     /// <param name="provider">服务提供者，将要解析IConfigProvider</param>
     /// <param name="name">缓存名称，也是配置中心key</param>
     public FullRedis(IServiceProvider provider, String name) : base(provider, name) { }
+
     /// <summary>按照配置服务实例化Redis，用于NETCore依赖注入</summary>
     /// <param name="provider">服务提供者，将要解析IConfigProvider</param>
     /// <param name="options">Redis链接配置</param>
@@ -318,10 +320,14 @@ public class FullRedis : Redis
 
         InitCluster();
 
-        keys = keys.Select(GetKey).ToArray();
+        //keys = keys.Select(GetKey).ToArray();
+        for (var i = 0; i < keys.Length; i++)
+        {
+            keys[i] = GetKey(keys[i]);
+        }
 
         // 如果不支持集群，或者只有一个key，直接执行
-        if (Cluster == null || keys.Length == 1) return [Execute(keys.FirstOrDefault(), (rds, k) => func(rds, keys), write)];
+        if (Cluster == null || keys.Length == 1) return [Execute(keys[0], (rds, k) => func(rds, keys), write)];
 
         // 计算每个key所在的节点
         var dic = new Dictionary<String, List<String>>();
@@ -399,11 +405,11 @@ public class FullRedis : Redis
         key = GetKey(key);
 
         // 如果不支持集群，直接返回
-        if (Cluster == null) return await base.ExecuteAsync<T>(key, func, write);
+        if (Cluster == null) return await base.ExecuteAsync<T>(key, func, write).ConfigureAwait(false);
 
         var node = Cluster.SelectNode(key, write);
         //?? throw new XException($"集群[{Name}]没有可用节点");
-        if (node == null) return await base.ExecuteAsync<T>(key, func, write);
+        if (node == null) return await base.ExecuteAsync<T>(key, func, write).ConfigureAwait(false);
 
         // 统计性能
         var sw = Counter?.StartCount();
@@ -419,7 +425,7 @@ public class FullRedis : Redis
             try
             {
                 client.Reset();
-                var rs = await func(client, key);
+                var rs = await func(client, key).ConfigureAwait(false);
 
                 return rs;
             }
@@ -469,19 +475,16 @@ public class FullRedis : Redis
     {
         if (keys == null || keys.Length == 0) return 0;
 
-        keys = keys.Select(GetKey).ToArray();
         if (keys.Length == 1) return base.Remove(keys[0]);
 
         InitCluster();
+        if (Cluster != null) return Execute(keys, (rds, ks) => rds.Execute<Int32>("DEL", ks), true).Sum();
 
-        if (Cluster != null)
+        for (var i = 0; i < keys.Length; i++)
         {
-            return Execute(keys, (rds, ks) => rds.Execute<Int32>("DEL", ks), true).Sum();
+            keys[i] = GetKey(keys[i]);
         }
-        else
-        {
-            return Execute(keys.FirstOrDefault(), (rds, k) => rds.Execute<Int32>("DEL", keys), true);
-        }
+        return Execute(keys[0], (rds, k) => rds.Execute<Int32>("DEL", keys), true);
     }
     #endregion
 
@@ -494,12 +497,17 @@ public class FullRedis : Redis
     {
         if (keys == null || !keys.Any()) return new Dictionary<String, T>();
 
-        var keys2 = keys.ToArray();
+        var keys2 = keys as String[] ?? keys.ToArray();
+        for (var i = 0; i < keys2.Length; i++)
+        {
+            keys2[i] = GetKey(keys2[i]);
+        }
+        if (keys2.Length == 1) return new Dictionary<String, T> { [keys2[0]] = Get<T>(keys2[0])! };
 
-        keys2 = keys2.Select(GetKey).ToArray();
-        if (keys2.Length == 1 || Cluster == null) return base.GetAll<T>(keys2);
+        InitCluster();
 
-        //Execute(keys.FirstOrDefault(), (rds, k) => rds.GetAll<T>(keys));
+        if (Cluster == null) return base.GetAll<T>(keys2);
+
         var rs = Execute(keys2, (rds, ks) => rds.GetAll<T>(ks), false);
 
         var dic = new Dictionary<String, T?>();
@@ -537,9 +545,14 @@ public class FullRedis : Redis
             return;
         }
 
-        var keys = values.Keys.Select(GetKey).ToArray();
-        //Execute(values.FirstOrDefault().Key, (rds, k) => rds.SetAll(values), true);
-        var rs = Execute(keys, (rds, ks) => rds.SetAll(ks.ToDictionary(e => e, e => values[e])), true);
+        var keys = values.Keys.ToArray();
+
+        // 非集群模式
+        InitCluster();
+        if (Cluster == null)
+            Execute(keys[0], (rds, ks) => rds.SetAll(values), true);
+        else
+            Execute(keys, (rds, ks) => rds.SetAll(ks.ToDictionary(e => e, e => values[e])), true);
 
         // 使用管道批量设置过期时间
         if (expire > 0)
@@ -572,6 +585,25 @@ public class FullRedis : Redis
     /// <param name="key"></param>
     /// <returns></returns>
     public override IDictionary<String, T> GetDictionary<T>(String key) => new RedisHash<String, T>(this, key);
+
+    /// <summary>
+    /// 获取哈希表所有数据
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="key"></param>
+    /// <returns></returns>
+    public IDictionary<String, T> GetHashAll<T>(String key)
+    {
+        var hashMap = new RedisHash<String, T>(this, key);
+        var nCount = hashMap!.Count();
+        var sModel = new SearchModel()
+        {
+            Pattern = "*",
+            Position = 0,
+            Count = nCount
+        };
+        return hashMap!.Search(sModel).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+    }
 
     /// <summary>获取队列，快速LIST结构，无需确认</summary>
     /// <typeparam name="T"></typeparam>
@@ -614,6 +646,9 @@ public class FullRedis : Redis
     /// <param name="key"></param>
     /// <returns></returns>
     public virtual RedisSortedSet<T> GetSortedSet<T>(String key) => new(this, key);
+
+    /// <summary>获取事件总线</summary>
+    public override IEventBus<T> GetEventBus<T>(String topic, String clientId = "") => new RedisEventBus<T>(this, topic, clientId);
     #endregion
 
     #region 字符串操作

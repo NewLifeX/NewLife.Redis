@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using NewLife;
 using NewLife.Caching;
 using NewLife.Caching.Clusters;
+using NewLife.Configuration;
 using NewLife.Log;
 using NewLife.Security;
 using NewLife.Serialization;
@@ -97,7 +98,16 @@ class Program
     /// <summary>性能压测</summary>
     static void Test2()
     {
-        var ic = new FullRedis("127.0.0.1", null, 3);
+        var args = Environment.GetCommandLineArgs();
+        var cp = new CommandParser();
+        var dic = cp.Parse(args);
+
+        if (!dic.TryGetValue("server", out var server)) server = "127.0.0.1";
+        if (!dic.TryGetValue("pass", out var pass)) pass = "";
+
+        if (server.IsNullOrEmpty()) server = "127.0.0.1";
+
+        var ic = new FullRedis(server, pass, 3);
 
         // 性能压测
         //ic.AutoPipeline = -1;

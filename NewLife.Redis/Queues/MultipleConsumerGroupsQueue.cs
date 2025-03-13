@@ -214,7 +214,7 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
         while (_Cts != null && !_Cts.IsCancellationRequested)
         {
 
-            var msg = await _Queue.TakeMessageAsync(10);
+            var msg = await _Queue.TakeMessageAsync(10).ConfigureAwait(false);
             if (msg != null && !msg.Id.IsNullOrEmpty())
             {
                 try
