@@ -112,10 +112,33 @@ public class HashTest
         rh["0"] = new EventInfo { EventId = "1234", EventName = "Stone" };
     }
 
+    [Fact]
+    public void RemoveTest()
+    {
+        var key = $"NewLife:eventinfo:adsfasdfasdfdsaf";
+
+        var hash = _redis.GetDictionary<EventInfo>(key);
+        Assert.NotNull(hash);
+
+        var rh = hash as RedisHash<String, EventInfo>;
+
+        foreach (var item in rh.GetAll())
+        {
+            XTrace.WriteLine(item.Key);
+        }
+
+        rh["0"] = new EventInfo { EventId = "1234", EventName = "Stone" };
+        rh["1"] = new EventInfo { EventId = "12345", EventName = "Stone" };
+        rh["2"] = new EventInfo { EventId = "123456", EventName = "Stone" };
+
+        rh.Remove("0");
+        Assert.Equal(2, rh.Count);
+    }
+
     class EventInfo
     {
-        public String? EventId { get; set; }
-        public String? EventName { get; set; }
+        public String EventId { get; set; }
+        public String EventName { get; set; }
     }
 }
 
