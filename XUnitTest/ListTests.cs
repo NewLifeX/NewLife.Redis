@@ -1,5 +1,6 @@
 ﻿using NewLife.Caching;
 using NewLife.Log;
+using NewLife.Security;
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -162,6 +163,38 @@ public class ListTests
         Assert.Equal(vs2[1], item1);
         var item2 = list.RPOP();
         Assert.Equal(vs3[1], item2);
+    }
+
+    [Fact]
+    public void List_IndexOf()
+    {
+        var key = "lkey_indexof";
+
+        // 删除已有
+        _redis.Remove(key);
+
+        var rlist = _redis.GetList<String>(key) as RedisList<String>;
+        Assert.NotNull(rlist);
+
+        // 添加
+        var vs = Enumerable.Range(0, 1000).Select(e => Rand.NextString(8)).ToArray();
+        rlist.AddRange(vs);
+        _redis.SetExpire(key, TimeSpan.FromSeconds(60));
+
+        // 索引
+        var idx = rlist.IndexOf(vs[1]);
+        Assert.Equal(1, idx);
+
+        idx = rlist.IndexOf("abcd2");
+        Assert.Equal(-1, idx);
+
+        idx = rlist.IndexOf(vs[321]);
+        Assert.Equal(321, idx);
+
+        var rs = rlist.Contains(vs[456]);
+        Assert.True(rs);
+
+        _redis.Remove(key);
     }
 
     [Fact]

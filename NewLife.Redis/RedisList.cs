@@ -68,11 +68,28 @@ public class RedisList<T> : RedisBase, IList<T>
         // Redis7支持LPOS
         if (Redis.Version.Major >= 7) return LPOS(item);
 
-        var count = Count;
-        if (count > 1000) throw new NotSupportedException($"[{Key}]的元素个数过多，不支持！");
+        var p = 0;
+        var batch = 100;
+        while (true)
+        {
+            var arr = LRange(p, p + batch - 1);
+            if (arr == null || arr.Length == 0) break;
 
-        var arr = GetAll();
-        return Array.IndexOf(arr, item);
+            var idx = Array.IndexOf(arr, item);
+            if (idx >= 0) return p + idx;
+
+            if (p >= 1_000_000) throw new NotSupportedException($"[{Key}]的元素个数过多，不支持遍历！");
+
+            p += batch;
+        }
+
+        return -1;
+
+        //var count = Count;
+        //if (count > 1000)
+
+        //var arr = GetAll();
+        //return Array.IndexOf(arr, item);
     }
 
     /// <summary>在指定位置插入</summary>
