@@ -442,6 +442,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
 
         // 清理已经失去Status的Ack
         foreach (var key in rds.Search($"{_Key}:Ack:*", 1000))
+        {
             if (!acks.Contains(key))
             {
                 var queue = rds.GetList<String>(key) as RedisList<String>;
@@ -449,6 +450,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
                 XTrace.WriteLine("全局清理死信：{0} {1}", key, msgs.ToJson());
                 rds.Remove(key);
             }
+        }
 
         return count;
     }

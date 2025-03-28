@@ -112,7 +112,13 @@ public class RedisQueue<T> : QueueBase, IProducerConsumer<T>
         if (timeout > 0 && Redis.Timeout < (timeout + 1) * 1000) Redis.Timeout = (timeout + 1) * 1000;
 
         var rs = Execute((rc, k) => rc.Execute<IPacket[]>("BRPOP", Key, timeout), true);
-        return rs == null || rs.Length < 2 ? default : (T?)Redis.Encoder.Decode(rs[1], typeof(T));
+        if (rs == null || rs.Length < 2) return default;
+
+        var msg = (T?)Redis.Encoder.Decode(rs[1], typeof(T));
+
+        if (typeof(T) != typeof(IPacket)) rs.TryDispose();
+
+        return msg;
     }
 
     /// <summary>异步消费获取</summary>
@@ -126,7 +132,13 @@ public class RedisQueue<T> : QueueBase, IProducerConsumer<T>
         if (timeout > 0 && Redis.Timeout < (timeout + 1) * 1000) Redis.Timeout = (timeout + 1) * 1000;
 
         var rs = await ExecuteAsync((rc, k) => rc.ExecuteAsync<IPacket[]>("BRPOP", [Key, timeout], cancellationToken), true).ConfigureAwait(false);
-        return rs == null || rs.Length < 2 ? default : (T?)Redis.Encoder.Decode(rs[1], typeof(T));
+        if (rs == null || rs.Length < 2) return default;
+
+        var msg = (T?)Redis.Encoder.Decode(rs[1], typeof(T));
+
+        if (typeof(T) != typeof(IPacket)) rs.TryDispose();
+
+        return msg;
     }
 
     /// <summary>异步消费获取</summary>

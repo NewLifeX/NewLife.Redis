@@ -83,7 +83,13 @@ public class RedisStack<T> : RedisBase, IProducerConsumer<T>
         if (timeout < 0) return Execute((rc, k) => rc.Execute<T>("RPOP", Key), true);
 
         var rs = Execute((rc, k) => rc.Execute<IPacket[]>("BRPOP", Key, timeout), true);
-        return rs == null || rs.Length < 2 ? default : (T?)Redis.Encoder.Decode(rs[1], typeof(T));
+        if (rs == null || rs.Length < 2) return default;
+
+        var msg = (T?)Redis.Encoder.Decode(rs[1], typeof(T));
+
+        if (typeof(T) != typeof(IPacket)) rs.TryDispose();
+
+        return msg;
     }
 
     /// <summary>异步消费获取</summary>
@@ -95,7 +101,13 @@ public class RedisStack<T> : RedisBase, IProducerConsumer<T>
         if (timeout < 0) return await ExecuteAsync((rc, k) => rc.ExecuteAsync<T>("RPOP", Key), true).ConfigureAwait(false);
 
         var rs = await ExecuteAsync((rc, k) => rc.ExecuteAsync<IPacket[]>("BRPOP", [Key, timeout], cancellationToken), true).ConfigureAwait(false);
-        return rs == null || rs.Length < 2 ? default : (T?)Redis.Encoder.Decode(rs[1], typeof(T));
+        if (rs == null || rs.Length < 2) return default;
+
+        var msg = (T?)Redis.Encoder.Decode(rs[1], typeof(T));
+
+        if (typeof(T) != typeof(IPacket)) rs.TryDispose();
+
+        return msg;
     }
 
     /// <summary>异步消费获取</summary>

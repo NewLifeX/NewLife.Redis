@@ -1,6 +1,5 @@
 ﻿using System.Buffers;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
@@ -679,19 +678,22 @@ public class RedisClient : DisposeBase
         try
         {
             // 管道模式
+            var type = typeof(TResult);
             if (_ps != null)
             {
-                _ps.Add(new Command(cmd, args, typeof(TResult)));
+                _ps.Add(new Command(cmd, args, type));
                 return default;
             }
 
             var rs = ExecuteCommand(cmd, args);
             if (rs == null) return default;
             if (rs is TResult rs2) return rs2;
-            if (TryChangeType(rs, typeof(TResult), out var target))
+
+            if (TryChangeType(rs, type, out var target))
             {
+                //!!! 外部调用者可能需要直接使用内部申请的OwnerPacket，所以这里不释放
                 // 释放内部申请的OwnerPacket
-                rs.TryDispose();
+                if (type != typeof(IPacket) && type != typeof(IPacket[])) rs.TryDispose();
                 return (TResult?)target;
             }
 
@@ -725,10 +727,13 @@ public class RedisClient : DisposeBase
 
             value = default;
             if (rs == null) return false;
-            if (TryChangeType(rs, typeof(TResult), out var target))
+
+            var type = typeof(TResult);
+            if (TryChangeType(rs, type, out var target))
             {
+                //!!! 外部调用者可能需要直接使用内部申请的OwnerPacket，所以这里不释放
                 // 释放内部申请的OwnerPacket
-                rs.TryDispose();
+                if (type != typeof(IPacket) && type != typeof(IPacket[])) rs.TryDispose();
                 value = (TResult?)target;
                 return true;
             }
@@ -777,19 +782,22 @@ public class RedisClient : DisposeBase
     public virtual async Task<TResult?> ExecuteAsync<TResult>(String cmd, Object?[] args, CancellationToken cancellationToken)
     {
         // 管道模式
+        var type = typeof(TResult);
         if (_ps != null)
         {
-            _ps.Add(new Command(cmd, args, typeof(TResult)));
+            _ps.Add(new Command(cmd, args, type));
             return default;
         }
 
         var rs = await ExecuteAsync(cmd, args, cancellationToken).ConfigureAwait(false);
         if (rs == null) return default;
         if (rs is TResult rs2) return rs2;
-        if (TryChangeType(rs, typeof(TResult), out var target))
+
+        if (TryChangeType(rs, type, out var target))
         {
+            //!!! 外部调用者可能需要直接使用内部申请的OwnerPacket，所以这里不释放
             // 释放内部申请的OwnerPacket
-            rs.TryDispose();
+            if (type != typeof(IPacket) && type != typeof(IPacket[])) rs.TryDispose();
             return (TResult?)target;
         }
 
@@ -810,7 +818,14 @@ public class RedisClient : DisposeBase
         //var rs = ExecuteCommand(null, null, null);
         if (rs == null) return default;
         if (rs is TResult rs2) return rs2;
-        if (TryChangeType(rs, typeof(TResult), out var target)) return (TResult?)target;
+
+        var type = typeof(TResult);
+        if (TryChangeType(rs, type, out var target))
+        {
+            // 释放内部申请的OwnerPacket
+            if (type != typeof(IPacket) && type != typeof(IPacket[])) rs.TryDispose();
+            return (TResult?)target;
+        }
 
         return default;
     }
@@ -939,8 +954,9 @@ public class RedisClient : DisposeBase
                 var rs = list[i];
                 if (rs != null && TryChangeType(rs, ps[i].Type, out var target) && target != null)
                 {
+                    //!!! 外部调用者可能需要直接使用内部申请的OwnerPacket，所以这里不释放
                     // 释放内部申请的OwnerPacket
-                    rs.TryDispose();
+                    if (ps[i].Type != typeof(IPacket) && ps[i].Type != typeof(IPacket[])) rs.TryDispose();
                     list[i] = target;
                 }
             }
