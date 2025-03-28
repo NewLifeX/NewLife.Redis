@@ -47,14 +47,7 @@ public class RedisList<T> : RedisBase, IList<T>
     /// <summary>是否包含指定元素</summary>
     /// <param name="item"></param>
     /// <returns></returns>
-    public Boolean Contains(T item)
-    {
-        var count = Count;
-        if (count > 1000) throw new NotSupportedException($"[{Key}]的元素个数过多，不支持！");
-
-        var list = GetAll();
-        return list.Contains(item);
-    }
+    public Boolean Contains(T item) => IndexOf(item) >= 0;
 
     /// <summary>复制到目标数组</summary>
     /// <param name="array"></param>
@@ -72,6 +65,9 @@ public class RedisList<T> : RedisBase, IList<T>
     /// <returns></returns>
     public Int32 IndexOf(T item)
     {
+        // Redis7支持LPOS
+        if (Redis.Version.Major >= 7) return LPOS(item);
+
         var count = Count;
         if (count > 1000) throw new NotSupportedException($"[{Key}]的元素个数过多，不支持！");
 
@@ -217,5 +213,9 @@ public class RedisList<T> : RedisBase, IList<T>
     /// <param name="value"></param>
     /// <returns></returns>
     public Int32 LRem(Int32 count, T value) => Execute((r, k) => r.Execute<Int32>("LREM", Key, count, value), true);
+
+    /// <summary>获取元素位置</summary>
+    /// <returns></returns>
+    public Int32 LPOS(T item) => Execute((rc, k) => rc.Execute<Int32>("LPOS", Key, item), false);
     #endregion
 }
