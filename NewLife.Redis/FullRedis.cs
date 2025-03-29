@@ -721,17 +721,20 @@ public class FullRedis : Redis
                 var rs = Execute(r => r.Execute<Object[]>("SCAN", p, "MATCH", GetKey(model.Pattern + ""), "COUNT", count), node);
                 if (rs == null || rs.Length != 2) break;
 
-                model.Position = (rs[0] as IPacket)?.ToStr().ToInt() ?? 0;
+                var pos = (rs[0] as IPacket)?.ToStr().ToInt();
+                if (pos != null) model.Position = pos.Value;
 
                 if (rs[1] is Object[] ps)
                 {
-                    foreach (IPacket item in ps)
+                    foreach (var item in ps)
                     {
-                        if (item != null && count-- > 0) yield return item.ToStr();
+                        if (item == null && count-- > 0) yield return String.Empty;
+                        if (item is String str && count-- > 0) yield return str;
+                        if (item is IPacket pk && count-- > 0) yield return pk.ToStr();
                     }
                 }
 
-                if (model.Position == 0) break;
+                if (pos == null || pos == 0) break;
             }
         }
     }

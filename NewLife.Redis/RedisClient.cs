@@ -879,9 +879,9 @@ public class RedisClient : DisposeBase
             for (var i = 0; i < objs.Length; i++)
             {
                 if (objs[i] is IPacket pk4)
-                {
                     arr.SetValue(Host.Encoder.Decode(pk4, elmType), i);
-                }
+                else if (elmType == typeof(Object))
+                    arr.SetValue(objs[i], i);
                 else if (objs[i] != null && objs[i].GetType().As(elmType))
                     arr.SetValue(objs[i], i);
             }
