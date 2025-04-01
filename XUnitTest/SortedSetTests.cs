@@ -424,4 +424,26 @@ public class SortedSetTests
         //Assert.Equal("stone3", dic[0]);
         //Assert.Equal("stone4", dic[1]);
     }
+
+    [Fact]
+    public void LongInt_Test()
+    {
+        var rkey = "zset_long";
+
+        // 删除已有
+        _redis.Remove(rkey);
+
+        var zset = new RedisSortedSet<String>(_redis, rkey);
+
+        // 插入数据
+        zset.Add("stone", DateTime.UtcNow.Ticks);
+        zset.Add("stone1", DateTime.UtcNow.Ticks);
+        Assert.Equal(2, zset.Count);
+
+        var r = zset.GetScore("stone");
+        var r1 = zset.GetScore("stone2");
+
+        var r2 = zset.Execute((r, k) => r.Execute<Double>("ZSCORE", zset.Key, "stone"), false);
+        Assert.Equal(r, r2);
+    }
 }
