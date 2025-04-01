@@ -24,7 +24,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
-    <PackageReference Include="NewLife.Stardust" Version="3.3.2025.202" />
+    <PackageReference Include="NewLife.Stardust" Version="3.3.2025.301" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\NewLife.Redis\NewLife.Redis.csproj" />
