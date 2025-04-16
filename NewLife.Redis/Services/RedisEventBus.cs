@@ -39,9 +39,12 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
         if (_queue != null) return;
 
         // 创建Stream队列，指定消费组，从最后位置开始消费
-        _queue = cache.GetStream<TEvent>(topic);
-        _queue.Group = group;
-        _queue.FromLastOffset = true;
+        var stream = cache.GetStream<TEvent>(topic);
+        stream.Group = group;
+        stream.FromLastOffset = true;
+        stream.Expire = TimeSpan.FromDays(3);
+
+        _queue = stream;
 
         if (_source != null)
             _ = Task.Run(() => ConsumeMessage(_source));

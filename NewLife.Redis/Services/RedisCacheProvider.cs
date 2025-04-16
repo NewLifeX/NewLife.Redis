@@ -118,7 +118,8 @@ public class RedisCacheProvider : CacheProvider
             else
             {
                 var rs = _redisQueue.GetStream<T>(topic);
-                rs.Group = group;
+                //rs.Group = group;
+                rs.SetGroup(group);
                 queue = rs;
 
                 XTrace.WriteLine("[{0}/{2}]队列消息数：{1}", topic, queue.Count, group);

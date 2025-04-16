@@ -160,8 +160,8 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
         //尝试创建消费组
         try
         {
-            _Queue.Group = subscribeAppName;
-            _Queue.GroupCreate(subscribeAppName);
+            //_Queue.Group = subscribeAppName;
+            _Queue.SetGroup(subscribeAppName);
         }
         catch (Exception err)
         {
