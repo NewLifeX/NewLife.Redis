@@ -879,14 +879,18 @@ XREAD count 3 streams stream_key 0-0
         var rs = Execute((rc, k) => rc.Execute<Object[]>("XINFO", "CONSUMERS", Key, group), false);
         if (rs == null) return [];
 
-        var cs = new ConsumerInfo[rs.Length];
+        var cs = new List<ConsumerInfo>(rs.Length);
         for (var i = 0; i < rs.Length; i++)
         {
-            cs[i] = new ConsumerInfo();
-            cs[i].Parse((rs[i] as Object[])!);
+            if (rs[i] is Object[] vs && vs.Length > 0)
+            {
+                var ci = new ConsumerInfo();
+                ci.Parse(vs);
+                cs.Add(ci);
+            }
         }
 
-        return cs;
+        return cs.ToArray();
     }
     #endregion
 
