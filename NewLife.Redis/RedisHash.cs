@@ -151,9 +151,9 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
 
     /// <summary>获取所有名值对</summary>
     /// <returns></returns>
-    public IDictionary<TKey, TValue> GetAll()
+    public IDictionary<TKey, TValue?> GetAll()
     {
-        var dic = new Dictionary<TKey, TValue>();
+        var dic = new Dictionary<TKey, TValue?>();
         var rs = Execute((r, k) => r.Execute<IPacket[]>("HGETALL", Key));
         if (rs == null || rs.Length == 0) return dic;
 
@@ -163,7 +163,7 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
             var pk2 = rs[++i];
             var key = Redis.Encoder.Decode<TKey>(pk);
             var value = Redis.Encoder.Decode<TValue>(pk2);
-            dic[key] = value;
+            if (key != null) dic[key] = value;
         }
 
         if (typeof(TKey) != typeof(IPacket) && typeof(TValue) != typeof(IPacket)) rs.TryDispose();
