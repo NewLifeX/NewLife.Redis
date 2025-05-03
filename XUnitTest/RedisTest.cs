@@ -138,7 +138,9 @@ public class RedisTest
 
         Assert.Equal(dic.Count, dic2.Count);
         foreach (var item in dic)
+        {
             Assert.Equal(item.Value, dic2[item.Key]);
+        }
     }
 
     [TestOrder(8)]

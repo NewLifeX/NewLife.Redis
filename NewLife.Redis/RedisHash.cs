@@ -157,10 +157,10 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
         var rs = Execute((r, k) => r.Execute<IPacket[]>("HGETALL", Key));
         if (rs == null || rs.Length == 0) return dic;
 
-        for (var i = 0; i < rs.Length; i++)
+        for (var i = 0; i < rs.Length - 1; i += 2)
         {
             var pk = rs[i];
-            var pk2 = rs[++i];
+            var pk2 = rs[i + 1];
             var key = Redis.Encoder.Decode<TKey>(pk);
             var value = Redis.Encoder.Decode<TValue>(pk2);
             if (key != null) dic[key] = value;
