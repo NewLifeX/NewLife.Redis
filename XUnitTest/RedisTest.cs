@@ -541,4 +541,44 @@ public class RedisTest
         Assert.NotNull(ex);
         Assert.Equal("命令[SET]的数据包大小[1060]超过最大限制[1028]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。", ex.Message);
     }
+
+    [Fact]
+    public void EvalLua()
+    {
+        var ic = _redis;
+        var key = "LuaTest";
+        ic.Remove(key);
+        var script = @"
+            local key = KEYS[1]
+            local value = ARGV[1]
+            redis.call('SET', key, value)
+            return redis.call('GET', key)
+        ";
+        var rs = ic.Execute(null, (r, k) => r.Execute<String>("EVAL", script, 1, key, "大石头"));
+        Assert.Equal("大石头", rs);
+
+        // 删除
+        ic.Remove(key);
+        rs = ic.Execute(null, (r, k) => r.Execute<String>("EVAL", script, 1, key, "新生命"));
+        Assert.Equal("新生命", rs);
+    }
+
+    [Fact]
+    public void EvalLua2()
+    {
+        var ic = _redis;
+        var key = "LuaTest2";
+        ic.Set(key, 666);
+        var script = @"
+            local key = KEYS[1]
+            local value = ARGV[1]
+            return redis.call('INCRBY', key, value)
+        ";
+        var rs = ic.Execute(null, (r, k) => r.Execute<Int32>("EVAL", script, 1, key, 123));
+        Assert.Equal(666 + 123, rs);
+
+        // 删除
+        ic.Remove(key);
+
+    }
 }

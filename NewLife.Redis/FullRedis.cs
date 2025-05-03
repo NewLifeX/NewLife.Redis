@@ -831,10 +831,11 @@ public class FullRedis : Redis
     /// <returns></returns>
     public virtual T? RPOPLPUSH<T>(String source, String destination) => Execute(source, (rc, k) => rc.Execute<T>("RPOPLPUSH", k, GetKey(destination)), true);
 
-    /// <summary>
+    /// <summary>弹出并插入另一个列表</summary>
+    /// <remarks>
     /// 从列表中弹出一个值，将弹出的元素插入到另外一个列表中并返回它； 如果列表没有元素会阻塞列表直到等待超时或发现可弹出元素为止。
     /// 适用于做安全队列(通过secTimeout决定阻塞时长)
-    /// </summary>
+    /// </remarks>
     /// <typeparam name="T"></typeparam>
     /// <param name="source">源列表名称</param>
     /// <param name="destination">元素后写入的新列表名称</param>
@@ -998,5 +999,33 @@ public class FullRedis : Redis
     /// <param name="count"></param>
     /// <returns></returns>
     public virtual T[]? SPOP<T>(String key, Int32 count) => Execute(key, (r, k) => r.Execute<T[]>("SPOP", k, count), true);
+
+    /// <summary>执行lua脚本</summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="script"></param>
+    /// <param name="keys"></param>
+    /// <param name="args"></param>
+    /// <returns></returns>
+    public virtual T? Eval<T>(String script, String[] keys, Object[] args)
+    {
+        // EVAL script numkeys [key [key ...]] [arg [arg ...]]
+        keys ??= [];
+        args ??= [];
+        var ps = new List<Object>
+        {
+            script,
+            keys.Length + ""
+        };
+        for (var i = 0; i < keys.Length && i < args.Length; i++)
+        {
+            ps.Add(keys[i]);
+        }
+        for (var i = 0; i < keys.Length && i < args.Length; i++)
+        {
+            ps.Add(args[i]);
+        }
+
+        return Execute("", (rc, k) => rc.Execute<T>("EVAL", ps), true);
+    }
     #endregion
 }
