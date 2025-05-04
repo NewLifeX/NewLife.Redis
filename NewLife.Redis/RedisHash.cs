@@ -25,10 +25,10 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
     Boolean ICollection<KeyValuePair<TKey, TValue>>.IsReadOnly => false;
 
     /// <summary>获取所有键</summary>
-    public ICollection<TKey> Keys => Execute((r, k) => r.Execute<TKey[]>("HKEYS", Key)) ?? new TKey[0];
+    public ICollection<TKey> Keys => Execute((r, k) => r.Execute<TKey[]>("HKEYS", Key)) ?? [];
 
     /// <summary>获取所有值</summary>
-    public ICollection<TValue> Values => Execute((r, k) => r.Execute<TValue[]>("HVALS", Key)) ?? new TValue[0];
+    public ICollection<TValue> Values => Execute((r, k) => r.Execute<TValue[]>("HVALS", Key)) ?? [];
 
     /// <summary>获取 或 设置 指定键的值</summary>
     /// <param name="key"></param>
@@ -181,7 +181,7 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
     /// <param name="field"></param>
     /// <param name="value"></param>
     /// <returns></returns>
-    public Double HIncrBy(TKey field, Double value) => Execute((r, k) => r.Execute<Double>("HINCRBY", Key, field, value), true);
+    public Double HIncrBy(TKey field, Double value) => Execute((r, k) => r.Execute<Double>("HINCRBYFLOAT", Key, field, value), true);
 
     /// <summary>只在 key 指定的哈希集中不存在指定的字段时，设置字段的值</summary>
     /// <param name="field"></param>

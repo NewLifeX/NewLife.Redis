@@ -884,7 +884,7 @@ public class FullRedis : Redis
     /// <returns></returns>
     public virtual T? BRPOP<T>(String key, Int32 secTimeout = 0)
     {
-        var rs = BRPOP<T>(new[] { key }, secTimeout);
+        var rs = BRPOP<T>([key], secTimeout);
         return rs == null ? default : rs.Item2;
     }
 
