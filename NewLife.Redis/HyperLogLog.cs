@@ -32,7 +32,7 @@ public class HyperLogLog : RedisBase
     /// 返回存储在HyperLogLog结构体的该变量的近似基数，如果该变量不存在,则返回0。
     /// 当参数为多个key时，返回这些HyperLogLog并集的近似基数，这个值是将所给定的所有key的HyperLoglog结构合并到一个临时的HyperLogLog结构中计算而得到的。
     /// </remarks>
-    public Int32 Count => Execute((rc, k) => rc.Execute<Int32>("PFCOUNT", Key));
+    public Int32 Count => Execute((rc, k) => rc.Execute<Int32>("PFCOUNT", Key), true);
 
     /// <summary>合并</summary>
     /// <remarks>
