@@ -352,10 +352,10 @@ public class RedisClient : DisposeBase
         /*
          * 响应格式
          * 1：简单字符串，非二进制安全字符串，一般是状态回复。  +开头，例：+OK\r\n 
-         * 2: 错误信息。-开头， 例：-ERR unknown command 'mush'\r\n
-         * 3: 整型数字。:开头， 例：:1\r\n
+         * 2: 错误信息。-开头，例：-ERR unknown command 'mush'\r\n
+         * 3: 整型数字。:开头，例：:1\r\n
          * 4：大块回复值，最大512M。  $开头+数据长度。 例：$4\r\nmush\r\n
-         * 5：多条回复。*开头， 例：*2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n
+         * 5：多条回复。*开头，例：*2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n
          */
 
         var list = new List<Object?>();

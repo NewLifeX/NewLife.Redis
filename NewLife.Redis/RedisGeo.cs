@@ -55,10 +55,10 @@ public class RedisGeo : RedisBase
     /// <summary>获取一批点的坐标</summary>
     /// <param name="members"></param>
     /// <returns></returns>
-    public GeoInfo[]? GetPosition(params String[] members)
+    public GeoInfo[] GetPosition(params String[] members)
     {
         var rs = Execute((rc, k) => rc.ExecuteByKey<String, Object[]>("GEOPOS", Key, members), false);
-        if (rs == null || rs.Length == 0) return null;
+        if (rs == null || rs.Length == 0) return [];
 
         var list = new List<GeoInfo>();
         for (var i = 0; i < rs.Length; i++)
@@ -94,22 +94,27 @@ public class RedisGeo : RedisBase
     /// <returns></returns>
     public String[]? GetHash(params String[] members) => Execute((rc, k) => rc.ExecuteByKey<String, String[]>("GEOHASH", Key, members), false);
 
-    /// <summary>以给定的经纬度为中心， 返回键包含的位置元素当中， 与中心的距离不超过给定最大距离的所有位置元素</summary>
+    /// <summary>以给定的经纬度为中心，返回键包含的位置元素当中，与中心的距离不超过给定最大距离的所有位置元素</summary>
     /// <param name="longitude"></param>
     /// <param name="latitude"></param>
     /// <param name="radius"></param>
     /// <param name="unit"></param>
     /// <param name="count"></param>
     /// <returns></returns>
-    public GeoInfo[]? GetRadius(Double longitude, Double latitude, Double radius, String? unit = null, Int32 count = 0)
+    public GeoInfo[] GetRadius(Double longitude, Double latitude, Double radius, String? unit = null, Int32 count = 0)
     {
         if (unit.IsNullOrEmpty()) unit = "m";
 
         var rs = count > 0 ?
            Execute((rc, k) => rc.Execute<Object[]>("GEORADIUS", Key, longitude, latitude, radius, unit, "WITHDIST", "WITHCOORD", "ASC", "COUNT", count), false) :
            Execute((rc, k) => rc.Execute<Object[]>("GEORADIUS", Key, longitude, latitude, radius, unit, "WITHDIST", "WITHCOORD", "ASC"), false);
-        if (rs == null || rs.Length == 0) return null;
+        if (rs == null || rs.Length == 0) return [];
 
+        return Parse(rs);
+    }
+
+    private GeoInfo[] Parse(Object[] rs)
+    {
         var list = new List<GeoInfo>();
         for (var i = 0; i < rs.Length; i++)
         {
@@ -131,39 +136,21 @@ public class RedisGeo : RedisBase
         return list.ToArray();
     }
 
-    /// <summary>以给定的点位为中心， 返回键包含的位置元素当中， 与中心的距离不超过给定最大距离的所有位置元素</summary>
+    /// <summary>以给定的点位为中心，返回键包含的位置元素当中，与中心的距离不超过给定最大距离的所有位置元素</summary>
     /// <param name="member"></param>
     /// <param name="radius"></param>
     /// <param name="unit"></param>
     /// <param name="count"></param>
     /// <returns></returns>
-    public GeoInfo[]? GetRadius(String member, Double radius, String? unit = null, Int32 count = 0)
+    public GeoInfo[] GetRadius(String member, Double radius, String? unit = null, Int32 count = 0)
     {
         if (unit.IsNullOrEmpty()) unit = "m";
 
         var rs = count > 0 ?
             Execute((rc, k) => rc.Execute<Object[]>("GEORADIUSBYMEMBER", Key, member, radius, unit, "WITHDIST", "WITHCOORD", "ASC", "COUNT", count), false) :
             Execute((rc, k) => rc.Execute<Object[]>("GEORADIUSBYMEMBER", Key, member, radius, unit, "WITHDIST", "WITHCOORD", "ASC"), false);
-        if (rs == null || rs.Length == 0) return null;
+        if (rs == null || rs.Length == 0) return [];
 
-        var list = new List<GeoInfo>();
-        for (var i = 0; i < rs.Length; i++)
-        {
-            var inf = new GeoInfo();
-            if (rs[i] is Object[] vs)
-            {
-                inf.Name = (vs[0] as IPacket)?.ToStr();
-                inf.Distance = (vs[1] as IPacket)?.ToStr().ToDouble() ?? 0;
-                if (vs[2] is Object[] vs2)
-                {
-                    inf.Longitude = (vs2[0] as IPacket)?.ToStr().ToDouble() ?? 0;
-                    inf.Latitude = (vs2[1] as IPacket)?.ToStr().ToDouble() ?? 0;
-                }
-            }
-
-            list.Add(inf);
-        }
-
-        return list.ToArray();
+        return Parse(rs);
     }
 }
