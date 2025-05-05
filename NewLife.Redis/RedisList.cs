@@ -1,5 +1,4 @@
 ﻿using System.Collections;
-using System.Diagnostics.CodeAnalysis;
 
 namespace NewLife.Caching;
 
@@ -84,12 +83,6 @@ public class RedisList<T> : RedisBase, IList<T>
         }
 
         return -1;
-
-        //var count = Count;
-        //if (count > 1000)
-
-        //var arr = GetAll();
-        //return Array.IndexOf(arr, item);
     }
 
     /// <summary>在指定位置插入</summary>
@@ -140,34 +133,12 @@ public class RedisList<T> : RedisBase, IList<T>
     /// <summary>右边批量添加，返回队列元素总数</summary>
     /// <param name="values"></param>
     /// <returns>队列元素总数</returns>
-    public Int32 RPUSH(IEnumerable<T> values)
-    {
-        var args = new List<Object?>
-        {
-            Key
-        };
-        foreach (var item in values)
-        {
-            args.Add(item);
-        }
-        return Execute((rc, k) => rc.Execute<Int32>("RPUSH", args.ToArray()), true);
-    }
+    public Int32 RPUSH(IEnumerable<T> values) => Execute((rc, k) => rc.ExecuteByKey<T, Int32>("RPUSH", Key, values as T[] ?? values.ToArray()), true);
 
     /// <summary>左边批量添加，返回队列元素总数</summary>
     /// <param name="values"></param>
     /// <returns>队列元素总数</returns>
-    public Int32 LPUSH(IEnumerable<T> values)
-    {
-        var args = new List<Object?>
-        {
-            Key
-        };
-        foreach (var item in values)
-        {
-            args.Add(item);
-        }
-        return Execute((rc, k) => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
-    }
+    public Int32 LPUSH(IEnumerable<T> values) => Execute((rc, k) => rc.ExecuteByKey<T, Int32>("LPUSH", Key, values as T[] ?? values.ToArray()), true);
 
     /// <summary>移除并返回最右边一个元素</summary>
     /// <returns></returns>

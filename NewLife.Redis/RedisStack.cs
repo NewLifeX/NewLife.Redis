@@ -27,15 +27,7 @@ public class RedisStack<T> : RedisBase, IProducerConsumer<T>
     /// <summary>批量生产添加</summary>
     /// <param name="values"></param>
     /// <returns></returns>
-    public Int32 Add(params T[] values)
-    {
-        var args = new List<Object> { Key };
-        foreach (var item in values)
-        {
-            args.Add(item);
-        }
-        return Execute((rc, k) => rc.Execute<Int32>("RPUSH", args.ToArray()), true);
-    }
+    public Int32 Add(params T[] values) => Execute((rc, k) => rc.ExecuteByKey<T, Int32>("RPUSH", Key, values), true);
 
     /// <summary>批量消费获取</summary>
     /// <param name="count"></param>

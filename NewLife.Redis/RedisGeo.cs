@@ -57,13 +57,7 @@ public class RedisGeo : RedisBase
     /// <returns></returns>
     public GeoInfo[]? GetPosition(params String[] members)
     {
-        var args = new List<Object> { Key };
-        foreach (var item in members)
-        {
-            args.Add(item);
-        }
-
-        var rs = Execute((rc, k) => rc.Execute<Object[]>("GEOPOS", args.ToArray()), false);
+        var rs = Execute((rc, k) => rc.ExecuteByKey<String, Object[]>("GEOPOS", Key, members), false);
         if (rs == null || rs.Length == 0) return null;
 
         var list = new List<GeoInfo>();
@@ -98,16 +92,7 @@ public class RedisGeo : RedisBase
     /// </remarks>
     /// <param name="members"></param>
     /// <returns></returns>
-    public String[]? GetHash(params String[] members)
-    {
-        var args = new List<Object> { Key };
-        foreach (var item in members)
-        {
-            args.Add(item);
-        }
-
-        return Execute((rc, k) => rc.Execute<String[]>("GEOHASH", args.ToArray()), false);
-    }
+    public String[]? GetHash(params String[] members) => Execute((rc, k) => rc.ExecuteByKey<String, String[]>("GEOHASH", Key, members), false);
 
     /// <summary>以给定的经纬度为中心， 返回键包含的位置元素当中， 与中心的距离不超过给定最大距离的所有位置元素</summary>
     /// <param name="longitude"></param>

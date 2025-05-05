@@ -786,15 +786,7 @@ public class FullRedis : Redis
     {
         // 这里提前打包参数，需要处理key前缀。其它普通情况由Execute处理
         key = GetKey(key);
-        var args = new List<Object>
-        {
-            key
-        };
-        foreach (var item in values)
-        {
-            if (item != null) args.Add(item);
-        }
-        return Execute(key, (rc, k) => rc.Execute<Int32>("RPUSH", args.ToArray()), true);
+        return Execute(key, (rc, k) => rc.ExecuteByKey<T, Int32>("RPUSH", key, values), true);
     }
 
     /// <summary>向列表头部插入</summary>
@@ -806,15 +798,7 @@ public class FullRedis : Redis
     {
         // 这里提前打包参数，需要处理key前缀。其它普通情况由Execute处理
         key = GetKey(key);
-        var args = new List<Object>
-        {
-            key
-        };
-        foreach (var item in values)
-        {
-            if (item != null) args.Add(item);
-        }
-        return Execute(key, (rc, k) => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
+        return Execute(key, (rc, k) => rc.ExecuteByKey<T, Int32>("LPUSH", key, values), true);
     }
 
     /// <summary>从列表末尾弹出一个元素</summary>
@@ -935,15 +919,7 @@ public class FullRedis : Redis
     public virtual Int32 SADD<T>(String key, params T[] members)
     {
         key = GetKey(key);
-        var args = new List<Object>
-        {
-            key
-        };
-        foreach (var item in members)
-        {
-            if (item != null) args.Add(item);
-        }
-        return Execute(key, (rc, k) => rc.Execute<Int32>("SADD", args.ToArray()), true);
+        return Execute(key, (rc, k) => rc.ExecuteByKey<T, Int32>("SADD", key, members), true);
     }
 
     /// <summary>向集合删除多个元素</summary>
@@ -954,15 +930,7 @@ public class FullRedis : Redis
     public virtual Int32 SREM<T>(String key, params T[] members)
     {
         key = GetKey(key);
-        var args = new List<Object>
-        {
-            key
-        };
-        foreach (var item in members)
-        {
-            if (item != null) args.Add(item);
-        }
-        return Execute(key, (rc, k) => rc.Execute<Int32>("SREM", args.ToArray()), true);
+        return Execute(key, (rc, k) => rc.ExecuteByKey<T, Int32>("SREM", key, members), true);
     }
 
     /// <summary>获取所有元素</summary>

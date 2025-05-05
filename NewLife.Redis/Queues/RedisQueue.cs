@@ -74,9 +74,9 @@ public class RedisQueue<T> : QueueBase, IProducerConsumer<T>
             foreach (var item in values)
             {
                 if (AttachTraceId)
-                    args.Add(Redis.AttachTraceId(item));
+                    args.Add(Redis.AttachTraceId(item!));
                 else
-                    args.Add(item);
+                    args.Add(item!);
             }
 
             var rs = 0;

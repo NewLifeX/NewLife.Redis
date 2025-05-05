@@ -36,7 +36,7 @@ public class RedisSortedSet<T> : RedisBase
         foreach (var item in members)
         {
             args.Add(score);
-            args.Add(item);
+            args.Add(item!);
         }
         return Execute((rc, k) => rc.Execute<String>("ZADD", args.ToArray()), true).ToInt(-1);
     }
@@ -44,16 +44,7 @@ public class RedisSortedSet<T> : RedisBase
     /// <summary>删除元素</summary>
     /// <param name="members"></param>
     /// <returns></returns>
-    public Int32 Remove(params T[] members)
-    {
-        var args = new List<Object> { Key };
-
-        foreach (var item in members)
-        {
-            args.Add(item);
-        }
-        return Execute((rc, k) => rc.Execute<Int32>("ZREM", args.ToArray()), true);
-    }
+    public Int32 Remove(params T[] members) => Execute((rc, k) => rc.ExecuteByKey<T, Int32>("ZREM", Key, members), true);
 
     /// <summary>返回有序集key中，成员member的score值</summary>
     /// <param name="member"></param>
@@ -89,7 +80,7 @@ public class RedisSortedSet<T> : RedisBase
         foreach (var item in members)
         {
             args.Add(item.Value);
-            args.Add(item.Key);
+            args.Add(item.Key!);
         }
         return Execute((rc, k) => rc.Execute<Double>("ZADD", args.ToArray()), true);
     }

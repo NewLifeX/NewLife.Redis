@@ -706,6 +706,21 @@ public class RedisClient : DisposeBase
         }
     }
 
+    /// <summary>执行命令</summary>
+    /// <typeparam name="TArg"></typeparam>
+    /// <typeparam name="TResult"></typeparam>
+    /// <param name="cmd"></param>
+    /// <param name="key"></param>
+    /// <param name="args"></param>
+    /// <returns></returns>
+    public TResult? ExecuteByKey<TArg, TResult>(String cmd, String key, TArg?[] args)
+    {
+        var arr = new Object?[args.Length + 1];
+        arr[0] = key;
+        Array.Copy(args, 0, arr, 1, args.Length);
+        return Execute<TResult>(cmd, arr);
+    }
+
     /// <summary>尝试执行命令。返回基本类型、对象、对象数组</summary>
     /// <param name="cmd"></param>
     /// <param name="args"></param>

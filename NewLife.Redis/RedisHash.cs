@@ -1,5 +1,4 @@
 ﻿using System.Collections;
-using System.Diagnostics.CodeAnalysis;
 using NewLife.Caching.Models;
 using NewLife.Data;
 using NewLife.Reflection;
@@ -100,36 +99,12 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
     /// <summary>批量删除</summary>
     /// <param name="fields"></param>
     /// <returns></returns>
-    public Int32 HDel(params TKey[] fields)
-    {
-        var args = new List<Object?>
-        {
-            Key
-        };
-        foreach (var item in fields)
-        {
-            args.Add(item);
-        }
-
-        return Execute((r, k) => r.Execute<Int32>("HDEL", args.ToArray()), true);
-    }
+    public Int32 HDel(params TKey[] fields) => Execute((r, k) => r.ExecuteByKey<TKey, Int32>("HDEL", Key, fields), true);
 
     /// <summary>只在 key 指定的哈希集中不存在指定的字段时，设置字段的值</summary>
     /// <param name="fields"></param>
     /// <returns></returns>
-    public TValue[]? HMGet(params TKey[] fields)
-    {
-        var args = new List<Object?>
-        {
-            Key
-        };
-        foreach (var item in fields)
-        {
-            args.Add(item);
-        }
-
-        return Execute((r, k) => r.Execute<TValue[]>("HMGET", args.ToArray()));
-    }
+    public TValue[]? HMGet(params TKey[] fields) => Execute((r, k) => r.ExecuteByKey<TKey, TValue[]>("HMGET", Key, fields));
 
     /// <summary>批量插入</summary>
     /// <param name="keyValues"></param>

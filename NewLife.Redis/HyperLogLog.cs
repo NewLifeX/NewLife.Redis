@@ -25,18 +25,7 @@ public class HyperLogLog : RedisBase
     /// </remarks>
     /// <param name="items"></param>
     /// <returns></returns>
-    public Int32 Add(params String[] items)
-    {
-        var args = new List<Object>
-        {
-            Key
-        };
-        foreach (var item in items)
-        {
-            args.Add(item);
-        }
-        return Execute((rc, k) => rc.Execute<Int32>("PFADD", args.ToArray()), true);
-    }
+    public Int32 Add(params String[] items) => Execute((rc, k) => rc.ExecuteByKey<String, Int32>("PFADD", Key, items), true);
 
     /// <summary>近似基数</summary>
     /// <remarks>
