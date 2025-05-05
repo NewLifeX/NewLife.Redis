@@ -128,5 +128,33 @@ public class RedisSet<T> : RedisBase, ICollection<T>
     /// <returns></returns>
     public T[] Diff(params String[] keys) => Execute((r, k) => r.ExecuteByKey<String, T[]>("SDIFF", Key, keys)) ?? [];
 
+    /// <summary>返回第一个集合与其他集合之间的差异</summary>
+    /// <remarks>将结果保存到 destination 集合</remarks>
+    /// <param name="destination">目的集合。如果 destination 集合已经存在，则将其覆盖。</param>
+    /// <param name="keys"></param>
+    /// <returns></returns>
+    public Int32 DiffStore(String destination, params String[] keys) => Execute((r, k) => r.ExecuteByKey2<String, Int32>("SDIFFSTORE", destination, Key, keys));
+
+    /// <summary>返回所有给定集合的成员交集</summary>
+    /// <param name="keys"></param>
+    /// <returns></returns>
+    public T[] Inter(params String[] keys) => Execute((r, k) => r.ExecuteByKey<String, T[]>("SINTER", Key, keys)) ?? [];
+
+    /// <summary>返回所有给定集合的成员交集</summary>
+    /// <param name="destination">目的集合。如果 destination 集合已经存在，则将其覆盖。</param>
+    /// <param name="keys"></param>
+    /// <returns></returns>
+    public Int32 InterStore(String destination, params String[] keys) => Execute((r, k) => r.ExecuteByKey2<String, Int32>("SINTERSTORE", destination, Key, keys));
+
+    /// <summary>返回所有给定集合的并集</summary>
+    /// <param name="keys"></param>
+    /// <returns></returns>
+    public T[] Union(params String[] keys) => Execute((r, k) => r.ExecuteByKey<String, T[]>("SUNION", Key, keys)) ?? [];
+
+    /// <summary>返回所有给定集合的并集</summary>
+    /// <param name="destination">目的集合。如果 destination 集合已经存在，则将其覆盖。</param>
+    /// <param name="keys"></param>
+    /// <returns></returns>
+    public Int32 UnionStore(String destination, params String[] keys) => Execute((r, k) => r.ExecuteByKey2<String, Int32>("SUNIONSTORE", destination, Key, keys));
     #endregion
 }

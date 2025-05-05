@@ -721,6 +721,23 @@ public class RedisClient : DisposeBase
         return Execute<TResult>(cmd, arr);
     }
 
+    /// <summary>执行命令</summary>
+    /// <typeparam name="TArg"></typeparam>
+    /// <typeparam name="TResult"></typeparam>
+    /// <param name="cmd"></param>
+    /// <param name="key"></param>
+    /// <param name="key2"></param>
+    /// <param name="args"></param>
+    /// <returns></returns>
+    public TResult? ExecuteByKey2<TArg, TResult>(String cmd, String key, String key2, TArg?[] args)
+    {
+        var arr = new Object?[args.Length + 2];
+        arr[0] = key;
+        arr[1] = key2;
+        Array.Copy(args, 0, arr, 2, args.Length);
+        return Execute<TResult>(cmd, arr);
+    }
+
     /// <summary>尝试执行命令。返回基本类型、对象、对象数组</summary>
     /// <param name="cmd"></param>
     /// <param name="args"></param>
