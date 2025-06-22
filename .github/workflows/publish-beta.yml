@@ -18,7 +18,11 @@ jobs:
     - name: Setup dotNET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 9.x
+        dotnet-version: |
+          6.x
+          7.x
+          8.x
+          9.x
     - name: Build
       run: |
         dotnet pack --version-suffix $(date "+%Y.%m%d-beta%H%M") -c Release -o out NewLife.Redis/NewLife.Redis.csproj
