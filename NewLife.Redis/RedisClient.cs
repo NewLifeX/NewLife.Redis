@@ -1084,6 +1084,10 @@ public class RedisClient : DisposeBase
             {
                 dic[keys[i]] = (T?)Host.Encoder.Decode(pk, typeof(T));
             }
+            else if (rs[i] == null)
+            {
+                dic[keys[i]] = default;
+            }
         }
 
         return dic;

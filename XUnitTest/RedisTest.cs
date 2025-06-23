@@ -583,4 +583,27 @@ public class RedisTest
         ic.Remove(key);
 
     }
+
+    [Fact]
+    public void GetAllWithNull()
+    {
+        var rds = _redis;
+
+        var user = new User { Name = "NewLife" };
+        User user2 = null;
+        rds.Set("user", user, -1);
+        rds.Set("user2", user2, 3600);
+
+        var uservalue = rds.Get<User>("user");
+        var user2value = rds.Get<User>("user2");
+
+        var keys = new[] { "user", "user2" };
+        var values = rds.GetAll<User>(keys);
+
+        // 应该返回2个值，但是GetALl()这里只返回一个key的值
+        Assert.True(values.Count >= 2);
+        Assert.NotNull(values["user"]);
+        Assert.Null(values["user2"]);
+        Assert.Equal(user.Name, values["user"].Name);
+    }
 }
