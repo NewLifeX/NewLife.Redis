@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+
 using NewLife.Caching;
 using NewLife.Log;
+using NewLife.Serialization;
+
 using Xunit;
 
 namespace XUnitTest;
@@ -110,6 +113,35 @@ public class HashTest
         }
 
         rh["0"] = new EventInfo { EventId = "1234", EventName = "Stone" };
+    }
+    [Fact(DisplayName = "获取所有数据，丢失数据bug")]
+    public void ValuesHashTest()
+    {
+        //RedisHash、RedisList[Values、Values、GetAll、Search] redis 5.0 都有类似的情况
+        //大批量数据获取，大概率会数据不完整，具体原有不明
+        var key = $"NewLife:HashTestInfo:Test";
+        {
+            _redis.MaxMessageSize = int.MaxValue;
+            var hash = _redis.GetDictionary<string>(key) as RedisHash<string, string>;
+            hash.Clear();
+            for (var i = 0; i < 10000; i++)
+            {
+                var k = i.ToString();
+                hash.Add(k, new EventInfo { EventId = k, EventName = k }.ToJson());
+            }
+
+            //直接获取全部数据，如泛型对象的直接报错
+            var list = hash.Values.ToList();
+            for (var i = 0; i < list.Count; i++)
+            {
+                try { var item = list[i].ToJsonEntity<EventInfo>(); }
+                catch (Exception ex)
+                {
+                    //某块连续的数据段可能会不完整
+                    Assert.Fail($"Index:{i} Item:{list[i]} Msg:{ex.Message}");
+                }
+            }
+        }
     }
 
     [Fact]
