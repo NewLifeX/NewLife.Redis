@@ -45,6 +45,8 @@ public ref struct BufferedReader
     public void Advance(Int32 count)
     {
         if (count < 0) throw new ArgumentOutOfRangeException(nameof(count));
+
+        EnsureSpace(count);
         if (_index + count > _span.Length) throw new ArgumentOutOfRangeException(nameof(count));
 
         _index += count;

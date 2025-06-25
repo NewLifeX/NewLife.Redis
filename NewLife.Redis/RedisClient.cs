@@ -560,6 +560,10 @@ public class RedisClient : DisposeBase
             {
                 arr[i] = ReadBlocks(ref reader, log);
             }
+            else
+            {
+                throw new RedisException($"Invalid [{header}] on blocks[{i}/{len}]");
+            }
         }
 
         return arr;
@@ -579,7 +583,8 @@ public class RedisClient : DisposeBase
 
         // 读取数据包，并跳过换行符
         var pk = reader.ReadPacket(len);
-        if (reader.FreeCapacity >= 2) reader.Advance(2);
+        //if (reader.FreeCapacity >= 2) 
+        reader.Advance(2);
 
         return pk;
     }
@@ -587,11 +592,13 @@ public class RedisClient : DisposeBase
     private static String ReadLine(ref BufferedReader reader)
     {
         var sb = Pool.StringBuilder.Get();
-        var count = reader.FreeCapacity;
-        for (var i = 0; i < count; i++)
+        // 可能刚好一帧结束，字符串至少需要2个字符
+        //reader.EnsureSpace(2);
+        //var count = reader.FreeCapacity;
+        while (true)
         {
             var b = (Char)reader.ReadByte();
-            if (b == '\r' && i + 1 < count)
+            if (b == '\r')
             {
                 var b2 = (Char)reader.ReadByte();
                 if (b2 == '\n') break;
@@ -610,11 +617,15 @@ public class RedisClient : DisposeBase
     {
         Span<Char> span = stackalloc Char[32];
         var k = 0;
-        var count = reader.FreeCapacity;
-        for (var i = 0; i < count; i++)
+        // 缓冲读取器的FreeCapacity不准确，它可以读取下一帧数据
+        // 可能刚好一帧结束，字符串至少需要2个字符
+        //reader.EnsureSpace(2);
+        //var count = reader.FreeCapacity;
+        //var count = 16;
+        while (true)
         {
             var b = (Char)reader.ReadByte();
-            if (b == '\r' && i + 1 < count)
+            if (b == '\r')
             {
                 var b2 = (Char)reader.ReadByte();
                 if (b2 == '\n') break;

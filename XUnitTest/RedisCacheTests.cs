@@ -14,7 +14,7 @@ namespace XUnitTest
     public class RedisCacheTests
     {
         public readonly ServiceProvider provider;
-        private static readonly string prefix = "myPrefix:";
+        private static readonly String prefix = "myPrefix:";
         public RedisCacheTests()
         {
             var services = new ServiceCollection();

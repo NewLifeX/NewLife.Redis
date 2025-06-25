@@ -114,6 +114,7 @@ public class HashTest
 
         rh["0"] = new EventInfo { EventId = "1234", EventName = "Stone" };
     }
+
     [Fact(DisplayName = "获取所有数据，丢失数据bug")]
     public void ValuesHashTest()
     {
@@ -121,8 +122,8 @@ public class HashTest
         //大批量数据获取，大概率会数据不完整，具体原有不明
         var key = $"NewLife:HashTestInfo:Test";
         {
-            _redis.MaxMessageSize = int.MaxValue;
-            var hash = _redis.GetDictionary<string>(key) as RedisHash<string, string>;
+            _redis.MaxMessageSize = Int32.MaxValue;
+            var hash = _redis.GetDictionary<String>(key) as RedisHash<String, String>;
             hash.Clear();
             for (var i = 0; i < 10000; i++)
             {
@@ -134,7 +135,11 @@ public class HashTest
             var list = hash.Values.ToList();
             for (var i = 0; i < list.Count; i++)
             {
-                try { var item = list[i].ToJsonEntity<EventInfo>(); }
+                Assert.NotEmpty(list[i]);
+                try
+                {
+                    var item = list[i].ToJsonEntity<EventInfo>();
+                }
                 catch (Exception ex)
                 {
                     //某块连续的数据段可能会不完整
