@@ -577,7 +577,7 @@ public class RedisClient : DisposeBase
         {
             // 某些字段即使长度是0，还是要把换行符读走
             ReadLine(ref reader);
-            return null;
+            return reader.ReadPacket(0);
         }
         if (len <= 0) return null;
 
@@ -1095,10 +1095,10 @@ public class RedisClient : DisposeBase
             {
                 dic[keys[i]] = (T?)Host.Encoder.Decode(pk, typeof(T));
             }
-            else if (rs[i] == null)
-            {
-                dic[keys[i]] = default;
-            }
+            //else if (rs[i] == null)
+            //{
+            //    dic[keys[i]] = default;
+            //}
         }
 
         return dic;
