@@ -191,6 +191,32 @@ public class SortedSetTests
     }
 
     [Fact]
+    public void Add_xx2()
+    {
+        var rkey = "zset_add_xx2";
+
+        // 删除已有
+        _redis.Remove(rkey);
+
+        var zset = new RedisSortedSet<String>(_redis, rkey);
+
+        // 插入数据
+        var ticks = DateTime.Now.Ticks;
+        zset.Add("stone", ticks);
+        zset.Add("stone1", ticks);
+        Assert.Equal(2, zset.Count);
+
+        var r = zset.GetScore("stone");
+        var r1 = zset.GetScore("stone2");
+        var r2 = zset.Execute((r, k) => r.Execute("ZSCORE", zset.Key, "stone"), false);
+
+        Assert.Equal(ticks, r);
+        Assert.Equal(0, r1);
+        Assert.NotEmpty(r2);
+        Assert.NotEqual("0", r2);
+    }
+
+    [Fact]
     public void Add_nx()
     {
         var rkey = "zset_add_nx";
