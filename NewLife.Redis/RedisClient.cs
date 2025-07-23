@@ -1,4 +1,5 @@
-﻿using System.Buffers;
+﻿using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -698,10 +699,24 @@ public class RedisClient : DisposeBase
 
             var rs = ExecuteCommand(cmd, args);
             if (rs == null) return default;
+            if (span != null && rs is Array ars) span.Value = ars.Length;
             if (rs is TResult rs2) return rs2;
 
             if (TryChangeType(rs, type, out var target))
             {
+                // 埋点记录结果数值
+                if (span != null)
+                {
+                    span.Value = target switch
+                    {
+                        Int32 n => n,
+                        Int64 m => m,
+                        String str => str.Length,
+                        Array arr => arr.Length,
+                        _ => 0,
+                    };
+                }
+
                 //!!! 外部调用者可能需要直接使用内部申请的OwnerPacket，所以这里不释放
                 // 释放内部申请的OwnerPacket
                 if (type != typeof(IPacket) && type != typeof(IPacket[])) rs.TryDispose();
@@ -762,6 +777,7 @@ public class RedisClient : DisposeBase
         try
         {
             var rs = ExecuteCommand(cmd, args);
+            if (span != null && rs is Array ars) span.Value = ars.Length;
             if (rs is TResult rs2)
             {
                 value = rs2;
@@ -774,6 +790,19 @@ public class RedisClient : DisposeBase
             var type = typeof(TResult);
             if (TryChangeType(rs, type, out var target))
             {
+                // 埋点记录结果数值
+                if (span != null)
+                {
+                    span.Value = target switch
+                    {
+                        Int32 n => n,
+                        Int64 m => m,
+                        String str => str.Length,
+                        Array arr => arr.Length,
+                        _ => 0,
+                    };
+                }
+
                 //!!! 外部调用者可能需要直接使用内部申请的OwnerPacket，所以这里不释放
                 // 释放内部申请的OwnerPacket
                 if (type != typeof(IPacket) && type != typeof(IPacket[])) rs.TryDispose();
@@ -790,26 +819,26 @@ public class RedisClient : DisposeBase
         }
     }
 
-    /// <summary>异步执行命令。返回字符串、IPacket、IPacket[]</summary>
-    /// <param name="cmd">命令</param>
-    /// <param name="args">参数数组</param>
-    /// <param name="cancellationToken">取消通知</param>
-    /// <returns></returns>
-    public virtual async Task<Object?> ExecuteAsync(String cmd, Object?[] args, CancellationToken cancellationToken = default)
-    {
-        // 埋点名称，支持二级命令
-        var act = cmd.EqualIgnoreCase("cluster", "xinfo", "xgroup", "xreadgroup") ? $"{cmd}-{args?.FirstOrDefault()}" : cmd;
-        using var span = cmd.IsNullOrEmpty() ? null : Host.Tracer?.NewSpan($"redis:{Name}:{act}", args);
-        try
-        {
-            return await ExecuteCommandAsync(cmd, args, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            span?.SetError(ex, null);
-            throw;
-        }
-    }
+    ///// <summary>异步执行命令。返回字符串、IPacket、IPacket[]</summary>
+    ///// <param name="cmd">命令</param>
+    ///// <param name="args">参数数组</param>
+    ///// <param name="cancellationToken">取消通知</param>
+    ///// <returns></returns>
+    //public virtual async Task<Object?> ExecuteAsync(String cmd, Object?[] args, CancellationToken cancellationToken = default)
+    //{
+    //    // 埋点名称，支持二级命令
+    //    var act = cmd.EqualIgnoreCase("cluster", "xinfo", "xgroup", "xreadgroup") ? $"{cmd}-{args?.FirstOrDefault()}" : cmd;
+    //    using var span = cmd.IsNullOrEmpty() ? null : Host.Tracer?.NewSpan($"redis:{Name}:{act}", args);
+    //    try
+    //    {
+    //        return await ExecuteCommandAsync(cmd, args, cancellationToken).ConfigureAwait(false);
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        span?.SetError(ex, null);
+    //        throw;
+    //    }
+    //}
 
     /// <summary>异步执行命令。返回基本类型、对象、对象数组</summary>
     /// <param name="cmd">命令</param>
@@ -824,27 +853,52 @@ public class RedisClient : DisposeBase
     /// <returns></returns>
     public virtual async Task<TResult?> ExecuteAsync<TResult>(String cmd, Object?[] args, CancellationToken cancellationToken)
     {
-        // 管道模式
-        var type = typeof(TResult);
-        if (_ps != null)
+        // 埋点名称，支持二级命令
+        var act = cmd.EqualIgnoreCase("cluster", "xinfo", "xgroup", "xreadgroup") ? $"{cmd}-{args?.FirstOrDefault()}" : cmd;
+        using var span = cmd.IsNullOrEmpty() ? null : Host.Tracer?.NewSpan($"redis:{Name}:{act}", args);
+        try
         {
-            _ps.Add(new Command(cmd, args, type));
+            // 管道模式
+            var type = typeof(TResult);
+            if (_ps != null)
+            {
+                _ps.Add(new Command(cmd, args, type));
+                return default;
+            }
+
+            var rs = await ExecuteCommandAsync(cmd, args, cancellationToken).ConfigureAwait(false);
+            if (rs == null) return default;
+            if (span != null && rs is Array ars) span.Value = ars.Length;
+            if (rs is TResult rs2) return rs2;
+
+            if (TryChangeType(rs, type, out var target))
+            {
+                // 埋点记录结果数值
+                if (span != null)
+                {
+                    span.Value = target switch
+                    {
+                        Int32 n => n,
+                        Int64 m => m,
+                        String str => str.Length,
+                        Array arr => arr.Length,
+                        _ => 0,
+                    };
+                }
+
+                //!!! 外部调用者可能需要直接使用内部申请的OwnerPacket，所以这里不释放
+                // 释放内部申请的OwnerPacket
+                if (type != typeof(IPacket) && type != typeof(IPacket[])) rs.TryDispose();
+                return (TResult?)target;
+            }
+
             return default;
         }
-
-        var rs = await ExecuteAsync(cmd, args, cancellationToken).ConfigureAwait(false);
-        if (rs == null) return default;
-        if (rs is TResult rs2) return rs2;
-
-        if (TryChangeType(rs, type, out var target))
+        catch (Exception ex)
         {
-            //!!! 外部调用者可能需要直接使用内部申请的OwnerPacket，所以这里不释放
-            // 释放内部申请的OwnerPacket
-            if (type != typeof(IPacket) && type != typeof(IPacket[])) rs.TryDispose();
-            return (TResult?)target;
+            span?.SetError(ex, null);
+            throw;
         }
-
-        return default;
     }
 
     /// <summary>读取更多。用于PubSub等多次读取命令</summary>
