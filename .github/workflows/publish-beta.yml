@@ -23,10 +23,12 @@ jobs:
           7.x
           8.x
           9.x
+    - name: Get Version
+      run: echo "VERSION=$(date '+%Y.%m%d-beta%H%M')" >> $GITHUB_ENV
     - name: Build
       run: |
-        dotnet pack --version-suffix $(date "+%Y.%m%d-beta%H%M") -c Release -o out NewLife.Redis/NewLife.Redis.csproj
-        dotnet pack --version-suffix $(date "+%Y.%m%d-beta%H%M") -c Release -o out NewLife.Redis.Extensions/NewLife.Redis.Extensions.csproj
+        dotnet pack --version-suffix ${{ env.VERSION }} -c Release -o out NewLife.Redis/NewLife.Redis.csproj
+        dotnet pack --version-suffix ${{ env.VERSION }} -c Release -o out NewLife.Redis.Extensions/NewLife.Redis.Extensions.csproj
     - name: Publish
       run: |
         # dotnet nuget push ./out/*.nupkg --skip-duplicate --source https://nuget.pkg.github.com/NewLifeX/index.json --api-key ${{ github.token }}
