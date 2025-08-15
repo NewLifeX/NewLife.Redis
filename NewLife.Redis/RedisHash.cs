@@ -6,6 +6,7 @@ using NewLife.Reflection;
 namespace NewLife.Caching;
 
 /// <summary>哈希结构</summary>
+/// <remarks>采用字典接口形式封装Redis的哈希结构，遍历时单个哈希元素限制超过100万。</remarks>
 /// <typeparam name="TKey"></typeparam>
 /// <typeparam name="TValue"></typeparam>
 public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
@@ -86,7 +87,7 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
     /// <summary>迭代</summary>
     public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
     {
-        foreach (var item in Search("*", 1000000))
+        foreach (var item in Search("*", 1_000_000))
         {
             yield return item;
         }

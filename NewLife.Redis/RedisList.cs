@@ -59,7 +59,7 @@ public class RedisList<T> : RedisBase, IList<T>
         arr.CopyTo(array, arrayIndex);
     }
 
-    /// <summary>查找指定元素位置</summary>
+    /// <summary>查找指定元素位置。低效率方法，限制元素个数不应超过100万。</summary>
     /// <param name="item"></param>
     /// <returns></returns>
     public Int32 IndexOf(T item)
