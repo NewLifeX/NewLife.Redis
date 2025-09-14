@@ -764,22 +764,31 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     [return: MaybeNull]
     public override T Get<T>(String key) => Execute(key, (rds, k) => rds.Execute<T>("GET", k));
 
-    /// <summary>移除缓存项</summary>
+    /// <summary>移除缓存项。支持*模糊匹配</summary>
     /// <param name="key">键</param>
     public override Int32 Remove(String key)
     {
         if (key.IsNullOrEmpty()) return 0;
 
+        if (key.Contains('*'))
+        {
+            var keys = Search(key).ToArray();
+            return OnRemove(keys);
+        }
+
         return Execute(key, (rds, k) => rds.Execute<Int32>("DEL", k), true);
     }
 
-    /// <summary>批量移除缓存项</summary>
+    /// <summary>批量移除缓存项。支持*模糊匹配</summary>
     /// <param name="keys">键集合</param>
-    public override Int32 Remove(params String[] keys)
-    {
-        if (keys == null || !keys.Any()) return 0;
+    public override Int32 Remove(params String[] keys) => OnRemove(keys);
 
-        return Execute(keys.FirstOrDefault(), (rds, k) => rds.Execute<Int32>("DEL", keys), true);
+    /// <summary>实际移除缓存项</summary>
+    protected virtual Int32 OnRemove(params String[] keys)
+    {
+        if (keys == null || keys.Length == 0) return 0;
+
+        return Execute(keys[0], (rds, k) => rds.Execute<Int32>("DEL", keys), true);
     }
 
     /// <summary>清空所有缓存项</summary>

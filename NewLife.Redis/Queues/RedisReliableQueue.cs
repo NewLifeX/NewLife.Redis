@@ -383,7 +383,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
         var rds = Redis as FullRedis;
 
         // 先找到所有Key
-        var keys = rds.Search($"{_Key}:Ack:*", 1000).ToArray();
+        var keys = rds.Search($"{_Key}:Ack:*", 0, 1000).ToArray();
         return keys.Length > 0 ? rds.Remove(keys) : 0;
     }
 
@@ -415,7 +415,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
         // 先找到所有Key
         var count = 0;
         var acks = new List<String>();
-        foreach (var key in rds.Search($"{_Key}:Status:*", 1000))
+        foreach (var key in rds.Search($"{_Key}:Status:*", 0, 1000))
         {
             var ackKey = $"{_Key}:Ack:{key.TrimStart($"{_Key}:Status:")}";
             acks.Add(ackKey);
@@ -441,7 +441,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
         }
 
         // 清理已经失去Status的Ack
-        foreach (var key in rds.Search($"{_Key}:Ack:*", 1000))
+        foreach (var key in rds.Search($"{_Key}:Ack:*", 0, 1000))
         {
             if (!acks.Contains(key))
             {

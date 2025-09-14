@@ -471,11 +471,11 @@ public class FullRedis : Redis
     #region 基础操作
     /// <summary>批量移除缓存项</summary>
     /// <param name="keys">键集合</param>
-    public override Int32 Remove(params String[] keys)
+    protected override Int32 OnRemove(params String[] keys)
     {
         if (keys == null || keys.Length == 0) return 0;
 
-        if (keys.Length == 1) return base.Remove(keys[0]);
+        if (keys.Length == 1) return base.OnRemove(keys);
 
         InitCluster();
         if (Cluster != null) return Execute(keys, (rds, ks) => rds.Execute<Int32>("DEL", ks), true).Sum();
@@ -743,7 +743,18 @@ public class FullRedis : Redis
     /// <param name="pattern">匹配表达式</param>
     /// <param name="count">返回个数</param>
     /// <returns></returns>
+    [Obsolete("=>Search(String pattern, Int32 offset = 0, Int32 count = -1)")]
     public virtual IEnumerable<String> Search(String pattern, Int32 count) => Search(new SearchModel { Pattern = pattern, Count = count });
+
+    /// <summary>模糊搜索，支持?和*</summary>
+    /// <param name="pattern">匹配字符串。一般支持*，Redis还支持?；在远端实现上请优先分页扫描</param>
+    /// <param name="offset">开始行。默认从0开始，Redis对海量key搜索时需要分批</param>
+    /// <param name="count">搜索个数。默认-1表示全部，Redis对海量key搜索时需要分批</param>
+    /// <returns>匹配的键集合</returns>
+    /// <remarks>
+    /// 对海量键空间，建议调用方分页遍历（结合 <paramref name="offset"/> 与 <paramref name="count"/>）。
+    /// </remarks>
+    public override IEnumerable<String> Search(String pattern, Int32 offset = 0, Int32 count = -1) => Search(new SearchModel { Pattern = pattern, Position = offset, Count = count });
     #endregion
 
     #region 事务

@@ -35,7 +35,7 @@ public class RedisDeferredTests
         IDictionary<String, Int32> vs = null;
 
         // 删除旧数据
-        var olds = _redis.Search("SiteDayStat:*", 100).ToArray();
+        var olds = _redis.Search("SiteDayStat:*", 0, 100).ToArray();
         if (olds != null && olds.Length > 0) _redis.Remove(olds);
 
         var vv = new[] { Rand.Next(10000), Rand.Next(10000), Rand.Next(10, 1000) };

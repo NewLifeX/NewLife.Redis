@@ -97,7 +97,7 @@ public class BasicTest
         //var ss = ic.Search("*");
         //Assert.True(ss.Length > 0);
 
-        var ss2 = ic.Search("Company*", 10).ToArray();
+        var ss2 = ic.Search("Company*", 0, 10).ToArray();
         Assert.True(ss2.Length > 0);
 
         //var ss3 = ic.Search("ReliableQueue:Status:*", 100).ToArray();

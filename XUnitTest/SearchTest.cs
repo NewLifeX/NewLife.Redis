@@ -43,7 +43,7 @@ public class SearchTest
             //redis.Prefix=RedisConst.PlayGameKey;
             ic.Set("jinshi:member:battle-royale:play-game:" + playGameVo.MemberId, playGameVo);
         }
-        var list = ic.Search("jinshi:member:battle-royale:play-game:*", 1000).ToList();
+        var list = ic.Search("jinshi:member:battle-royale:play-game:*", 0, 1000).ToList();
         var all = ic.GetAll<String>(list);
         Assert.True(list.Count == 1000);
         Assert.False(list.Count < 1000);
