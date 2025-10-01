@@ -1,5 +1,4 @@
-﻿using System;
-using System.Buffers;
+﻿using System.Buffers;
 using System.Collections.Concurrent;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -7,7 +6,6 @@ using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using NewLife.Buffers;
-using NewLife.Caching.Buffers;
 using NewLife.Collections;
 using NewLife.Data;
 using NewLife.Log;
@@ -320,7 +318,7 @@ public class RedisClient : DisposeBase
 
         pk.Resize(n);
 
-        var reader = new BufferedReader(ms, pk, 8192);
+        var reader = new SpanReader(ms, pk, 8192);
 
         return ParseResponse(ms, count, ref reader);
     }
@@ -343,12 +341,12 @@ public class RedisClient : DisposeBase
 
         pk.Resize(n);
 
-        var reader = new BufferedReader(ms, pk, 8192);
+        var reader = new SpanReader(ms, pk, 8192);
 
         return ParseResponse(ms, count, ref reader);
     }
 
-    private IList<Object?> ParseResponse(Stream ms, Int32 count, ref BufferedReader reader)
+    private IList<Object?> ParseResponse(Stream ms, Int32 count, ref SpanReader reader)
     {
         /*
          * 响应格式
@@ -533,9 +531,9 @@ public class RedisClient : DisposeBase
         }
     }
 
-    private static IPacket? ReadBlock(ref BufferedReader reader, StringBuilder? log) => ReadPacket(ref reader, log);
+    private static IPacket? ReadBlock(ref SpanReader reader, StringBuilder? log) => ReadPacket(ref reader, log);
 
-    private Object?[] ReadBlocks(ref BufferedReader reader, StringBuilder? log)
+    private Object?[] ReadBlocks(ref SpanReader reader, StringBuilder? log)
     {
         // 结果集数量
         var len = ReadLength(ref reader);
@@ -570,7 +568,7 @@ public class RedisClient : DisposeBase
         return arr;
     }
 
-    private static IPacket? ReadPacket(ref BufferedReader reader, StringBuilder? log)
+    private static IPacket? ReadPacket(ref SpanReader reader, StringBuilder? log)
     {
         var len = ReadLength(ref reader);
         log?.Append(len);
@@ -590,7 +588,7 @@ public class RedisClient : DisposeBase
         return pk;
     }
 
-    private static String ReadLine(ref BufferedReader reader)
+    private static String ReadLine(ref SpanReader reader)
     {
         var sb = Pool.StringBuilder.Get();
         // 可能刚好一帧结束，字符串至少需要2个字符
@@ -614,7 +612,7 @@ public class RedisClient : DisposeBase
         return sb.Return(true);
     }
 
-    private static Int32 ReadLength(ref BufferedReader reader)
+    private static Int32 ReadLength(ref SpanReader reader)
     {
         Span<Char> span = stackalloc Char[32];
         var k = 0;
