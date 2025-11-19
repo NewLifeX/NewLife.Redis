@@ -176,7 +176,7 @@ public class MultipleConsumerGroupsQueue<T> : IDisposable
 
         }
 
-        Task.Run(() => getSubscribe(subscribeAppName), _Cts.Token);
+        Task.Factory.StartNew(() => getSubscribe(subscribeAppName), _Cts.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
     }
 
     /// <summary>

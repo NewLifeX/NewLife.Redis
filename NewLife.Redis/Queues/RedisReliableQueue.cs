@@ -276,7 +276,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
                 if (_delayTask == null || _delayTask.IsCompleted)
                 {
                     _source = new CancellationTokenSource();
-                    _delayTask = Task.Run(() => _delay.TransferAsync(this, null, _source.Token));
+                    _delayTask = Task.Factory.StartNew(() => _delay.TransferAsync(this, null, _source.Token), TaskCreationOptions.LongRunning);
                 }
             }
         }

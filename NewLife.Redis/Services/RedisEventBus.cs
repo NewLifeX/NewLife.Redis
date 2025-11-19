@@ -47,7 +47,7 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
         _queue = stream;
 
         if (_source != null)
-            _ = Task.Run(() => ConsumeMessage(_source));
+            _ = Task.Factory.StartNew(() => ConsumeMessage(_source), TaskCreationOptions.LongRunning);
     }
 
     /// <summary>发布消息到消息队列</summary>

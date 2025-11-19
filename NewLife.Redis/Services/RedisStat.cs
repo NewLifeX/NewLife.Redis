@@ -47,7 +47,7 @@ public class RedisStat : DisposeBase
         _redis2.Log = _redis.Log;
         _queue = _redis2.GetReliableQueue<String>(name);
         _source = new CancellationTokenSource();
-        Task.Factory.StartNew(() => _queue.ConsumeAsync<String>(OnProcess, _source.Token, null));
+        Task.Factory.StartNew(() => _queue.ConsumeAsync<String>(OnProcess, _source.Token, null), TaskCreationOptions.LongRunning);
     }
 
     /// <summary>销毁</summary>
