@@ -20,6 +20,7 @@ jobs:
           7.x
           8.x
           9.x
+          10.x
     - name: Build
       run: |
         dotnet pack -c Release -o out NewLife.Redis/NewLife.Redis.csproj

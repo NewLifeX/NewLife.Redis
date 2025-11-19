@@ -7,7 +7,7 @@
     <Description>Redis基础操作、消息队列，经过日均100亿次调用量的项目验证</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2025 新生命开发团队</Copyright>
-    <VersionPrefix>6.3</VersionPrefix>
+    <VersionPrefix>6.4</VersionPrefix>
     <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
     <Version>$(VersionPrefix).$(VersionSuffix)</Version>
     <FileVersion>$(Version)</FileVersion>
@@ -43,6 +43,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Buffers\**" />
+    <EmbeddedResource Remove="Buffers\**" />
+    <None Remove="Buffers\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Remove="Common\IPacket.cs" />
     <Compile Remove="Common\MemorySegment.cs" />
     <Compile Remove="SpanWriter.cs" />
@@ -56,7 +62,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="11.6.2025.914-beta0534" />
+    <PackageReference Include="NewLife.Core" Version="11.9.2025.1112" />
   </ItemGroup>
 
   <ItemGroup>
