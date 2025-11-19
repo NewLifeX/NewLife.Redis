@@ -92,17 +92,23 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
         {
             if (!stream.Group.IsNullOrEmpty()) stream.SetGroup(stream.Group);
 
+            var context = new RedisEventContext<TEvent>(this, null!);
             while (!cancellationToken.IsCancellationRequested)
             {
-                var msg = await stream!.TakeMessageAsync(15, cancellationToken).ConfigureAwait(false);
+                var msg = await stream.TakeMessageAsync(15, cancellationToken).ConfigureAwait(false);
                 if (msg != null)
                 {
                     var msg2 = msg.GetBody<TEvent>();
                     if (msg2 != null)
                     {
                         // 发布到事件总线
-                        await base.PublishAsync(msg2, new RedisEventContext<TEvent>(this, msg), cancellationToken).ConfigureAwait(false);
+                        context.Message = msg;
+                        await base.PublishAsync(msg2, context, cancellationToken).ConfigureAwait(false);
+                        context.Message = null!;
                     }
+
+                    // 确认消息
+                    stream.Acknowledge(msg.Id!);
                 }
                 else
                 {
