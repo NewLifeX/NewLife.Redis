@@ -233,6 +233,117 @@ public class RedisTest
         Assert.True(Math.Round(45.6d + 2.2d - ic.Get<Double>(key2), 4) < 0.0001);
     }
 
+    [Fact(DisplayName = "累加并获取TTL")]
+    public void IncrementWithTtl()
+    {
+        var ic = _redis;
+        var key = "IncrWithTtl_" + Rand.Next();
+
+        // 删除旧键
+        ic.Remove(key);
+
+        // 不存在的键，累加后TTL应为-1（永不过期）
+        var (val1, ttl1) = ic.IncrementWithTtl(key, 1);
+        Assert.Equal(1, val1);
+        Assert.Equal(-1, ttl1);
+
+        // 设置过期时间
+        ic.SetExpire(key, TimeSpan.FromSeconds(60));
+
+        // 再次累加，TTL应该接近60秒
+        var (val2, ttl2) = ic.IncrementWithTtl(key, 5);
+        Assert.Equal(6, val2);
+        Assert.True(ttl2 > 50 && ttl2 <= 60, $"TTL应在50-60秒之间，实际为{ttl2}");
+
+        // 累加10
+        var (val3, ttl3) = ic.IncrementWithTtl(key, 10);
+        Assert.Equal(16, val3);
+        Assert.True(ttl3 > 0 && ttl3 <= 60);
+
+        // 清理
+        ic.Remove(key);
+    }
+
+    [Fact(DisplayName = "累加Double并获取TTL")]
+    public void IncrementDoubleWithTtl()
+    {
+        var ic = _redis;
+        var key = "IncrDoubleWithTtl_" + Rand.Next();
+
+        // 删除旧键
+        ic.Remove(key);
+
+        // 不存在的键，累加后TTL应为-1（永不过期）
+        var (val1, ttl1) = ic.IncrementWithTtl(key, 1.5);
+        Assert.True(Math.Abs(val1 - 1.5) < 0.0001);
+        Assert.Equal(-1, ttl1);
+
+        // 设置过期时间
+        ic.SetExpire(key, TimeSpan.FromSeconds(60));
+
+        // 再次累加，TTL应该接近60秒
+        var (val2, ttl2) = ic.IncrementWithTtl(key, 2.5);
+        Assert.True(Math.Abs(val2 - 4.0) < 0.0001);
+        Assert.True(ttl2 > 50 && ttl2 <= 60, $"TTL应在50-60秒之间，实际为{ttl2}");
+
+        // 清理
+        ic.Remove(key);
+    }
+
+    [Fact(DisplayName = "递减并获取TTL")]
+    public void DecrementWithTtl()
+    {
+        var ic = _redis;
+        var key = "DecrWithTtl_" + Rand.Next();
+
+        // 删除旧键
+        ic.Remove(key);
+
+        // 先设置初始值
+        ic.Set(key, 100);
+        ic.SetExpire(key, TimeSpan.FromSeconds(60));
+
+        // 递减并获取TTL
+        var (val1, ttl1) = ic.DecrementWithTtl(key, 1);
+        Assert.Equal(99, val1);
+        Assert.True(ttl1 > 50 && ttl1 <= 60, $"TTL应在50-60秒之间，实际为{ttl1}");
+
+        // 递减10
+        var (val2, ttl2) = ic.DecrementWithTtl(key, 10);
+        Assert.Equal(89, val2);
+        Assert.True(ttl2 > 0 && ttl2 <= 60);
+
+        // 清理
+        ic.Remove(key);
+    }
+
+    [Fact(DisplayName = "递减Double并获取TTL")]
+    public void DecrementDoubleWithTtl()
+    {
+        var ic = _redis;
+        var key = "DecrDoubleWithTtl_" + Rand.Next();
+
+        // 删除旧键
+        ic.Remove(key);
+
+        // 先设置初始值
+        ic.Set(key, 100.0);
+        ic.SetExpire(key, TimeSpan.FromSeconds(60));
+
+        // 递减并获取TTL
+        var (val1, ttl1) = ic.DecrementWithTtl(key, 1.5);
+        Assert.True(Math.Abs(val1 - 98.5) < 0.0001);
+        Assert.True(ttl1 > 50 && ttl1 <= 60, $"TTL应在50-60秒之间，实际为{ttl1}");
+
+        // 递减10.5
+        var (val2, ttl2) = ic.DecrementWithTtl(key, 10.5);
+        Assert.True(Math.Abs(val2 - 88.0) < 0.0001);
+        Assert.True(ttl2 > 0 && ttl2 <= 60);
+
+        // 清理
+        ic.Remove(key);
+    }
+
     [TestOrder(14)]
     [Fact(DisplayName = "复杂对象")]
     public void TestObject()

@@ -1001,6 +1001,65 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <returns></returns>
     public override Double Increment(String key, Double value) => Execute(key, (rds, k) => rds.Execute<Double>("INCRBYFLOAT", k, value), true);
 
+    /// <summary>累加并获取过期时间，原子操作，单次往返</summary>
+    /// <remarks>
+    /// 使用 Pipeline 将 INCR/INCRBY 和 TTL 合并为一次网络往返，减少延迟。
+    /// 适用于需要同时获取累加结果和剩余过期时间的场景，如限流计数器。
+    /// </remarks>
+    /// <param name="key">键</param>
+    /// <param name="value">变化量</param>
+    /// <returns>元组，Item1为累加后的值，Item2为剩余过期时间（秒），-1表示永不过期，-2表示键不存在</returns>
+    public virtual (Int64 Value, Int32 Ttl) IncrementWithTtl(String key, Int64 value = 1)
+    {
+        // 使用 Execute 直接在 RedisClient 上执行 Pipeline，确保单次往返
+        return Execute(key, (rds, k) =>
+        {
+            rds.StartPipeline();
+            if (value == 1)
+                rds.Execute<Int64>("INCR", k);
+            else
+                rds.Execute<Int64>("INCRBY", k, value);
+            rds.Execute<Int32>("TTL", k);
+
+            var results = rds.StopPipeline(true);
+            if (results == null || results.Length < 2)
+                return (0L, -2);
+
+            var incrResult = results[0] is Int64 v ? v : Convert.ToInt64(results[0]);
+            var ttlResult = results[1] is Int32 t ? t : Convert.ToInt32(results[1]);
+
+            return (incrResult, ttlResult);
+        }, true);
+    }
+
+    /// <summary>累加并获取过期时间，原子操作，单次往返</summary>
+    /// <remarks>
+    /// 使用 Pipeline 将 INCRBYFLOAT 和 TTL 合并为一次网络往返，减少延迟。
+    /// 适用于需要同时获取累加结果和剩余过期时间的场景。
+    /// </remarks>
+    /// <param name="key">键</param>
+    /// <param name="value">变化量</param>
+    /// <returns>元组，Item1为累加后的值，Item2为剩余过期时间（秒），-1表示永不过期，-2表示键不存在</returns>
+    public virtual (Double Value, Int32 Ttl) IncrementWithTtl(String key, Double value)
+    {
+        // 使用 Execute 直接在 RedisClient 上执行 Pipeline，确保单次往返
+        return Execute(key, (rds, k) =>
+        {
+            rds.StartPipeline();
+            rds.Execute<Double>("INCRBYFLOAT", k, value);
+            rds.Execute<Int32>("TTL", k);
+
+            var results = rds.StopPipeline(true);
+            if (results == null || results.Length < 2)
+                return (0d, -2);
+
+            var incrResult = results[0] is Double v ? v : Convert.ToDouble(results[0]);
+            var ttlResult = results[1] is Int32 t ? t : Convert.ToInt32(results[1]);
+
+            return (incrResult, ttlResult);
+        }, true);
+    }
+
     /// <summary>递减，原子操作</summary>
     /// <param name="key">键</param>
     /// <param name="value">变化量</param>
@@ -1018,6 +1077,47 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <param name="value">变化量</param>
     /// <returns></returns>
     public override Double Decrement(String key, Double value) => Increment(key, -value);
+
+    /// <summary>递减并获取过期时间，原子操作，单次往返</summary>
+    /// <remarks>
+    /// 使用 Pipeline 将 DECR/DECRBY 和 TTL 合并为一次网络往返，减少延迟。
+    /// 适用于需要同时获取递减结果和剩余过期时间的场景。
+    /// </remarks>
+    /// <param name="key">键</param>
+    /// <param name="value">变化量</param>
+    /// <returns>元组，Item1为递减后的值，Item2为剩余过期时间（秒），-1表示永不过期，-2表示键不存在</returns>
+    public virtual (Int64 Value, Int32 Ttl) DecrementWithTtl(String key, Int64 value = 1)
+    {
+        // 使用 Execute 直接在 RedisClient 上执行 Pipeline，确保单次往返
+        return Execute(key, (rds, k) =>
+        {
+            rds.StartPipeline();
+            if (value == 1)
+                rds.Execute<Int64>("DECR", k);
+            else
+                rds.Execute<Int64>("DECRBY", k, value);
+            rds.Execute<Int32>("TTL", k);
+
+            var results = rds.StopPipeline(true);
+            if (results == null || results.Length < 2)
+                return (0L, -2);
+
+            var decrResult = results[0] is Int64 v ? v : Convert.ToInt64(results[0]);
+            var ttlResult = results[1] is Int32 t ? t : Convert.ToInt32(results[1]);
+
+            return (decrResult, ttlResult);
+        }, true);
+    }
+
+    /// <summary>递减并获取过期时间，原子操作，单次往返</summary>
+    /// <remarks>
+    /// 使用 Pipeline 将 INCRBYFLOAT（负数）和 TTL 合并为一次网络往返，减少延迟。
+    /// 适用于需要同时获取递减结果和剩余过期时间的场景。
+    /// </remarks>
+    /// <param name="key">键</param>
+    /// <param name="value">变化量</param>
+    /// <returns>元组，Item1为递减后的值，Item2为剩余过期时间（秒），-1表示永不过期，-2表示键不存在</returns>
+    public virtual (Double Value, Int32 Ttl) DecrementWithTtl(String key, Double value) => IncrementWithTtl(key, -value);
     #endregion
 
     #region 性能测试
