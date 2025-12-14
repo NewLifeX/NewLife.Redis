@@ -88,12 +88,13 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
         DefaultSpan.Current = null;
         var cancellationToken = source.Token;
         var stream = _queue!;
-        try
-        {
-            if (!stream.Group.IsNullOrEmpty()) stream.SetGroup(stream.Group);
+        if (!stream.Group.IsNullOrEmpty()) stream.SetGroup(stream.Group);
 
-            var context = new RedisEventContext<TEvent>(this, null!);
-            while (!cancellationToken.IsCancellationRequested)
+        var context = new RedisEventContext<TEvent>(this, null!);
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            // try-catch 放在循环内，避免单次异常退出循环
+            try
             {
                 var msg = await stream.TakeMessageAsync(15, cancellationToken).ConfigureAwait(false);
                 if (msg != null)
@@ -115,17 +116,24 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
                     await Task.Delay(1_000, cancellationToken).ConfigureAwait(false);
                 }
             }
+            catch (ThreadAbortException) { break; }
+            catch (ThreadInterruptedException) { break; }
+            catch (TaskCanceledException) { }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                if (cancellationToken.IsCancellationRequested) break;
+
+                XTrace.WriteException(ex);
+            }
         }
-        catch (TaskCanceledException) { }
-        catch (OperationCanceledException) { }
-        catch (Exception ex)
+
+        // 通知取消
+        try
         {
-            XTrace.WriteException(ex);
+            if (!source.IsCancellationRequested) source.Cancel();
         }
-        finally
-        {
-            source.Cancel();
-            _queue = null;
-        }
+        catch (ObjectDisposedException) { }
+        _queue = null;
     }
 }

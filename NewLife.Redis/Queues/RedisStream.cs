@@ -938,8 +938,11 @@ XREAD count 3 streams stream_key 0-0
                     {
                         for (var i = 0; i < bodys.Length; i++)
                         {
-                            if (bodys[i].EqualIgnoreCase("traceParent") && i + 1 < bodys.Length)
+                            if (bodys[i].EqualIgnoreCase("traceParent", "traceId") && i + 1 < bodys.Length)
+                            {
                                 span.Detach(bodys[i + 1]);
+                                break;
+                            }
                         }
                     }
 
@@ -1035,12 +1038,15 @@ XREAD count 3 streams stream_key 0-0
 
                     // 串联上下游调用链。取第一个消息
                     var bodys = mqMsgs[0].Body;
-                    if (bodys != null)
+                    if (span != null && bodys != null)
                     {
                         for (var i = 0; i < bodys.Length; i++)
                         {
-                            if (bodys[i].EqualIgnoreCase("traceParent") && i + 1 < bodys.Length)
-                                span?.Detach(bodys[i + 1]);
+                            if (bodys[i].EqualIgnoreCase("traceParent", "traceId") && i + 1 < bodys.Length)
+                            {
+                                span.Detach(bodys[i + 1]);
+                                break;
+                            }
                         }
                     }
 

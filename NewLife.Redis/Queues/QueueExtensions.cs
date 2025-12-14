@@ -184,7 +184,11 @@ public static class QueueExtensions
                     var dic = rds.JsonHost.Decode(mqMsg)!;
                     var msg = rds.JsonHost.Convert<T>(dic);
 
-                    if (dic.TryGetValue("traceParent", out var tp)) span?.Detach(tp + "");
+                    if (span != null)
+                    {
+                        if (dic.TryGetValue("traceParent", out var tp)) span.Detach(tp + "");
+                        if (msg is ITraceMessage tm && !tm.TraceId.IsNullOrEmpty()) span.Detach(tm.TraceId);
+                    }
 
                     // 消息标识
                     foreach (var item in ids)
