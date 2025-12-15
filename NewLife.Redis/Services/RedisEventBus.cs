@@ -59,7 +59,11 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
     /// <param name="cancellationToken">取消令牌</param>
     public override Task<Int32> PublishAsync(TEvent @event, IEventContext<TEvent>? context = null, CancellationToken cancellationToken = default)
     {
+        // 待发布消息增加追踪标识
+        if (@event is ITraceMessage tm && tm.TraceId.IsNullOrEmpty()) tm.TraceId = DefaultSpan.Current?.ToString();
+
         Init();
+    
         var rs = _queue.Add(@event);
 
         return Task.FromResult(1);

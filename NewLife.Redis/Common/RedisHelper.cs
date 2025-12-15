@@ -18,6 +18,13 @@ public static class RedisHelper
         // 消息为空或者特殊类型，不接受注入
         if (msg == null || msg is Byte[] || msg is IPacket) return msg;
 
+        // 待发布消息增加追踪标识
+        if (msg is ITraceMessage tm)
+        {
+            if (!tm.TraceId.IsNullOrEmpty()) tm.TraceId = DefaultSpan.Current?.ToString();
+            return msg;
+        }
+
         // 字符串或复杂类型以外的消息，不接受注入
         var code = Type.GetTypeCode(msg.GetType());
         if (code != TypeCode.String && code != TypeCode.Object) return msg;
