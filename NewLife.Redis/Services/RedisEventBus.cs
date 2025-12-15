@@ -21,6 +21,9 @@ public class RedisEventContext<TEvent>(IEventBus<TEvent> eventBus, Queues.Messag
 public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) : EventBus<TEvent>
 {
     private RedisStream<TEvent>? _queue;
+    /// <summary>队列。默认RedisStream实现，借助队列重试机制来确保业务成功</summary>
+    public IProducerConsumer<TEvent> Queue => _queue!;
+
     private CancellationTokenSource? _source;
 
     /// <summary>销毁</summary>
