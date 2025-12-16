@@ -18,11 +18,14 @@ public class RedisEventContext<TEvent>(IEventBus<TEvent> eventBus, Queues.Messag
 /// <summary>Redis事件总线</summary>
 /// <typeparam name="TEvent"></typeparam>
 /// <remarks>实例化消息队列事件总线</remarks>
-public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) : EventBus<TEvent>
+public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) : EventBus<TEvent>, ITracerFeature
 {
     private RedisStream<TEvent>? _queue;
     /// <summary>队列。默认RedisStream实现，借助队列重试机制来确保业务成功</summary>
     public IProducerConsumer<TEvent> Queue => _queue!;
+
+    /// <summary>链路追踪</summary>
+    public ITracer? Tracer { get; set; }
 
     private CancellationTokenSource? _source;
 
@@ -40,6 +43,8 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
     protected virtual void Init()
     {
         if (_queue != null) return;
+
+        Tracer ??= (cache as ITracerFeature)?.Tracer;
 
         // 创建Stream队列，指定消费组，从最后位置开始消费
         var stream = cache.GetStream<TEvent>(topic);
@@ -63,7 +68,7 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
         if (@event is ITraceMessage tm && tm.TraceId.IsNullOrEmpty()) tm.TraceId = DefaultSpan.Current?.ToString();
 
         Init();
-    
+
         var rs = _queue.Add(@event);
 
         return Task.FromResult(1);
@@ -96,19 +101,24 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
         var cancellationToken = source.Token;
         var stream = _queue!;
         if (!stream.Group.IsNullOrEmpty()) stream.SetGroup(stream.Group);
+        var timeout = stream.BlockTime;
 
         var context = new RedisEventContext<TEvent>(this, null!);
         while (!cancellationToken.IsCancellationRequested)
         {
             // try-catch 放在循环内，避免单次异常退出循环
+            ISpan? span = null;
             try
             {
-                var msg = await stream.TakeMessageAsync(15, cancellationToken).ConfigureAwait(false);
+                var msg = await stream.TakeMessageAsync(timeout, cancellationToken).ConfigureAwait(false);
                 if (msg != null)
                 {
                     var msg2 = msg.GetBody<TEvent>();
                     if (msg2 != null)
                     {
+                        span = Tracer?.NewSpan($"event:{topic}", msg);
+                        if (span != null && msg is ITraceMessage tm) span.Detach(tm.TraceId);
+
                         // 发布到事件总线
                         context.Message = msg;
                         await base.PublishAsync(msg2, context, cancellationToken).ConfigureAwait(false);
@@ -127,11 +137,24 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
             catch (ThreadInterruptedException) { break; }
             catch (TaskCanceledException) { }
             catch (OperationCanceledException) { }
+            catch (RedisException ex)
+            {
+                span?.SetError(ex, null);
+
+                // 消费组不存在时，自动创建消费组。可能是Redis重启或者主从切换等原因，导致消费组丢失
+                if (!group.IsNullOrEmpty() && ex.Message.StartsWithIgnoreCase("NOGROUP"))
+                    stream.SetGroup(group);
+            }
             catch (Exception ex)
             {
                 if (cancellationToken.IsCancellationRequested) break;
 
+                span?.SetError(ex);
                 XTrace.WriteException(ex);
+            }
+            finally
+            {
+                span?.Dispose();
             }
         }
 
