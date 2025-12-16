@@ -69,7 +69,7 @@ public class PubSub : RedisBase
             if (rs != null && rs.Length == 3 && rs[0] == "message") onMessage(rs[1], rs[2]);
         }
 
-        await client.ExecuteAsync<String[]>("SUBSCRIBE", channels, cancellationToken).ConfigureAwait(false);
+        await client.ExecuteAsync<String[]>("UNSUBSCRIBE", channels, cancellationToken).ConfigureAwait(false);
 
         Redis.Pool.Return(client);
     }
