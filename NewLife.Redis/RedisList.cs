@@ -41,7 +41,7 @@ public class RedisList<T> : RedisBase, IList<T>
     public Int32 AddRange(IEnumerable<T> values) => RPUSH(values);
 
     /// <summary>清空列表-start>end 清空</summary>
-    public void Clear() => LTrim(-1, 0);
+    public void Clear() => LTrim(0, -1);
 
     /// <summary>是否包含指定元素</summary>
     /// <param name="item"></param>
