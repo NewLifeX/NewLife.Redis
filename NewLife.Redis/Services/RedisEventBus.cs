@@ -6,10 +6,10 @@ using System.Diagnostics.CodeAnalysis;
 namespace NewLife.Caching.Services;
 
 /// <summary>Redis事件上下文</summary>
-public class RedisEventContext<TEvent>(IEventBus<TEvent> eventBus, Queues.Message message) : IEventContext<TEvent>
+public class RedisEventContext(IEventBus eventBus, Queues.Message message) : IEventContext
 {
     /// <summary>事件总线</summary>
-    public IEventBus<TEvent> EventBus { get; set; } = eventBus;
+    public IEventBus EventBus { get; set; } = eventBus;
 
     /// <summary>原始消息</summary>
     public Queues.Message Message { get; set; } = message;
@@ -57,7 +57,7 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
     /// <param name="event">事件</param>
     /// <param name="context">上下文</param>
     /// <param name="cancellationToken">取消令牌</param>
-    public override Task<Int32> PublishAsync(TEvent @event, IEventContext<TEvent>? context = null, CancellationToken cancellationToken = default)
+    public override Task<Int32> PublishAsync(TEvent @event, IEventContext? context = null, CancellationToken cancellationToken = default)
     {
         // 待发布消息增加追踪标识
         if (@event is ITraceMessage tm && tm.TraceId.IsNullOrEmpty()) tm.TraceId = DefaultSpan.Current?.ToString();
@@ -97,7 +97,7 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
         var stream = _queue!;
         if (!stream.Group.IsNullOrEmpty()) stream.SetGroup(stream.Group);
 
-        var context = new RedisEventContext<TEvent>(this, null!);
+        var context = new RedisEventContext(this, null!);
         while (!cancellationToken.IsCancellationRequested)
         {
             // try-catch 放在循环内，避免单次异常退出循环
