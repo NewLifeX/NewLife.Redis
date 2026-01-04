@@ -32,6 +32,9 @@ public class StreamInfo
 
     /// <summary>最后一个消息</summary>
     public String[]? LastValues { get; set; }
+
+    /// <summary>最后生成时间</summary>
+    public DateTime LastGenerated { get; set; }
     #endregion
 
     #region 方法
@@ -54,18 +57,31 @@ public class StreamInfo
                     if (value is Object[] fs)
                     {
                         if (fs[0] is IPacket pk) FirstId = pk.ToStr();
-                        if (fs[1] is Object[] objs) FirstValues = objs.Select(e => (e as IPacket)?.ToStr()).ToArray();
+                        if (fs[1] is Object[] objs) FirstValues = objs.Select(e => (e as IPacket)?.ToStr() ?? String.Empty).ToArray();
                     }
                     break;
                 case "last-entry":
                     if (value is Object[] ls)
                     {
                         if (ls[0] is IPacket pk) LastId = pk.ToStr();
-                        if (ls[1] is Object[] objs) LastValues = objs.Select(e => (e as IPacket)?.ToStr()).ToArray();
+                        if (ls[1] is Object[] objs) LastValues = objs.Select(e => (e as IPacket)?.ToStr() ?? String.Empty).ToArray();
                     }
                     break;
             }
         }
+
+        var last = LastGeneratedId;
+        if (!last.IsNullOrEmpty())
+        {
+            var p = last.IndexOf('-');
+            if (p > 0) last = last.Substring(0, p);
+
+            LastGenerated = last.ToLong().ToDateTime().ToLocalTime();
+        }
     }
+
+    ///// <summary>已重载。</summary>
+    ///// <returns></returns>
+    //public override String? ToString() => Name;
     #endregion
 }

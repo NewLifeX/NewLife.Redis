@@ -64,6 +64,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
     private Int32 _setGroupId;
     private Int32 _claims;
     private TimerX? _timer;
+    private Dictionary<String, DateTime> _idleGroups = [];
     #endregion
 
     #region 构造
@@ -247,7 +248,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
                 if (rs2 != null && rs2.Count > 0)
                 {
                     _claims -= rs2.Count;
-                    XTrace.WriteLine("[{0}]优先处理历史：{1}", group, rs2.Join(",", e => e.Id));
+                    Redis.WriteLog("[{0}]优先处理历史：{1}", group, rs2.Join(",", e => e.Id));
 
                     foreach (var item in rs2)
                     {
@@ -332,7 +333,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
                 if (rs2 != null && rs2.Count > 0)
                 {
                     _claims -= rs2.Count;
-                    XTrace.WriteLine("[{0}]优先处理历史：{1}", group, rs2.Join(",", e => e.Id));
+                    Redis.WriteLog("[{0}]优先处理历史：{1}", group, rs2.Join(",", e => e.Id));
 
                     return rs2;
                 }
@@ -360,7 +361,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
                 rs = await ReadGroupAsync(group, Consumer, count, 3_000, "0", cancellationToken).ConfigureAwait(false);
                 if (rs == null || rs.Count == 0) return null;
 
-                XTrace.WriteLine("[{0}]处理历史：{1}", group, rs.Join(",", e => e.Id));
+                Redis.WriteLog("[{0}]处理历史：{1}", group, rs.Join(",", e => e.Id));
 
                 return rs;
             }
@@ -445,7 +446,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
                             var msg = item.ToJson();
                             using var span2 = tracer?.NewSpan($"redismq:{Key}:Delete", msg);
 
-                            XTrace.WriteLine("[{0}]删除多次失败死信（当前消费者）：{1}", group, msg);
+                            Redis.WriteLog("[{0}]删除多次失败死信（当前消费者）：{1}", group, msg);
                             Ack(group, item.Id);
                         }
                     }
@@ -456,7 +457,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
                             var msg = item.ToJson();
                             using var span2 = tracer?.NewSpan($"redismq:{Key}:Delete", msg);
 
-                            XTrace.WriteLine("[{0}]删除多次失败死信：{1}", group, msg);
+                            Redis.WriteLog("[{0}]删除多次失败死信：{1}", group, msg);
                             Claim(group, Consumer, item.Id, msIdle);
                             Ack(group, item.Id);
                         }
@@ -465,7 +466,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
                             var msg = item.ToJson();
                             using var span2 = tracer?.NewSpan($"redismq:{Key}:Rollback", msg);
 
-                            XTrace.WriteLine("[{0}]定时回滚：{1}", group, msg);
+                            Redis.WriteLog("[{0}]定时回滚：{1}", group, msg);
                             // 抢夺消息，所有者更改为当前消费者，Idle从零开始计算。这些消息需要尽快得到处理，否则会再次过期
                             Claim(group, Consumer, item.Id, msIdle);
 
@@ -491,10 +492,43 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
                 // 删除没有挂起消费项且超1小时不活跃的消费者
                 foreach (var item in consumers)
                 {
-                    if (item.Pending == 0 && item.Idle > 3600_000 && !item.Name.IsNullOrEmpty())
+                    if (item.Name.IsNullOrEmpty()) continue;
+                    if (item.Pending == 0 && item.Idle > 3600_000)
                     {
-                        XTrace.WriteLine("[{0}]删除空闲消费者：{1}", group, item.ToJson());
+                        Redis.WriteLog("[{0}]删除空闲消费者：{1}", group, item.ToJson());
                         GroupDeleteConsumer(group, item.Name);
+                    }
+                }
+            }
+
+            // 清理历史空闲消费组
+            var groups = GetGroups();
+            if (groups != null)
+            {
+                span?.AppendTag(groups);
+
+                // 删除超期没有使用的消费组
+                var expireTime = now - Expire;
+                foreach (var item in groups)
+                {
+                    if (item.Name.IsNullOrEmpty()) continue;
+                    if (item.LastDelivered < expireTime)
+                    {
+                        // 第一次发现，记录时间
+                        if (item.LastDelivered.Year > 1970 || _idleGroups.TryGetValue(item.Name, out var time) && time >= now)
+                        {
+                            Redis.WriteLog("[{0}]删除空闲消费组：{1}", Key, item.ToJson());
+                            GroupDestroy(item.Name);
+                        }
+                        else
+                        {
+#if NETSTANDARD2_1 || NETCOREAPP
+                            _idleGroups.TryAdd(item.Name, now.AddDays(1));
+#else
+                            if (!_idleGroups.ContainsKey(item.Name))
+                                _idleGroups.Add(item.Name, now.AddDays(1));
+#endif
+                        }
                     }
                 }
             }
@@ -892,6 +926,20 @@ XREAD count 3 streams stream_key 0-0
 
         return cs.ToArray();
     }
+
+    /// <summary>显示队列信息</summary>
+    public void ShowInfo()
+    {
+        var topic = Key;
+        var sinf = GetInfo();
+        if (sinf != null)
+            Redis.WriteLog("队列[{0}]现有数据：{1}，消费组：{2}，最后消息时间：{3}", topic, sinf.Length, sinf.Groups, sinf.LastGenerated);
+
+        var group = Group;
+        var ginf = GetGroups()?.FirstOrDefault(e => e.Name.EqualIgnoreCase(group));
+        if (ginf != null)
+            Redis.WriteLog("消费组[{0}]现有消费者：{1}，最后消费时间：{3}，挂起：{4}", ginf.Name, ginf.Consumers, ginf.LastDelivered, ginf.Pending);
+    }
     #endregion
 
     #region 大循环
@@ -908,14 +956,14 @@ XREAD count 3 streams stream_key 0-0
         var topic = Key;
         if (topic.IsNullOrEmpty()) topic = GetType().Name;
 
+        // 超时时间，用于阻塞等待
+        var timeout = BlockTime;
         var group = Group;
-        XTrace.WriteLine("开始消费[{0}]，Group={1}，BlockTime={2}", topic, group, BlockTime);
+        Redis.WriteLog("开始消费[{0}]，消费组：{1}，阻塞时间：{2}秒，最大重试消费：{3}次，消息保存：{4}", topic, group, timeout, MaxRetry, Expire);
+        ShowInfo();
 
         // 自动创建消费组
         if (!group.IsNullOrEmpty()) SetGroup(group);
-
-        // 超时时间，用于阻塞等待
-        var timeout = BlockTime;
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -948,6 +996,7 @@ XREAD count 3 streams stream_key 0-0
 
                     // 解码
                     var msg = mqMsg.GetBody<T>();
+                    if (span != null && msg is ITraceMessage tm) span.Detach(tm.TraceId);
 
                     // 处理消息
                     if (msg != null) await onMessage(msg, mqMsg, cancellationToken).ConfigureAwait(false);
@@ -983,7 +1032,7 @@ XREAD count 3 streams stream_key 0-0
             }
         }
 
-        XTrace.WriteLine("消费[{0}]结束", topic);
+        Redis.WriteLog("消费[{0}]结束", topic);
     }
 
     /// <summary>队列消费大循环，处理消息后自动确认</summary>
@@ -1016,7 +1065,8 @@ XREAD count 3 streams stream_key 0-0
         if (batchSize <= 0) batchSize = 100;
 
         var group = Group;
-        XTrace.WriteLine("开始批量消费[{0}]，Group={1}，BlockTime={2}，BatchSize={3}", topic, group, BlockTime, batchSize);
+        Redis.WriteLog("开始批量消费[{0}]，消费组：{1}，阻塞时间：{2}秒，最大重试消费：{3}次，消息保存：{4}，批大小：{5}", topic, group, timeout, MaxRetry, Expire, batchSize);
+        ShowInfo();
 
         // 自动创建消费组
         if (!group.IsNullOrEmpty()) SetGroup(group);
@@ -1087,7 +1137,7 @@ XREAD count 3 streams stream_key 0-0
             }
         }
 
-        XTrace.WriteLine("批量消费[{0}]结束", topic);
+        Redis.WriteLog("批量消费[{0}]结束", topic);
     }
 
     /// <summary>队列批量消费大循环，批量处理消息后自动确认</summary>

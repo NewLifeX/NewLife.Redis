@@ -36,5 +36,9 @@ public class ConsumerInfo
             }
         }
     }
+
+    /// <summary>已重载。</summary>
+    /// <returns></returns>
+    public override String? ToString() => Name;
     #endregion
 }

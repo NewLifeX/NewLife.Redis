@@ -14,6 +14,12 @@ public class GroupInfo
 
     /// <summary>挂起数</summary>
     public Int32 Pending { get; set; }
+
+    /// <summary>最后消费Id</summary>
+    public String? LastDeliveredId { get; set; }
+
+    /// <summary>最后消费时间</summary>
+    public DateTime LastDelivered { get; private set; }
     #endregion
 
     #region 方法
@@ -26,13 +32,28 @@ public class GroupInfo
             var key = (vs[i] as IPacket)!.ToStr();
             if (key.IsNullOrEmpty()) continue;
 
+            var value = vs[i + 1];
             switch (key)
             {
-                case "name": Name = (vs[i + 1] as IPacket)?.ToStr(); break;
-                case "consumers": Consumers = vs[i + 1].ToInt(); break;
-                case "pending": Pending = vs[i + 1].ToInt(); break;
+                case "name": Name = (value as IPacket)?.ToStr(); break;
+                case "consumers": Consumers = value.ToInt(); break;
+                case "pending": Pending = value.ToInt(); break;
+                case "last-delivered-id": LastDeliveredId = (value as IPacket)?.ToStr(); break;
             }
         }
+
+        var last = LastDeliveredId;
+        if (!last.IsNullOrEmpty())
+        {
+            var p = last.IndexOf('-');
+            if (p > 0) last = last.Substring(0, p);
+
+            LastDelivered = last.ToLong().ToDateTime().ToLocalTime();
+        }
     }
+
+    /// <summary>已重载。</summary>
+    /// <returns></returns>
+    public override String? ToString() => Name;
     #endregion
 }
