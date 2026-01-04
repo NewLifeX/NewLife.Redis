@@ -649,6 +649,22 @@ public class FullRedis : Redis
 
     /// <summary>获取事件总线</summary>
     public override IEventBus<T> GetEventBus<T>(String topic, String clientId = "") => new RedisEventBus<T>(this, topic, clientId);
+
+    /// <summary>创建事件总线，可发布消息或订阅消息</summary>
+    /// <typeparam name="TEvent">事件类型</typeparam>
+    /// <param name="topic">事件主题</param>
+    /// <param name="clientId">客户标识/消息分组</param>
+    /// <returns></returns>
+    public override IEventBus<TEvent> CreateEventBus<TEvent>(String topic, String clientId = "")
+    {
+        var bus = new RedisEventBus<TEvent>(this, topic, clientId)
+        {
+            Tracer = Tracer,
+            Log = Log
+        };
+
+        return bus;
+    }
     #endregion
 
     #region 字符串操作

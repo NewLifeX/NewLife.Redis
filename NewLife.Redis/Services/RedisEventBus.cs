@@ -1,18 +1,19 @@
-﻿using NewLife.Caching.Queues;
+﻿using System.Diagnostics.CodeAnalysis;
+using NewLife.Caching.Queues;
 using NewLife.Log;
 using NewLife.Messaging;
-using System.Diagnostics.CodeAnalysis;
+using Message = NewLife.Caching.Queues.Message;
 
 namespace NewLife.Caching.Services;
 
 /// <summary>Redis事件上下文</summary>
-public class RedisEventContext(IEventBus eventBus, Queues.Message message) : IEventContext
+public class RedisEventContext(IEventBus eventBus, Message message) : IEventContext
 {
     /// <summary>事件总线</summary>
     public IEventBus EventBus { get; set; } = eventBus;
 
     /// <summary>原始消息</summary>
-    public Queues.Message Message { get; set; } = message;
+    public Message Message { get; set; } = message;
 }
 
 /// <summary>Redis事件总线</summary>
@@ -27,6 +28,7 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
     /// <summary>链路追踪</summary>
     public ITracer? Tracer { get; set; }
 
+    private RedisEventContext? _context;
     private CancellationTokenSource? _source;
 
     /// <summary>销毁</summary>
@@ -55,7 +57,8 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
         _queue = stream;
 
         if (_source != null)
-            _ = Task.Factory.StartNew(() => ConsumeMessage(_source), TaskCreationOptions.LongRunning);
+            //_ = Task.Factory.StartNew(() => ConsumeMessage(_source), TaskCreationOptions.LongRunning);
+            _ = stream.ConsumeAsync(OnMessage, _source.Token);
     }
 
     /// <summary>发布消息到消息队列</summary>
@@ -90,6 +93,20 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
 
         // 本进程订阅。从队列中消费到消息时，会发布到本进程的事件总线，这里订阅可以让目标处理器直接收到消息
         return base.Subscribe(handler, clientId);
+    }
+
+    /// <summary>消费到事件消息，分发给内部订阅者</summary>
+    /// <param name="event"></param>
+    /// <param name="message"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    protected virtual async Task OnMessage(TEvent @event, Message message, CancellationToken cancellationToken)
+    {
+        // 发布到事件总线
+        _context ??= new RedisEventContext(this, null!);
+        _context.Message = message;
+        await base.PublishAsync(@event, _context, cancellationToken).ConfigureAwait(false);
+        _context.Message = null!;
     }
 
     /// <summary>从队列中消费消息，经事件总线送给设备会话</summary>
