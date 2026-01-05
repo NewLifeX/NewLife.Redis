@@ -512,10 +512,10 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
                 foreach (var item in groups)
                 {
                     if (item.Name.IsNullOrEmpty()) continue;
-                    if (item.LastDelivered < expireTime)
+                    if (item.LastDelivered < expireTime && item.Consumers == 0)
                     {
                         // 第一次发现，记录时间
-                        if (item.LastDelivered.Year > 1970 || _idleGroups.TryGetValue(item.Name, out var time) && time >= now)
+                        if (item.LastDelivered.Year > 1970 || _idleGroups.TryGetValue(item.Name, out var time) && time <= now)
                         {
                             Redis.WriteLog("[{0}]删除空闲消费组：{1}", Key, item.ToJson());
                             GroupDestroy(item.Name);
