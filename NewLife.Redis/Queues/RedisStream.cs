@@ -938,7 +938,7 @@ XREAD count 3 streams stream_key 0-0
         var group = Group;
         var ginf = GetGroups()?.FirstOrDefault(e => e.Name.EqualIgnoreCase(group));
         if (ginf != null)
-            Redis.WriteLog("消费组[{0}]现有消费者：{1}，最后消费时间：{3}，挂起：{4}", ginf.Name, ginf.Consumers, ginf.LastDelivered, ginf.Pending);
+            Redis.WriteLog("消费组[{0}]现有消费者：{1}，最后消费时间：{2}，挂起：{3}", ginf.Name, ginf.Consumers, ginf.LastDelivered, ginf.Pending);
     }
     #endregion
 
@@ -960,10 +960,11 @@ XREAD count 3 streams stream_key 0-0
         var timeout = BlockTime;
         var group = Group;
         Redis.WriteLog("开始消费[{0}]，消费组：{1}，阻塞时间：{2}秒，最大重试消费：{3}次，消息保存：{4}", topic, group, timeout, MaxRetry, Expire);
-        ShowInfo();
 
         // 自动创建消费组
         if (!group.IsNullOrEmpty()) SetGroup(group);
+
+        ShowInfo();
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -1066,10 +1067,11 @@ XREAD count 3 streams stream_key 0-0
 
         var group = Group;
         Redis.WriteLog("开始批量消费[{0}]，消费组：{1}，阻塞时间：{2}秒，最大重试消费：{3}次，消息保存：{4}，批大小：{5}", topic, group, timeout, MaxRetry, Expire, batchSize);
-        ShowInfo();
 
         // 自动创建消费组
         if (!group.IsNullOrEmpty()) SetGroup(group);
+
+        ShowInfo();
 
         while (!cancellationToken.IsCancellationRequested)
         {
