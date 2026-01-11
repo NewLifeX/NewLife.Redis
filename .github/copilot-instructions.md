@@ -12,6 +12,7 @@
 | **一致** | 风格、结构、命名、API 行为稳定 |
 | **可控** | 限制改动影响面，可审计，兼容友好 |
 | **可靠** | 先检索再生成，不虚构，不破坏现有合约 |
+| **主动** | 发现问题主动修复，不回避合理优化 |
 
 ---
 
@@ -31,11 +32,39 @@
 
 1. **需求分类**：功能/修复/性能/重构/文档
 2. **检索**：相关类型、目录、方法、已有扩展/工具（**优先复用**）
-3. **评估**：是否公共 API？是否性能热点？
+3. **评估**：是否公共 API？是否性能热点？**是否存在潜在问题？**
 4. **设计**：列出改动点 + 兼容/降级策略
-5. **实施**：局部编辑，限制影响面；保留原注释与结构
-6. **验证**：编译通过；运行相关单元测试（未找到需说明）
+5. **实施**：
+   - 完成用户请求的核心任务
+   - **顺带修复**发现的明显缺陷（资源泄漏、空引用、逻辑错误）
+   - **顺带优化**可简化的重复代码
+   - 保留原注释与结构，除非注释本身有误
+6. **验证**：
+   - 代码变更：必须编译通过；运行相关单元测试（未找到需说明）
+   - 仅文档变更（未修改任何代码文件）：可跳过编译与单元测试
 7. **说明**：变更摘要/影响范围/风险点
+
+### 3.1 主动优化原则
+
+当用户请求分析或优化代码时，**应主动**：
+
+| 类型 | 行动 |
+|------|------|
+| **缺陷修复** | 资源泄漏、空引用风险、并发问题、逻辑错误 → 直接修复 |
+| **性能优化** | 无用分配、重复计算、可池化资源 → 评估后优化 |
+| **代码简化** | 重复代码提取、冗余判断合并、现代语法替换 → 在不影响可读性前提下简化 |
+| **注释完善** | 缺失的参数注释、过时的描述 → 补充或修正 |
+
+**不应过度保守**：
+- ❌ 仅添加注释而忽略明显的代码问题
+- ❌ 发现资源泄漏却不修复
+- ❌ 看到重复代码却不提取
+- ❌ 用户要求优化时只做表面工作
+
+**保持谨慎的场景**：
+- 公共 API 签名变更 → 需说明兼容性影响
+- 性能关键路径 → 需有依据或说明推理
+- 大范围重构 → 需先与用户确认范围
 
 ---
 
@@ -48,6 +77,7 @@
 | 语言版本 | `<LangVersion>latest</LangVersion>`，所有目标框架均使用最新 C# 语法 |
 | 命名空间 | file-scoped namespace |
 | 类型名 | **必须**使用 .NET 正式名 `String`/`Int32`/`Boolean` 等，避免 `string`/`int`/`bool` |
+| 兼容性 | 代码需兼容 .NET 4.5+；**禁止**使用 `ArgumentNullException.ThrowIfNull`，改用 `if (value == null) throw new ArgumentNullException(nameof(value));` |
 | 单文件 | 每文件一个主要公共类型；较大平台差异使用 `partial` |
 
 ### 4.2 命名规范
@@ -150,7 +180,6 @@ var result = code switch
 
 // 目标类型 new
 using var ms = new MemoryStream();
-List<String> list = [];  // C# 12，仅 net8.0+ 运行时可用
 
 // record（DTO 场景）
 public record UserInfo(String Name, Int32 Age);
@@ -158,6 +187,81 @@ public record UserInfo(String Name, Int32 Age);
 // 模式匹配
 if (obj is String { Length: > 0 } str) { }
 ```
+
+### 4.6 集合表达式
+
+优先使用集合表达式 `[]` 初始化集合，代码更简洁：
+
+```csharp
+// ✅ 属性定义：使用集合表达式
+public List<String> Tags { get; set; } = [];
+public Dictionary<String, Object> Data { get; set; } = [];
+public Int32[] Numbers { get; set; } = [];
+
+// ❌ 避免冗长的初始化方式
+public List<String> Tags { get; set; } = new List<String>();
+public List<String> Tags { get; set; } = new();
+
+// ✅ 方法内局部变量
+List<String> list = [];
+var items = new List<Item>();  // 需要立即 Add 时可用 new
+
+// ✅ 带初始值的集合
+List<Int32> nums = [1, 2, 3];
+String[] names = ["Alice", "Bob"];
+Dictionary<String, Int32> scores = new() { ["Math"] = 90, ["English"] = 85 };
+
+// ✅ 集合展开（spread）
+List<Int32> combined = [..first, ..second, 100];
+
+// ✅ 返回空集合
+public IList<String> GetItems() => [];
+```
+
+### 4.7 Null 条件运算符
+
+优先使用 `?.`（null 条件运算符）简化空值检查，提升代码简洁性与可读性：
+
+```csharp
+// ✅ 方法调用：使用 null 条件运算符
+span?.AppendTag("test");
+handler?.Invoke(this, args);
+list?.Clear();
+
+// ❌ 避免冗余的 if 判断
+if (span != null) span.AppendTag("test");
+if (handler != null) handler.Invoke(this, args);
+
+// ✅ 属性赋值：使用 null 条件赋值（C# 14 新特性）
+customer?.Order = GetCurrentOrder();
+span?.Value = 1234;
+config?.Name = "test";
+
+// ❌ 避免冗余的 if 判断
+if (customer != null) customer.Order = GetCurrentOrder();
+if (span != null) span.Value = 1234;
+
+// ✅ 复合赋值运算符也支持
+counter?.Count += 1;
+list?.Capacity *= 2;
+
+// ✅ 链式调用：安全访问嵌套属性
+var name = user?.Profile?.Name;
+var count = order?.Items?.Count ?? 0;
+
+// ✅ 结合 null 合并运算符提供默认值
+var length = str?.Length ?? 0;
+var display = item?.ToString() ?? "N/A";
+
+// ✅ 索引器访问
+var first = list?[0];
+var value = dict?["key"];
+
+// ✅ 委托调用（推荐写法）
+PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+```
+
+**注意**：null 条件赋值时，右侧表达式仅在左侧非 null 时才会求值；不支持自增/自减运算符（`++`/`--`）。
 
 ---
 
@@ -371,13 +475,23 @@ catch (Exception ex)
 - 输出前检索现有实现，**禁止重复造轮子**
 - 先列方案再实现
 - 标记不确定上下文为"需查看文件"
+- **发现明显缺陷时主动修复**（资源泄漏、空引用、逻辑错误）
+- **用户要求优化时深入分析**，不做表面工作
+
+### 鼓励
+
+- 提取重复代码为公共方法
+- 简化冗余的条件判断
+- 使用现代 C# 语法改进可读性
+- 补充缺失的资源释放逻辑
+- 修正错误或过时的注释
 
 ### 禁止
 
 - 虚构 API/文件/类型
 - 伪造测试结果/性能数据
 - 擅自删除公共/受保护成员
-- 擅自删除已有代码注释
+- 擅自删除已有代码注释（除非注释本身错误）
 - 仅删除空白行制造"格式优化"提交
 - 删除循环体的花括号
 - 将 `<summary>` 拆成多行
@@ -385,6 +499,8 @@ catch (Exception ex)
 - 新增外部依赖（除非说明理由并给出权衡）
 - 在热点路径添加未缓存反射/复杂 Linq
 - 输出敏感凭据/内部地址
+- **发现问题却视而不见**
+- **用户要求优化时仅做注释/测试等表面工作**
 
 ---
 
@@ -418,6 +534,7 @@ catch (Exception ex)
 |------|------|
 | **热点路径** | 经性能分析或高频调用栈确认的关键执行段 |
 | **基线** | 变更前的功能/性能参考数据 |
+| **顺带修复** | 在完成主任务过程中，修复发现的相关问题 |
 
 ---
 
