@@ -32,7 +32,7 @@
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Redis</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>优化事件总线支持</PackageReleaseNotes>
+    <PackageReleaseNotes>RedisStream队列增加信息展示，支持自动删除空闲消费组；修正CreateEventBus和ShowInfo</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -62,7 +62,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="11.10.2026.101" />
+    <PackageReference Include="NewLife.Core" Version="11.11.2026.201" />
   </ItemGroup>
 
   <ItemGroup>
