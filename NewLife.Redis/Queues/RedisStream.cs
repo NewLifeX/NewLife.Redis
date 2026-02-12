@@ -65,6 +65,29 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
     private Int32 _claims;
     private TimerX? _timer;
     private Dictionary<String, DateTime> _idleGroups = [];
+
+    private Boolean? _isSupported;
+    /// <summary>当前服务器是否支持 Stream 功能</summary>
+    public Boolean IsSupported
+    {
+        get
+        {
+            if (_isSupported == null)
+            {
+                // Garnet 暂不支持 Stream 功能
+                if (Redis.IsGarnet)
+                {
+                    _isSupported = false;
+                }
+                else
+                {
+                    // Redis 5.0+ 支持 Stream
+                    _isSupported = Redis.Version >= new Version(5, 0);
+                }
+            }
+            return _isSupported.Value;
+        }
+    }
     #endregion
 
     #region 构造
@@ -86,6 +109,19 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
     void Init()
     {
         _timer ??= new TimerX(DoWork, null, 5_000, 600_000) { Async = true };
+    }
+
+    /// <summary>检查是否支持 Stream 功能</summary>
+    /// <exception cref="NotSupportedException">当服务器不支持 Stream 时抛出</exception>
+    private void CheckSupport()
+    {
+        if (!IsSupported)
+        {
+            if (Redis.IsGarnet)
+                throw new NotSupportedException($"Garnet 服务器暂不支持 Redis Stream 功能。请使用 RedisQueue 等其他队列实现。服务器信息：{Redis.Server}");
+            else
+                throw new NotSupportedException($"当前 Redis 服务器版本 {Redis.Version} 不支持 Stream 功能（需要 5.0+）。请升级服务器或使用 RedisQueue 等其他队列实现。");
+        }
     }
     #endregion
 
