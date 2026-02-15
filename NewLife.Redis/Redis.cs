@@ -103,6 +103,36 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             return _Version;
         }
     }
+
+    private ServerType? _ServerType;
+    /// <summary>服务器类型。可用于判断是否为Garnet等兼容实现</summary>
+    public ServerType ServerType
+    {
+        get
+        {
+            if (_ServerType == null)
+            {
+                var inf = Info;
+                if (inf != null)
+                {
+                    // Garnet 在 redis_version 中包含 "Garnet" 字符串
+                    if (inf.TryGetValue("redis_version", out var ver) && ver?.Contains("Garnet") == true)
+                        _ServerType = Caching.ServerType.Garnet;
+                    // 检查 server 字段，Garnet 可能在此标识
+                    else if (inf.TryGetValue("server", out var server) && server?.Contains("Garnet") == true)
+                        _ServerType = Caching.ServerType.Garnet;
+                    else
+                        _ServerType = Caching.ServerType.Redis;
+                }
+                _ServerType ??= Caching.ServerType.Unknown;
+            }
+
+            return _ServerType.Value;
+        }
+    }
+
+    /// <summary>是否为 Garnet 服务器</summary>
+    public Boolean IsGarnet => ServerType == Caching.ServerType.Garnet;
     #endregion
 
     #region 构造

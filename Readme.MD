@@ -26,6 +26,7 @@
 - [多实例 & 高可用策略](#多实例--高可用策略)
 - [扩展包 (Extensions)](#扩展包-extensions)
 - [与 MemoryCache 的协同](#与-memorycache-的协同)
+- [Garnet 兼容性](#garnet-兼容性)
 - [常见问题 FAQ](#常见问题-faq)
 - [路线图 Roadmap](#路线图-roadmap)
 - [新生命项目矩阵](#新生命项目矩阵)
@@ -222,6 +223,42 @@ builder.Services.AddRedisCaching(options =>
 ---
 ## 与 MemoryCache 的协同
 建议以 `ICache` 编程：小数据或临时热点 → `MemoryCache`；规模上升/跨进程共享 → 切换 `Redis`/`FullRedis`，无须修改业务逻辑。
+
+---
+## Garnet 兼容性
+NewLife.Redis 完全支持微软的 [Garnet](https://github.com/microsoft/garnet) 服务器（高性能 Redis 兼容实现）。
+
+### 服务器检测
+```csharp
+var redis = new FullRedis("127.0.0.1:7000", null, 0);
+
+// 自动检测服务器类型
+if (redis.IsGarnet)
+    Console.WriteLine("已连接到 Garnet 服务器");
+
+Console.WriteLine($"服务器类型：{redis.ServerType}");  // Redis / Garnet / Unknown
+Console.WriteLine($"服务器版本：{redis.Version}");
+```
+
+### 功能支持
+- ✅ **完全支持**：基础操作、List、Hash、Set、Sorted Set、HyperLogLog、Pub/Sub、事务、管道、Lua 脚本
+- ✅ **队列支持**：`RedisQueue<T>`、`RedisDelayQueue<T>`、可靠队列（基于 RPOPLPUSH）
+- ❌ **暂不支持**：`RedisStream<T>`（Garnet 未实现 Stream 功能）
+
+### Stream 替代方案
+对于 Garnet 服务器，使用 `RedisQueue<T>` 替代 `RedisStream<T>`：
+
+```csharp
+var queue = redis.GetQueue<MyMessage>("myqueue");
+
+// 生产消息
+queue.Add(new MyMessage { Text = "Hello" });
+
+// 消费消息（支持阻塞等待）
+var msg = queue.TakeOne(timeout: 30);  // 30秒超时
+```
+
+**详细说明**：[Garnet 兼容性文档](Doc/Garnet兼容性.md)
 
 ---
 ## 常见问题 FAQ

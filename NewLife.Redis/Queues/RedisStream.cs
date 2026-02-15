@@ -20,10 +20,27 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
 {
     #region 属性
     /// <summary>队列消息总数</summary>
-    public Int32 Count => Execute((r, k) => r.Execute<Int32>("XLEN", Key));
+    /// <remarks>
+    /// 注意：每次访问都会执行支持检查和远程命令。
+    /// 在性能敏感场景中，建议缓存返回值避免重复调用。
+    /// </remarks>
+    public Int32 Count
+    {
+        get
+        {
+            CheckSupport();
+            return Execute((r, k) => r.Execute<Int32>("XLEN", Key));
+        }
+    }
 
     /// <summary>队列是否为空</summary>
-    public Boolean IsEmpty => Count == 0;
+    public Boolean IsEmpty
+    {
+        get
+        {
+            return Count == 0;
+        }
+    }
 
     /// <summary>重新处理确认队列中死信的间隔。默认60s</summary>
     public Int32 RetryInterval { get; set; } = 60;
@@ -65,6 +82,29 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
     private Int32 _claims;
     private TimerX? _timer;
     private Dictionary<String, DateTime> _idleGroups = [];
+
+    private Boolean? _isSupported;
+    /// <summary>当前服务器是否支持 Stream 功能</summary>
+    public Boolean IsSupported
+    {
+        get
+        {
+            if (_isSupported == null)
+            {
+                // Garnet 暂不支持 Stream 功能
+                if (Redis.IsGarnet)
+                {
+                    _isSupported = false;
+                }
+                else
+                {
+                    // Redis 5.0+ 支持 Stream
+                    _isSupported = Redis.Version >= new Version(5, 0);
+                }
+            }
+            return _isSupported.Value;
+        }
+    }
     #endregion
 
     #region 构造
@@ -87,6 +127,19 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
     {
         _timer ??= new TimerX(DoWork, null, 5_000, 600_000) { Async = true };
     }
+
+    /// <summary>检查是否支持 Stream 功能</summary>
+    /// <exception cref="NotSupportedException">当服务器不支持 Stream 时抛出</exception>
+    private void CheckSupport()
+    {
+        if (!IsSupported)
+        {
+            if (Redis.IsGarnet)
+                throw new NotSupportedException($"Garnet 服务器暂不支持 Redis Stream 功能。请使用 RedisQueue 等其他队列实现。服务器信息：{Redis.Server}");
+            else
+                throw new NotSupportedException($"当前 Redis 服务器版本 {Redis.Version} 不支持 Stream 功能（需要 5.0+）。请升级服务器或使用 RedisQueue 等其他队列实现。");
+        }
+    }
     #endregion
 
     #region 核心生产消费
@@ -95,6 +148,8 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
     /// <returns></returns>
     public Boolean SetGroup(String group)
     {
+        CheckSupport();
+
         if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
 
         Group = group;
@@ -115,6 +170,8 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
     /// <returns>返回消息ID</returns>
     public String? Add(T value, String? msgId = null)
     {
+        CheckSupport();
+
         if (value == null) throw new ArgumentNullException(nameof(value));
 
         // 自动修剪超长部分，每1000次生产，修剪一次
@@ -196,6 +253,8 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
     /// <returns></returns>
     Int32 IProducerConsumer<T>.Add(params T[] values)
     {
+        CheckSupport();
+
         if (values == null) throw new ArgumentNullException(nameof(values));
 
         // 量少时直接插入，而不用管道
@@ -235,6 +294,8 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
     /// <returns></returns>
     public IEnumerable<T> Take(Int32 count = 1)
     {
+        CheckSupport();
+
         var group = Group;
         if (!group.IsNullOrEmpty())
         {
