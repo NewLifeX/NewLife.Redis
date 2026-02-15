@@ -10,7 +10,7 @@ public class MessageData
     public String? Content { get; set; }
 
     /// <summary>创建时间</summary>
-    public DateTime CreatedTime { get; set; } = DateTime.Now;
+    public DateTime CreatedTime { get; set; } = DateTime.UtcNow;
 
     /// <summary>附加数据</summary>
     public Dictionary<String, Object>? Properties { get; set; }

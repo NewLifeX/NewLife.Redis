@@ -99,10 +99,11 @@ public class MessageConsumerService : BackgroundService
     /// <param name="cancellationToken">取消令牌</param>
     private async Task ForwardMessageAsync(MessageData message, CancellationToken cancellationToken)
     {
-        var retryCount = 0;
+        var attempt = 0;
+        var maxAttempts = _options.RetryCount + 1; // 初始尝试 + 重试次数
         var success = false;
 
-        while (!success && retryCount < _options.RetryCount)
+        while (!success && attempt < maxAttempts)
         {
             try
             {
@@ -119,24 +120,26 @@ public class MessageConsumerService : BackgroundService
                 }
                 else
                 {
-                    _logger.LogWarning("Failed to forward message {MessageId}, StatusCode: {StatusCode}", message.Id, response.StatusCode);
-                    retryCount++;
-                    if (retryCount < _options.RetryCount)
-                        await Task.Delay(1000 * retryCount, cancellationToken);
+                    attempt++;
+                    _logger.LogWarning("Failed to forward message {MessageId}, StatusCode: {StatusCode}, Attempt: {Attempt}/{MaxAttempts}", 
+                        message.Id, response.StatusCode, attempt, maxAttempts);
+                    if (attempt < maxAttempts)
+                        await Task.Delay(1000 * attempt, cancellationToken);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error forwarding message {MessageId}, Retry: {RetryCount}", message.Id, retryCount);
-                retryCount++;
-                if (retryCount < _options.RetryCount)
-                    await Task.Delay(1000 * retryCount, cancellationToken);
+                attempt++;
+                _logger.LogError(ex, "Error forwarding message {MessageId}, Attempt: {Attempt}/{MaxAttempts}", 
+                    message.Id, attempt, maxAttempts);
+                if (attempt < maxAttempts)
+                    await Task.Delay(1000 * attempt, cancellationToken);
             }
         }
 
         if (!success)
         {
-            _logger.LogError("Failed to forward message after {RetryCount} retries: {MessageId}", _options.RetryCount, message.Id);
+            _logger.LogError("Failed to forward message after {MaxAttempts} attempts: {MessageId}", maxAttempts, message.Id);
         }
     }
 }

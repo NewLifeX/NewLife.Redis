@@ -30,6 +30,7 @@ public class RedisQueueService
         try
         {
             var queue = _redis.GetQueue<MessageData>(_options.QueueName);
+            // NewLife.Redis 的 Add 方法是同步的，在异步上下文中调用不会阻塞线程池
             queue.Add(message);
 
             _logger.LogInformation("Published message to queue: {QueueName}, MessageId: {MessageId}", _options.QueueName, message.Id);
