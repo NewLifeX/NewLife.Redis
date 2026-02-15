@@ -20,10 +20,24 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
 {
     #region 属性
     /// <summary>队列消息总数</summary>
-    public Int32 Count => Execute((r, k) => r.Execute<Int32>("XLEN", Key));
+    public Int32 Count
+    {
+        get
+        {
+            CheckSupport();
+            return Execute((r, k) => r.Execute<Int32>("XLEN", Key));
+        }
+    }
 
     /// <summary>队列是否为空</summary>
-    public Boolean IsEmpty => Count == 0;
+    public Boolean IsEmpty
+    {
+        get
+        {
+            CheckSupport();
+            return Count == 0;
+        }
+    }
 
     /// <summary>重新处理确认队列中死信的间隔。默认60s</summary>
     public Int32 RetryInterval { get; set; } = 60;
@@ -131,6 +145,8 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
     /// <returns></returns>
     public Boolean SetGroup(String group)
     {
+        CheckSupport();
+
         if (group.IsNullOrEmpty()) throw new ArgumentNullException(nameof(group));
 
         Group = group;
@@ -151,6 +167,8 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
     /// <returns>返回消息ID</returns>
     public String? Add(T value, String? msgId = null)
     {
+        CheckSupport();
+
         if (value == null) throw new ArgumentNullException(nameof(value));
 
         // 自动修剪超长部分，每1000次生产，修剪一次
@@ -232,6 +250,8 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
     /// <returns></returns>
     Int32 IProducerConsumer<T>.Add(params T[] values)
     {
+        CheckSupport();
+
         if (values == null) throw new ArgumentNullException(nameof(values));
 
         // 量少时直接插入，而不用管道
@@ -271,6 +291,8 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
     /// <returns></returns>
     public IEnumerable<T> Take(Int32 count = 1)
     {
+        CheckSupport();
+
         var group = Group;
         if (!group.IsNullOrEmpty())
         {
