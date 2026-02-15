@@ -26,7 +26,6 @@ Redis Switch 是一个消息交换机项目，能够把Redis消息队列消费�
     "QueueName": "RedisSwitch",
     "ConsumerCount": 1,
     "TargetApiUrl": "http://localhost:5001/api/target",
-    "BatchSize": 10,
     "RetryCount": 3
   }
 }
@@ -44,7 +43,6 @@ Redis Switch 是一个消息交换机项目，能够把Redis消息队列消费�
   - `QueueName`: 队列名称
   - `ConsumerCount`: 消费者数量
   - `TargetApiUrl`: 目标API地址
-  - `BatchSize`: 批量处理大小
   - `RetryCount`: 重试次数
 
 ## API接口

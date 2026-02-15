@@ -44,7 +44,6 @@ RedisSwitch/
     "QueueName": "RedisSwitch",     // 队列名称
     "ConsumerCount": 1,             // 消费者数量
     "TargetApiUrl": "http://localhost:5001/api/target",  // 目标API地址
-    "BatchSize": 10,                // 批量处理大小（预留）
     "RetryCount": 3                 // 重试次数
   }
 }
