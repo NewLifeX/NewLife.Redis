@@ -20,6 +20,10 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
 {
     #region 属性
     /// <summary>队列消息总数</summary>
+    /// <remarks>
+    /// 注意：每次访问都会执行支持检查和远程命令。
+    /// 在性能敏感场景中，建议缓存返回值避免重复调用。
+    /// </remarks>
     public Int32 Count
     {
         get
@@ -34,7 +38,6 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
     {
         get
         {
-            CheckSupport();
             return Count == 0;
         }
     }
