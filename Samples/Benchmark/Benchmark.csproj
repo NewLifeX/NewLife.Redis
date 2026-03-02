@@ -23,8 +23,8 @@
     <Using Include="NewLife.Reflection" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="BenchmarkDotNet" Version="0.15.6" />
-    <PackageReference Include="NewLife.Stardust" Version="3.6.2026.102" />
+    <PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
+    <PackageReference Include="NewLife.Stardust" Version="3.7.2026.201" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\NewLife.Redis\NewLife.Redis.csproj" />
