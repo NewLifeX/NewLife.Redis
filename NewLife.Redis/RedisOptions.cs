@@ -30,4 +30,7 @@ public class RedisOptions
 
     /// <summary>键前缀</summary>
     public String? Prefix { get; set; }
+
+    /// <summary>协议版本。默认0表示自动（RESP2），设为3启用RESP3协议（需Redis 6.0+支持）</summary>
+    public Int32 ProtocolVersion { get; set; }
 }

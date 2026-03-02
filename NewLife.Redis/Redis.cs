@@ -76,6 +76,9 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <summary>性能计数器</summary>
     public PerfCounter? Counter { get; set; }
 
+    /// <summary>协议版本。默认0表示自动（RESP2），设为3启用RESP3协议（需Redis 6.0+支持）</summary>
+    public Int32 ProtocolVersion { get; set; }
+
     /// <summary>性能跟踪器。仅记录read/write，形成调用链，key在tag中，没有记录异常。高速海量操作时不建议开启</summary>
     public ITracer? Tracer { get; set; }
 
@@ -266,6 +269,9 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
             if (dic.TryGetValue("ThrowOnFailure", out str))
                 ThrowOnFailure = str.ToBoolean();
+
+            if (dic.TryGetValue("ProtocolVersion", out str))
+                ProtocolVersion = str.ToInt();
 
             if (dic.TryGetValue("MaxMessageSize", out str) && str.ToInt(-1) >= 0)
                 MaxMessageSize = str.ToInt();

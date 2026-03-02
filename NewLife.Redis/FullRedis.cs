@@ -85,6 +85,8 @@ public class FullRedis : Redis
         if (options.Timeout > 0)
             Timeout = options.Timeout;
         Prefix = options.Prefix;
+        if (options.ProtocolVersion > 0)
+            ProtocolVersion = options.ProtocolVersion;
 
         if (!options.Configuration.IsNullOrEmpty())
             Init(options.Configuration);

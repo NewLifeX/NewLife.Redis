@@ -323,6 +323,25 @@ public class RedisClient : DisposeBase
         return ParseResponse(ms, count, ref reader);
     }
 
+    /// <summary>接收单条响应。避免创建List，减少分配</summary>
+    /// <param name="ns">网络数据流</param>
+    /// <returns></returns>
+    protected virtual Object? GetSingleResponse(Stream ns)
+    {
+        var ms = ns;
+
+        using var pk = new OwnerPacket(8192);
+
+        var n = ms.Read(pk.Buffer, pk.Offset, pk.Length);
+        if (n <= 0) return null;
+
+        pk.Resize(n);
+
+        var reader = new SpanReader(ms, pk, 8192);
+
+        return ParseSingleResponse(ms, ref reader);
+    }
+
     /// <summary>异步接收响应</summary>
     /// <param name="ns">网络数据流</param>
     /// <param name="count">响应个数</param>
@@ -346,15 +365,114 @@ public class RedisClient : DisposeBase
         return ParseResponse(ms, count, ref reader);
     }
 
+    /// <summary>异步接收单条响应。避免创建List，减少分配</summary>
+    /// <param name="ns">网络数据流</param>
+    /// <param name="cancellationToken">取消通知</param>
+    /// <returns></returns>
+    protected virtual async Task<Object?> GetSingleResponseAsync(Stream ns, CancellationToken cancellationToken = default)
+    {
+        var ms = ns;
+        using var pk = new OwnerPacket(8192);
+
+        if (cancellationToken == CancellationToken.None)
+            cancellationToken = new CancellationTokenSource(Timeout > 0 ? Timeout : Host.Timeout).Token;
+        var n = await ns.ReadAsync(pk.Buffer, pk.Offset, pk.Length, cancellationToken).ConfigureAwait(false);
+        if (n <= 0) return null;
+
+        pk.Resize(n);
+
+        var reader = new SpanReader(ms, pk, 8192);
+
+        return ParseSingleResponse(ms, ref reader);
+    }
+
+    /// <summary>解析单条响应。避免创建List，减少GC分配</summary>
+    /// <param name="ms">网络数据流</param>
+    /// <param name="reader">SpanReader</param>
+    /// <returns></returns>
+    private Object? ParseSingleResponse(Stream ms, ref SpanReader reader)
+    {
+        var log = Log == null || Log == Logger.Null ? null : Pool.StringBuilder.Get();
+
+        var header = (Char)reader.ReadByte();
+        log?.Append(header);
+
+        // RESP3 Attribute前缀：读取并丢弃元数据
+        if (header == '|')
+        {
+            ReadMap(ref reader, log);
+            header = (Char)reader.ReadByte();
+            log?.Append(header);
+        }
+
+        Object? result;
+        if (header == '$' || header == '=')
+        {
+            result = ReadBlock(ref reader, log);
+        }
+        else if (header == '*' || header == '~' || header == '>')
+        {
+            result = ReadBlocks(ref reader, log);
+        }
+        else if (header == '%')
+        {
+            result = ReadMap(ref reader, log);
+        }
+        else if (header == '_')
+        {
+            ReadLine(ref reader);
+            log?.Append("(null)");
+            result = null;
+        }
+        else if (header == '!')
+        {
+            var pk = ReadBlock(ref reader, log);
+            throw new RedisException(pk?.ToStr() ?? "Unknown error");
+        }
+        else
+        {
+            var str = ReadLine(ref reader);
+            log?.Append(str);
+
+            if (header is '+' or ':' or ',' or '(')
+                result = str;
+            else if (header == '#')
+                result = str == "t" ? "True" : "False";
+            else if (header == '-')
+                throw new RedisException(str);
+            else
+            {
+                XTrace.WriteLine("无法解析响应[{0:X2}] {1}", (Byte)header, ms.ReadBytes(-1).ToHex("-"));
+                throw new InvalidDataException($"无法解析响应 [{header}]");
+            }
+        }
+
+        if (log != null) WriteLog("<= {0}", log.Return(true));
+
+        return result;
+    }
+
     private IList<Object?> ParseResponse(Stream ms, Int32 count, ref SpanReader reader)
     {
         /*
-         * 响应格式
+         * RESP2 响应格式
          * 1：简单字符串，非二进制安全字符串，一般是状态回复。  +开头，例：+OK\r\n 
          * 2: 错误信息。-开头，例：-ERR unknown command 'mush'\r\n
          * 3: 整型数字。:开头，例：:1\r\n
          * 4：大块回复值，最大512M。  $开头+数据长度。 例：$4\r\nmush\r\n
          * 5：多条回复。*开头，例：*2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n
+         * 
+         * RESP3 新增类型
+         * _：Null类型，例：_\r\n
+         * ,：Double类型，例：,1.23\r\n
+         * #：Boolean类型，例：#t\r\n 或 #f\r\n
+         * (：BigNumber类型，例：(3492890328409238509324850943850943825024385\r\n
+         * =：Verbatim字符串，例：=15\r\ntxt:Some string\r\n
+         * !：Blob错误，例：!21\r\nSYNTAX invalid syntax\r\n
+         * ~：Set类型，结构同数组
+         * %：Map类型，%<count>\r\n后跟count对键值
+         * >：Push类型，结构同数组
+         * |：Attribute类型，结构同Map，元数据前缀
          */
 
         var list = new List<Object?>();
@@ -370,13 +488,39 @@ public class RedisClient : DisposeBase
             if (i > 0) header = (Char)reader.ReadByte();
 
             log?.Append(header);
-            if (header == '$')
+
+            // RESP3 Attribute前缀：读取并丢弃元数据，然后读取实际响应类型
+            if (header == '|')
+            {
+                ReadMap(ref reader, log);
+                header = (Char)reader.ReadByte();
+                log?.Append(header);
+            }
+
+            if (header == '$' || header == '=')
             {
                 list.Add(ReadBlock(ref reader, log));
             }
-            else if (header == '*')
+            else if (header == '*' || header == '~' || header == '>')
             {
                 list.Add(ReadBlocks(ref reader, log));
+            }
+            else if (header == '%')
+            {
+                list.Add(ReadMap(ref reader, log));
+            }
+            else if (header == '_')
+            {
+                // RESP3 Null
+                ReadLine(ref reader);
+                log?.Append("(null)");
+                list.Add(null);
+            }
+            else if (header == '!')
+            {
+                // RESP3 Blob错误
+                var pk = ReadBlock(ref reader, log);
+                throw new RedisException(pk?.ToStr() ?? "Unknown error");
             }
             else
             {
@@ -384,8 +528,11 @@ public class RedisClient : DisposeBase
                 var str = ReadLine(ref reader);
                 log?.Append(str);
 
-                if (header is '+' or ':')
+                if (header is '+' or ':' or ',' or '(')
                     list.Add(str);
+                else if (header == '#')
+                    // RESP3 Boolean，转换为可被Convert.ChangeType解析的格式
+                    list.Add(str == "t" ? "True" : "False");
                 else if (header == '-')
                     throw new RedisException(str);
                 else
@@ -436,11 +583,11 @@ public class RedisClient : DisposeBase
             ns.Flush();
         }
 
-        var rs = GetResponse(ns, 1);
+        var rs = GetSingleResponse(ns);
 
         if (isQuit) Logined = false;
 
-        return rs.FirstOrDefault();
+        return rs;
     }
 
     /// <summary>异步执行命令，发请求，取响应</summary>
@@ -479,19 +626,36 @@ public class RedisClient : DisposeBase
             await ns.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        var rs = await GetResponseAsync(ns, 1, cancellationToken).ConfigureAwait(false);
+        var rs = await GetSingleResponseAsync(ns, cancellationToken).ConfigureAwait(false);
 
         if (isQuit) Logined = false;
 
-        return rs.FirstOrDefault();
+        return rs;
     }
 
     private void CheckLogin(String? cmd)
     {
         if (Logined) return;
-        if (cmd.EqualIgnoreCase("Auth")) return;
+        if (cmd.EqualIgnoreCase("Auth", "Hello")) return;
 
-        if (!Host.Password.IsNullOrEmpty() && !Auth(Host.UserName, Host.Password))
+        var protover = Host.ProtocolVersion;
+        var password = Host.Password;
+        var username = Host.UserName;
+
+        // RESP3协议握手，HELLO命令可同时完成协议协商和认证
+        if (protover >= 3)
+        {
+            var rs = Hello(protover, username, password);
+            if (rs != null)
+            {
+                Logined = true;
+                LoginTime = DateTime.Now;
+                return;
+            }
+            // HELLO失败（服务器不支持），降级为RESP2常规认证
+        }
+
+        if (!password.IsNullOrEmpty() && !Auth(username, password))
             throw new Exception("登录失败！");
 
         Logined = true;
@@ -503,7 +667,7 @@ public class RedisClient : DisposeBase
     {
         var db = Host.Db;
         if (_selected == db) return;
-        if (cmd.EqualIgnoreCase("Auth", "Select", "Info")) return;
+        if (cmd.EqualIgnoreCase("Auth", "Select", "Info", "Hello")) return;
 
         if (db > 0 && (Host is not FullRedis rds || !rds.Mode.EqualIgnoreCase("cluster", "sentinel"))) Select(db);
 
@@ -546,7 +710,16 @@ public class RedisClient : DisposeBase
             var header = (Char)reader.ReadByte();
             log?.Append(' ');
             log?.Append(header);
-            if (header == '$')
+
+            // RESP3 Attribute前缀：读取并丢弃元数据
+            if (header == '|')
+            {
+                ReadMap(ref reader, log);
+                header = (Char)reader.ReadByte();
+                log?.Append(header);
+            }
+
+            if (header == '$' || header == '=')
             {
                 arr[i] = ReadPacket(ref reader, log);
             }
@@ -555,9 +728,41 @@ public class RedisClient : DisposeBase
                 arr[i] = ReadLine(ref reader);
                 log?.Append(arr[i]);
             }
-            else if (header == '*')
+            else if (header == '*' || header == '~' || header == '>')
             {
                 arr[i] = ReadBlocks(ref reader, log);
+            }
+            else if (header == '%')
+            {
+                arr[i] = ReadMap(ref reader, log);
+            }
+            else if (header == '_')
+            {
+                // RESP3 Null
+                ReadLine(ref reader);
+                arr[i] = null;
+            }
+            else if (header == '!')
+            {
+                // RESP3 Blob错误
+                var pk = ReadPacket(ref reader, log);
+                throw new RedisException(pk?.ToStr() ?? "Unknown error");
+            }
+            else if (header is ',' or '(')
+            {
+                arr[i] = ReadLine(ref reader);
+                log?.Append(arr[i]);
+            }
+            else if (header == '#')
+            {
+                var str = ReadLine(ref reader);
+                log?.Append(str);
+                arr[i] = str == "t" ? "True" : "False";
+            }
+            else if (header == '-')
+            {
+                var str = ReadLine(ref reader);
+                throw new RedisException(str);
             }
             else
             {
@@ -565,6 +770,71 @@ public class RedisClient : DisposeBase
             }
         }
 
+        return arr;
+    }
+
+    /// <summary>读取RESP3 Map响应。返回扁平数组，交替存放键值对</summary>
+    /// <param name="reader">数据读取器</param>
+    /// <param name="log">日志构建器</param>
+    /// <returns></returns>
+    private Object?[] ReadMap(ref SpanReader reader, StringBuilder? log)
+    {
+        // Map: %<count>\r\n 后跟 count 对键值
+        var len = ReadLength(ref reader);
+        log?.Append(len);
+        if (len < 0) return [];
+
+        var total = len * 2;
+        var arr = new Object?[total];
+        for (var i = 0; i < total; i++)
+        {
+            var header = (Char)reader.ReadByte();
+            log?.Append(' ');
+            log?.Append(header);
+
+            if (header == '$' || header == '=')
+            {
+                arr[i] = ReadPacket(ref reader, log);
+            }
+            else if (header is '+' or ':' or ',' or '(')
+            {
+                arr[i] = ReadLine(ref reader);
+                log?.Append(arr[i]);
+            }
+            else if (header == '#')
+            {
+                var str = ReadLine(ref reader);
+                log?.Append(str);
+                arr[i] = str == "t" ? "True" : "False";
+            }
+            else if (header == '*' || header == '~' || header == '>')
+            {
+                arr[i] = ReadBlocks(ref reader, log);
+            }
+            else if (header == '_')
+            {
+                ReadLine(ref reader);
+                arr[i] = null;
+            }
+            else if (header == '%' || header == '|')
+            {
+                arr[i] = ReadMap(ref reader, log);
+            }
+            else if (header == '!')
+            {
+                var pk = ReadPacket(ref reader, log);
+                throw new RedisException(pk?.ToStr() ?? "Unknown error");
+            }
+            else if (header == '-')
+            {
+                var str = ReadLine(ref reader);
+                throw new RedisException(str);
+            }
+            else
+            {
+                throw new RedisException($"Invalid [{header}] in map[{i}/{total}]");
+            }
+        }
         return arr;
     }
 
@@ -590,10 +860,9 @@ public class RedisClient : DisposeBase
 
     private static String ReadLine(ref SpanReader reader)
     {
-        var sb = Pool.StringBuilder.Get();
-        // 可能刚好一帧结束，字符串至少需要2个字符
-        //reader.EnsureSpace(2);
-        //var count = reader.FreeCapacity;
+        // 使用stackalloc避免StringBuilder分配，Redis响应行通常很短
+        Span<Char> span = stackalloc Char[256];
+        var k = 0;
         while (true)
         {
             var b = (Char)reader.ReadByte();
@@ -602,14 +871,20 @@ public class RedisClient : DisposeBase
                 var b2 = (Char)reader.ReadByte();
                 if (b2 == '\n') break;
 
-                sb.Append((Char)b);
-                sb.Append((Char)b2);
+                if (k < span.Length) span[k++] = b;
+                if (k < span.Length) span[k++] = b2;
             }
             else
-                sb.Append((Char)b);
+            {
+                if (k < span.Length) span[k++] = b;
+            }
         }
 
-        return sb.Return(true);
+#if NETFRAMEWORK || NETSTANDARD2_0
+        return span[..k].ToString();
+#else
+        return new String(span[..k]);
+#endif
     }
 
     private static Int32 ReadLength(ref SpanReader reader)
@@ -938,11 +1213,34 @@ public class RedisClient : DisposeBase
         {
             try
             {
-                //target = value.ChangeType(type);
-                if (type == typeof(Boolean) && str == "OK")
-                    target = true;
-                else
-                    target = Convert.ChangeType(str, type);
+                // 常见值类型特化，避免Convert.ChangeType装箱开销
+                if (type == typeof(Boolean))
+                {
+                    target = str == "OK" || str == "True" || str == "1";
+                    return true;
+                }
+                if (type == typeof(Int32))
+                {
+                    target = Int32.TryParse(str, out var n) ? n : 0;
+                    return true;
+                }
+                if (type == typeof(Int64))
+                {
+                    target = Int64.TryParse(str, out var n) ? n : 0L;
+                    return true;
+                }
+                if (type == typeof(Double))
+                {
+                    target = Double.TryParse(str, out var n) ? n : 0d;
+                    return true;
+                }
+                if (type == typeof(String))
+                {
+                    target = str;
+                    return true;
+                }
+
+                target = Convert.ChangeType(str, type);
                 return true;
             }
             catch (Exception ex)
@@ -1025,16 +1323,16 @@ public class RedisClient : DisposeBase
             var p = 0;
 
             // 整体打包所有命令
-            var cmds = new List<String>(ps.Count);
+            List<String>? cmds = span != null ? new List<String>(ps.Count) : null;
             foreach (var item in ps)
             {
-                cmds.Add(item.Name);
+                cmds?.Add(item.Name);
                 p += GetRequest(memory[p..], item.Name, item.Args);
             }
             memory = memory[..p];
 
             // 设置数据标签
-            span?.SetTag(cmds);
+            if (cmds != null) span?.SetTag(cmds);
 
             // 整体发出
             if (memory.Length > 0) ns.Write(memory);
@@ -1094,6 +1392,51 @@ public class RedisClient : DisposeBase
             Execute<String>("AUTH", username, password);
 
         return rs == "OK";
+    }
+
+    /// <summary>RESP3协议握手。发送HELLO命令协商协议版本，可同时完成认证</summary>
+    /// <param name="protover">协议版本。2或3</param>
+    /// <param name="username">用户名</param>
+    /// <param name="password">密码</param>
+    /// <returns>服务器信息字典，失败返回null</returns>
+    public IDictionary<String, Object?>? Hello(Int32 protover, String? username = null, String? password = null)
+    {
+        try
+        {
+            Object? rs;
+            if (!password.IsNullOrEmpty())
+            {
+                if (!username.IsNullOrEmpty())
+                    rs = ExecuteCommand("HELLO", [protover.ToString(), "AUTH", username, password]);
+                else
+                    rs = ExecuteCommand("HELLO", [protover.ToString(), "AUTH", "default", password]);
+            }
+            else
+            {
+                rs = ExecuteCommand("HELLO", [protover.ToString()]);
+            }
+
+            // HELLO响应为Map类型（RESP3）或数组类型，解析为字典
+            if (rs is Object?[] arr && arr.Length >= 2)
+            {
+                var dic = new Dictionary<String, Object?>();
+                for (var i = 0; i < arr.Length - 1; i += 2)
+                {
+                    var key = arr[i] is IPacket pk ? pk.ToStr() : arr[i]?.ToString();
+                    if (key != null) dic[key] = arr[i + 1];
+                }
+                return dic;
+            }
+            return null;
+        }
+        catch (RedisException ex) when (
+            ex.Message.Contains("unknown command") ||
+            ex.Message.Contains("ERR unknown") ||
+            ex.Message.Contains("NOPROTO"))
+        {
+            // 服务器不支持HELLO命令（Redis < 6.0）或不支持指定协议版本
+            return null;
+        }
     }
 
     /// <summary>退出</summary>
