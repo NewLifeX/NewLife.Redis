@@ -7,7 +7,7 @@
     <Description>Redis基础操作、消息队列，经过日均100亿次调用量的项目验证</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2026 新生命开发团队</Copyright>
-    <VersionPrefix>6.4</VersionPrefix>
+    <VersionPrefix>6.5</VersionPrefix>
     <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
     <Version>$(VersionPrefix).$(VersionSuffix)</Version>
     <FileVersion>$(Version)</FileVersion>
@@ -32,7 +32,7 @@
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Redis</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>RedisStream队列增加信息展示，支持自动删除空闲消费组；修正CreateEventBus和ShowInfo</PackageReleaseNotes>
+    <PackageReleaseNotes>支持RESP3协议并优化核心性能分配；增强Garnet兼容性识别与文档；新增RedisSwitch示例并重构基准测试与文档体系</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
