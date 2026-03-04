@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <AssemblyTitle>Redis切换示例</AssemblyTitle>
+    <Description>Redis客户端动态切换演示，展示运行时切换Redis实例、故障转移和多地址高可用场景</Description>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>

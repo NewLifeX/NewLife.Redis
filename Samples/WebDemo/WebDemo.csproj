@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <AssemblyTitle>Redis Web演示</AssemblyTitle>
+    <Description>Redis在ASP.NET Core中的集成演示，展示依赖注入、分布式缓存、会话状态等实际应用场景</Description>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>

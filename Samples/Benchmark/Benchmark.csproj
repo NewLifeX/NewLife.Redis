@@ -3,8 +3,8 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
-    <AssemblyTitle>应用后台任务</AssemblyTitle>
-    <Description>数据处理、定时任务、MQ生产消费、系统监控等超长独立工作的后台任务</Description>
+    <AssemblyTitle>Redis性能测试</AssemblyTitle>
+    <Description>Redis客户端性能基准测试工具，基于BenchmarkDotNet，对比不同操作性能和内存分配，用于性能优化验证</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2026 NewLife</Copyright>
     <VersionPrefix>1.0</VersionPrefix>

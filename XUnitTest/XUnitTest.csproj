@@ -1,7 +1,9 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <AssemblyTitle>Redis单元测试</AssemblyTitle>
+    <Description>Redis客户端xUnit单元测试套件，覆盖核心功能、扩展组件、依赖注入和数据保护的自动化测试</Description>
     <OutputPath>..\Bin\UnitTest</OutputPath>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <IsPackable>false</IsPackable>

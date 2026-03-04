@@ -3,6 +3,8 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>net45;net461;net8.0;net9.0;net10.0</TargetFrameworks>
+    <AssemblyTitle>Redis测试工具</AssemblyTitle>
+    <Description>Redis客户端功能验证工具，覆盖各数据结构、消息队列、集群模式的手动测试与调试</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2026 新生命开发团队</Copyright>
     <VersionPrefix>1.0</VersionPrefix>
