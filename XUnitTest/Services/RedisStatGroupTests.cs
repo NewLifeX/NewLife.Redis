@@ -16,11 +16,12 @@ public class RedisStatGroupTests
         Assert.Empty(group.Stats);
     }
 
-    [Fact(DisplayName = "Stats列表初始化")]
-    public void StatsInitialization()
+    [Fact(DisplayName = "设置Redis属性")]
+    public void SetRedis()
     {
         var group = new RedisStatGroup();
-        Assert.NotNull(group.Stats);
-        Assert.Empty(group.Stats);
+        var redis = new FullRedis();
+        group.Redis = redis;
+        Assert.Same(redis, group.Redis);
     }
 }

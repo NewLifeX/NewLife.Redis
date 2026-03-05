@@ -53,5 +53,6 @@ public class MasterInfoExTests
         var inf = new MasterInfo();
         var result = inf.ToString();
         Assert.NotNull(result);
+        Assert.Contains("MasterInfo", result);
     }
 }
