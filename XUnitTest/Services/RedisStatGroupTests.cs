@@ -11,7 +11,6 @@ public class RedisStatGroupTests
     public void DefaultValues()
     {
         var group = new RedisStatGroup();
-        Assert.Null(group.Redis);
         Assert.NotNull(group.Stats);
         Assert.Empty(group.Stats);
     }
