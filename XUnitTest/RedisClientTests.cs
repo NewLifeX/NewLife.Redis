@@ -90,7 +90,7 @@ public class RedisClientTests
 
     private class TestRedisClient : RedisClient
     {
-        public TestRedisClient(Redis redis) : base(redis, new NetUri("tcp://localhost:6379")) { }
+        public TestRedisClient(Redis redis) : base(redis, new NetUri("tcp://test.invalid:6379")) { }
 
         public IPAddress[] Filter(IPAddress[] addrs) => base.FilterAddresses(addrs);
 

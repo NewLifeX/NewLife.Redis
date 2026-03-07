@@ -203,7 +203,7 @@ public class RedisClient : DisposeBase
         };
 
         if (Host.IPv6 && tc.Client.AddressFamily == AddressFamily.InterNetworkV6)
-            tc.Client.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, Host.DualMode ? 0 : 1);
+            tc.Client.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, !Host.DualMode ? 1 : 0);
 
         return tc;
     }
