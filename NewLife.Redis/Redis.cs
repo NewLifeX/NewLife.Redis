@@ -67,6 +67,12 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <remarks>var cert = new X509Certificate2("abc.pem", "pass");</remarks>
     public X509Certificate2? Certificate { get; set; }
 
+    /// <summary>是否启用IPv6。默认true</summary>
+    public Boolean IPv6 { get; set; } = true;
+
+    /// <summary>是否启用双栈套接字。默认true，仅在IPv6启用时有效</summary>
+    public Boolean DualMode { get; set; } = true;
+
     /// <summary>失败时抛出异常。默认true</summary>
     public Boolean ThrowOnFailure { get; set; } = true;
 
@@ -266,6 +272,12 @@ public class Redis : Cache, IConfigMapping, ILogFeature
                 Timeout = str.ToInt();
             else if (dic.TryGetValue("connectTimeout", out str))
                 Timeout = str.ToInt();
+
+            if (dic.TryGetValue("IPv6", out str))
+                IPv6 = str.ToBoolean();
+
+            if (dic.TryGetValue("DualMode", out str))
+                DualMode = str.ToBoolean();
 
             if (dic.TryGetValue("ThrowOnFailure", out str))
                 ThrowOnFailure = str.ToBoolean();

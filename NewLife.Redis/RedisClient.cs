@@ -1,5 +1,6 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.Collections.Concurrent;
+using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
@@ -111,15 +112,11 @@ public class RedisClient : DisposeBase
 
             var timeout = Timeout;
             if (timeout == 0) timeout = Host.Timeout;
-            tc = new TcpClient
-            {
-                SendTimeout = timeout,
-                ReceiveTimeout = timeout
-            };
+            tc = CreateClient(timeout);
 
             var uri = Server;
-            var addrs = uri.GetAddresses();
-            DefaultSpan.Current?.AppendTag($"addrs={addrs.Join()} port={uri.Port}");
+            var addrs = FilterAddresses(uri.GetAddresses());
+            DefaultSpan.Current?.AppendTag($"addrs={addrs.Join()} port={uri.Port} ipv6={Host.IPv6} dualMode={Host.DualMode}");
             tc.Connect(addrs, uri.Port);
 
             Client = tc;
@@ -168,15 +165,11 @@ public class RedisClient : DisposeBase
 
             var timeout = Timeout;
             if (timeout == 0) timeout = Host.Timeout;
-            tc = new TcpClient
-            {
-                SendTimeout = timeout,
-                ReceiveTimeout = timeout
-            };
+            tc = CreateClient(timeout);
 
             var uri = Server;
-            var addrs = uri.GetAddresses();
-            DefaultSpan.Current?.AppendTag($"addrs={addrs.Join()} port={uri.Port}");
+            var addrs = FilterAddresses(uri.GetAddresses());
+            DefaultSpan.Current?.AppendTag($"addrs={addrs.Join()} port={uri.Port} ipv6={Host.IPv6} dualMode={Host.DualMode}");
             await tc.ConnectAsync(addrs, uri.Port).ConfigureAwait(false);
 
             Client = tc;
@@ -196,6 +189,46 @@ public class RedisClient : DisposeBase
         }
 
         return ns;
+    }
+
+    /// <summary>创建Tcp客户端</summary>
+    /// <param name="timeout">超时时间</param>
+    /// <returns></returns>
+    protected virtual TcpClient CreateClient(Int32 timeout)
+    {
+        var tc = Host.IPv6 ? new TcpClient(AddressFamily.InterNetworkV6) : new TcpClient(AddressFamily.InterNetwork)
+        {
+            SendTimeout = timeout,
+            ReceiveTimeout = timeout
+        };
+
+        if (Host.IPv6 && tc.Client.AddressFamily == AddressFamily.InterNetworkV6)
+            tc.Client.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, !Host.DualMode ? 1 : 0);
+
+        return tc;
+    }
+
+    /// <summary>过滤可连接地址</summary>
+    /// <param name="addrs">地址列表</param>
+    /// <returns></returns>
+    protected virtual IPAddress[] FilterAddresses(IPAddress[] addrs)
+    {
+        if (addrs == null) throw new ArgumentNullException(nameof(addrs));
+
+        if (Host.IPv6)
+        {
+            if (!Host.DualMode)
+                addrs = Array.FindAll(addrs, e => e.AddressFamily == AddressFamily.InterNetworkV6);
+        }
+        else
+        {
+            addrs = Array.FindAll(addrs, e => e.AddressFamily == AddressFamily.InterNetwork);
+        }
+
+        if (addrs.Length == 0)
+            throw new SocketException((Int32)SocketError.AddressNotAvailable);
+
+        return addrs;
     }
 
     private Boolean OnCertificateValidationCallback(Object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
