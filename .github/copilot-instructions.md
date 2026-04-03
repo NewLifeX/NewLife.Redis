@@ -1,6 +1,6 @@
 # NewLife Copilot 协作指令
 
-适用于新生命团队（NewLife）全部 C#/.NET 仓库。存在本文件则必须遵循。**简体中文回复。**
+适用于 NewLife 系列全部 C#/.NET 仓库，本文件可随仓库/指令目录一起拷贝到其他项目直接复用。存在本文件则必须遵循。**简体中文回复。**
 通用 C# 最佳实践（设计模式、SOLID、健壮性等）AI 已知，此处不赘述，**仅列出组织专属规则与反常规约定**。
 
 ---
@@ -16,6 +16,13 @@
 | 性能测试/基准测试/压力测试/压测/BenchmarkDotNet/Benchmark/benchmark/吞吐量评估/性能分析/性能对比/性能报告/速度对比/速度测试/内存分配/perf/性能优化测试/做性能/跑分/测试报告 | `benchmark.instructions.md` |
 | NetServer/NetSession/网络服务器/网络客户端/Socket服务/TCP服务/UDP服务/`NewLife.Net` 引用/`NewLife.Net.*` 命名空间/ISocketClient/ISocketRemote/CreateRemote/StandardCodec/LengthFieldCodec/管道编解码/网络编程/Echo服务/网络会话/长连接/粘包拆包 | `net.instructions.md` |
 | 新建系统/新建项目/新增模块/需求整理/需求文档/需求分析/架构设计/技术方案/功能清单/功能拆分/任务分解/迭代开发/迭代计划/验收/PRD/用户故事/做一个系统/做一个平台/开发流程/全部搞完/批量开发/自治模式/一次性做完/继续处理/接着做 | `development.instructions.md` |
+| 缓存/ICache/MemoryCache/Redis缓存/ICacheProvider/缓存设计/`NewLife.Caching` 命名空间 | `caching.instructions.md` |
+| 序列化/JSON/Binary/JsonHelper/序列化设计/SpanSerializer/CSV导出/`NewLife.Serialization` 命名空间 | `serialization.instructions.md` |
+| 加密/安全/Hash/MD5/SHA/AES/SM4/RSA/JWT/SecurityHelper/TokenProvider/`NewLife.Security` 命名空间 | `security.instructions.md` |
+| 远程调用/ApiHttpClient/ApiClient/ApiServer/负载均衡/LoadBalancer/RPC/HTTP客户端/`NewLife.Remoting` 命名空间 | `remoting.instructions.md` |
+| 配置/Config/IConfigProvider/HttpConfigProvider/CommandParser/配置中心/`NewLife.Configuration` 命名空间 | `configuration.instructions.md` |
+
+**自动匹配指令**（无需触发，按 `applyTo` 路径自动生效）：`caching`、`serialization`、`security`、`remoting`、`configuration` 这 5 个指令文件同时配置了 `applyTo` 模式，编辑对应目录下的文件时 VS Code 会自动加载。
 
 ---
 
@@ -29,12 +36,10 @@
 
 ## 3. 兼容性约束（极重要）
 
-NewLife 核心库支持 `.NET 4.5` 至最新版本（`net45` → `net10`）。
-
-- **语言版本**：`<LangVersion>latest</LangVersion>`，最大化使用最新 C# 语法糖（switch 表达式、集合表达式 `[]`、`?.`/`??`、模式匹配、目标类型 `new`、record 等）
-- **禁止高版本专属 BCL API**：❌ `ArgumentNullException.ThrowIfNull()` → ✅ `if (x == null) throw new ArgumentNullException(nameof(x));`
+- **语言版本**：当前为 **C# 14**（`<LangVersion>latest</LangVersion>`），最大化使用最新语法糖（switch 表达式、集合表达式 `[]`、`?.`/`??`/`??=`、模式匹配、目标类型 `new`、record 等）
+- **框架版本**：新增 API 前，先查看当前项目 `.csproj` 的 `<TargetFrameworks>` 配置，**只需满足已声明版本的兼容性**，无需对所有历史版本降级。若包含 `net45`/`netstandard2.0` 等低版本，再提供条件编译降级实现。
+- **禁止高版本专属 BCL API**（低版本项目）：❌ `ArgumentNullException.ThrowIfNull()` → ✅ `if (x == null) throw new ArgumentNullException(nameof(x));`
 - **条件编译符号**：`NETFRAMEWORK`、`NETSTANDARD2_0`、`NETCOREAPP`、`NET5_0_OR_GREATER`、`NET6_0_OR_GREATER`、`NET8_0_OR_GREATER`
-- 新增 API 需评估各框架兼容性，必要时提供条件编译降级实现
 
 ---
 
@@ -59,10 +64,14 @@ NewLife 核心库支持 `.NET 4.5` 至最新版本（`net45` → `net10`）。
 - **命名空间**：file-scoped namespace
 - **单文件**：每文件一个主要公共类型；较大平台差异使用 `partial`
 - **集合初始化**：优先使用集合表达式 `[]`，如 `List<String> Tags { get; set; } = [];`
-- **Null 条件运算符**：优先使用 `?.`/`??` 简化空值检查
+- **Null 条件运算符**：优先使用 `?.`/`??` 简化空值检查；**C# 14 空条件赋值 `??=`**：变量为 null 时才赋值，可显著提升可读性
 
 ```csharp
-// ✅ 单行 if：单语句且整行不过长时同行
+// ✅ C#14 空条件赋值（??=）：为 null 时才赋值，替代 if (x == null) x = ...
+_cache ??= new MemoryCache();
+list ??= [];
+
+// ✅ if 内只有单行代码时可不加花括号（单行 if 同行或换行均可）
 if (value == null) return;
 if (key == null) throw new ArgumentNullException(nameof(key));
 
@@ -76,10 +85,15 @@ if (count > 0)
 else
     DoOther();
 
-// ✅ 循环必须保留花括号（即使单语句）
+// ✅ for/foreach/while 循环体必须保留花括号（即使单语句）
 foreach (var item in list)
 {
     Process(item);
+}
+
+for (var i = 0; i < count; i++)
+{
+    Process(i);
 }
 
 // ✅ using 优先无花括号声明；仅需生命周期（如锁）时用弃元
@@ -110,7 +124,7 @@ using var _ = _lock.AcquireLock();
 
 - 精准异常类型：`ArgumentNullException`/`InvalidOperationException` 等
 - TryXxx 模式：不用异常作常规分支
-- 类型转换：优先使用 `ToInt()`/`ToBoolean()` 等扩展方法
+- 类型转换：优先使用 `Utility` 扩展方法，完整列表：`ToInt()`/`ToLong()`/`ToDouble()`/`ToDecimal()`/`ToBoolean()`/`ToDateTime()`/`ToDateTimeOffset()`
 - 对外异常不暴露内部实现/路径
 
 ---
@@ -120,8 +134,9 @@ using var _ = _lock.AcquireLock();
 优先使用项目内置工具而非标准库，**禁止重复造轮子**：
 
 - 字符串构建：`Pool.StringBuilder`（替代 `new StringBuilder()`）
-- 时间戳：`Runtime.TickCount64`
-- 类型转换：`ToInt()`、`ToBoolean()`、`ToDouble()`、`ToDateTime()` 等扩展方法
+- 时间戳（毫秒级相对时间）：`Runtime.TickCount64`；**代码计时（精确耗时测量）：`Stopwatch`**
+- 类型转换：`Utility` 扩展方法 — `ToInt()`/`ToLong()`/`ToDouble()`/`ToDecimal()`/`ToBoolean()`/`ToDateTime()`/`ToDateTimeOffset()`
+- 二进制读写：`SpanReader` / `SpanWriter`（替代手动字节偏移操作）
 - 追踪埋点：`Tracer?.NewSpan()`
 
 ---
@@ -142,11 +157,12 @@ using var _ = _lock.AcquireLock();
 
 ## 7. 工作流
 
-触发检查（第 1 节触发信号表匹配，命中则读取专用指令） → 检索（**优先复用**现有实现） → 评估（公共 API/兼容性/性能） → 方案 → 实施 → 验证 → 说明
+触发检查（第 1 节触发信号表匹配，命中则读取专用指令） → 检索（**优先复用**现有实现） → 评估（公共 API/兼容性/性能） → 方案 → 实施 → 验证 → **AskQuestions 多选确认** → [需调整则循环] → 说明
 
 - **触发检查**：开始工作前必须完成，遗漏专用指令将导致输出不符合要求
 - **实施**：完成主任务；顺带修复明显缺陷；顺带简化重复代码；保留原注释与结构
 - **验证**：代码变更必须编译通过；找到相关测试则运行；仅文档变更可跳过
+- **AskQuestions 多选确认**：使用 `vscode_askQuestions` 工具，多选询问用户是否满意；若需调整则修改后重新编译，循环至满意；确认满意后才进入下一项开发
 
 ### 主动优化原则
 
@@ -174,7 +190,9 @@ using var _ = _lock.AcquireLock();
 
 ### Markdown 文档
 
-UTF-8 无 BOM；存放 `Doc/` 目录；文件名优先中文。**已有文件必须先读取再增量修改，禁止覆盖。**
+**UTF-8 无 BOM**；存放 `Doc/` 目录；文件名优先中文，内容优先简体中文，避免乱码。**已有文件必须先读取再增量修改，禁止覆盖。**
+
+> 代码注释同样要求 UTF-8 无 BOM，优先简体中文。生成或编辑任何文件时须确保编码正确，防止中文乱码。
 
 ### NuGet 版本
 
@@ -191,7 +209,7 @@ UTF-8 无 BOM；存放 `Doc/` 目录；文件名优先中文。**已有文件必
 
 - 将 `String`/`Int32` 改为 `string`/`int`（本项目反 C# 惯例，**必须用正式名**）
 - 删除防御性注释（带说明的注释代码）
-- 删除循环体的花括号
+- 删除 for/foreach/while 循环体的花括号（**循环体必须有花括号，即使只有一行**）
 - 将 `<summary>` 拆成多行
 - 擅自删除 `public`/`protected` 成员
 - 擅自新增外部 NuGet 依赖（需说明理由）
@@ -222,6 +240,37 @@ UTF-8 无 BOM；存放 `Doc/` 目录；文件名优先中文。**已有文件必
 ## 风险与后续
 潜在回归 / 是否补测试
 ```
+
+---
+
+## 12. Skills 技能文件
+
+`.github/skills/` 目录下的技能文件提供特定领域的详细使用指南和代码示例，用户可在 Copilot Chat 中通过 `#` 引用。
+
+| 技能文件 | 覆盖领域 |
+|---------|---------|
+| `caching.skill.md` | ICache/MemoryCache/Redis 统一缓存接口 |
+| `logging-tracing.skill.md` | ILog/XTrace 日志与 ITracer/DefaultTracer 链路追踪 |
+| `networking.skill.md` | NetServer/NetSession TCP/UDP/WebSocket 网络编程 |
+| `serialization.skill.md` | JSON/Binary/Span/CSV 序列化 |
+| `configuration.skill.md` | Config&lt;T&gt;/IConfigProvider/HttpConfigProvider 配置管理 |
+| `http-client.skill.md` | ApiHttpClient 多节点 HTTP 客户端与负载均衡 |
+| `dependency-injection.skill.md` | ObjectContainer/Host/Plugin/Actor 依赖注入与宿主 |
+| `timer-scheduling.skill.md` | TimerX/Cron 高级定时调度 |
+| `security.skill.md` | Hash/AES/SM4/RSA/JWT/TokenProvider 安全与加密 |
+| `type-conversion.skill.md` | ToInt/ToBoolean/StringHelper/Pool.StringBuilder 类型转换与工具 |
+
+---
+
+## 13. Agents 智能代理
+
+`.github/agents/` 目录下定义了专用 AI 代理角色，用户可在 Copilot Chat 中通过 `@` 调用。
+
+| 代理文件 | 用途 |
+|---------|------|
+| `newlife-expert.agent.md` | NewLife 组件专家：功能查询、组件推荐、编码指导 |
+| `code-review.agent.md` | 代码审查：按 NewLife 规范 8 维度检查代码 |
+| `project-init.agent.md` | 项目初始化：按模板创建新 NewLife 项目结构 |
 
 ---
 
