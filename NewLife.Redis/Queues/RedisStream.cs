@@ -154,9 +154,6 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
 
         Group = group;
 
-        // 如果Stream不存在，则直接创建消费组，此时会创建Stream
-        if (!Redis.ContainsKey(Key)) return GroupCreate(group);
-
         var gs = GetGroups();
         if (gs == null || !gs.Any(e => e.Name == group))
             return GroupCreate(group);
@@ -940,30 +937,44 @@ XREAD count 3 streams stream_key 0-0
     /// <returns></returns>
     public StreamInfo? GetInfo()
     {
-        var rs = Execute((rc, k) => rc.Execute<Object[]>("XINFO", "STREAM", Key), false);
-        if (rs == null) return null;
+        try
+        {
+            var rs = Execute((rc, k) => rc.Execute<Object[]>("XINFO", "STREAM", Key), false);
+            if (rs == null) return null;
 
-        var info = new StreamInfo();
-        info.Parse(rs);
+            var info = new StreamInfo();
+            info.Parse(rs);
 
-        return info;
+            return info;
+        }
+        catch (RedisException ex) when (ex.Message.StartsWithIgnoreCase("ERR no such key"))
+        {
+            return null;
+        }
     }
 
     /// <summary>获取消费组</summary>
     /// <returns></returns>
     public GroupInfo[] GetGroups()
     {
-        var rs = Execute((rc, k) => rc.Execute<Object[]>("XINFO", "GROUPS", Key), false);
-        if (rs == null) return [];
-
-        var gs = new GroupInfo[rs.Length];
-        for (var i = 0; i < rs.Length; i++)
+        try
         {
-            gs[i] = new GroupInfo();
-            gs[i].Parse((rs[i] as Object[])!);
-        }
+            var rs = Execute((rc, k) => rc.Execute<Object[]>("XINFO", "GROUPS", Key), false);
+            if (rs == null) return [];
 
-        return gs;
+            var gs = new GroupInfo[rs.Length];
+            for (var i = 0; i < rs.Length; i++)
+            {
+                gs[i] = new GroupInfo();
+                gs[i].Parse((rs[i] as Object[])!);
+            }
+
+            return gs;
+        }
+        catch (RedisException ex) when (ex.Message.StartsWithIgnoreCase("ERR no such key"))
+        {
+            return [];
+        }
     }
 
     /// <summary>获取消费者</summary>
@@ -971,21 +982,28 @@ XREAD count 3 streams stream_key 0-0
     /// <returns></returns>
     public ConsumerInfo[] GetConsumers(String group)
     {
-        var rs = Execute((rc, k) => rc.Execute<Object[]>("XINFO", "CONSUMERS", Key, group), false);
-        if (rs == null) return [];
-
-        var cs = new List<ConsumerInfo>(rs.Length);
-        for (var i = 0; i < rs.Length; i++)
+        try
         {
-            if (rs[i] is Object[] vs && vs.Length > 0)
-            {
-                var ci = new ConsumerInfo();
-                ci.Parse(vs);
-                cs.Add(ci);
-            }
-        }
+            var rs = Execute((rc, k) => rc.Execute<Object[]>("XINFO", "CONSUMERS", Key, group), false);
+            if (rs == null) return [];
 
-        return cs.ToArray();
+            var cs = new List<ConsumerInfo>(rs.Length);
+            for (var i = 0; i < rs.Length; i++)
+            {
+                if (rs[i] is Object[] vs && vs.Length > 0)
+                {
+                    var ci = new ConsumerInfo();
+                    ci.Parse(vs);
+                    cs.Add(ci);
+                }
+            }
+
+            return cs.ToArray();
+        }
+        catch (RedisException ex) when (ex.Message.StartsWithIgnoreCase("ERR no such key") || ex.Message.StartsWithIgnoreCase("NOGROUP"))
+        {
+            return [];
+        }
     }
 
     /// <summary>显示队列信息</summary>
@@ -1078,8 +1096,8 @@ XREAD count 3 streams stream_key 0-0
             {
                 span?.SetError(ex, null);
 
-                // 消费组不存在时，自动创建消费组。可能是Redis重启或者主从切换等原因，导致消费组丢失
-                if (!group.IsNullOrEmpty() && ex.Message.StartsWithIgnoreCase("NOGROUP"))
+                // 消费组/Stream不存在时，自动创建消费组。可能是Redis重启、主从切换或Stream键过期等原因
+                if (!group.IsNullOrEmpty() && (ex.Message.StartsWithIgnoreCase("NOGROUP") || ex.Message.StartsWithIgnoreCase("ERR no such key")))
                     SetGroup(group);
             }
             catch (Exception ex)
@@ -1184,8 +1202,8 @@ XREAD count 3 streams stream_key 0-0
             {
                 span?.SetError(ex, null);
 
-                // 消费组不存在时，自动创建消费组。可能是Redis重启或者主从切换等原因，导致消费组丢失
-                if (!group.IsNullOrEmpty() && ex.Message.StartsWithIgnoreCase("NOGROUP"))
+                // 消费组/Stream不存在时，自动创建消费组。可能是Redis重启、主从切换或Stream键过期等原因
+                if (!group.IsNullOrEmpty() && (ex.Message.StartsWithIgnoreCase("NOGROUP") || ex.Message.StartsWithIgnoreCase("ERR no such key")))
                     SetGroup(group);
             }
             catch (Exception ex)
