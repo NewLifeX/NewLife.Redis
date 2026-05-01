@@ -1,5 +1,12 @@
 # NewLife.Redis 变更日志
 
+## v6.5.2026.0501 (2026-05-01)
+
+### Bug 修复
+- **[fix]** 修复 RedisStream 在 `XINFO` 返回 `ERR no such key` 时的错误处理，增强 `ConsumeAsync` 自动恢复能力
+
+---
+
 ## v6.5.2026.0302 (2026-02-02 ~ 2026-03-02)
 
 ### 新特性
