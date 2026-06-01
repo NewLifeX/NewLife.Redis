@@ -80,7 +80,8 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
     /// <summary>订阅消息。启动大循环，从消息队列订阅消息，再分发到本地订阅者</summary>
     /// <param name="handler">处理器</param>
     /// <param name="clientId">客户标识。每个客户只能订阅一次，重复订阅将会挤掉前一次订阅</param>
-    public override Boolean Subscribe(IEventHandler<TEvent> handler, String clientId = "")
+    /// <param name="cancellationToken">取消令牌</param>
+    public override Task<Boolean> SubscribeAsync(IEventHandler<TEvent> handler, String clientId = "", CancellationToken cancellationToken = default)
     {
         if (_source == null)
         {
@@ -91,8 +92,7 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
             }
         }
 
-        // 本进程订阅。从队列中消费到消息时，会发布到本进程的事件总线，这里订阅可以让目标处理器直接收到消息
-        return base.Subscribe(handler, clientId);
+        return base.SubscribeAsync(handler, clientId, cancellationToken);
     }
 
     /// <summary>消费到事件消息，分发给内部订阅者</summary>
