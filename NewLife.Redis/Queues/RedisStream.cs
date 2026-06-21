@@ -1011,18 +1011,19 @@ XREAD count 3 streams stream_key 0-0
     {
         try
         {
-        var topic = Key;
-        var sinf = GetInfo();
-        if (sinf != null)
-            Redis.WriteLog("队列[{0}]现有数据：{1}，消费组：{2}，最后消息时间：{3}", topic, sinf.Length, sinf.Groups, sinf.LastGenerated);
+            var topic = Key;
+            var sinf = GetInfo();
+            if (sinf != null)
+                Redis.WriteLog("队列[{0}]现有数据：{1}，消费组：{2}，最后消息时间：{3}", topic, sinf.Length, sinf.Groups, sinf.LastGenerated);
 
-        var group = Group;
-        var ginf = GetGroups()?.FirstOrDefault(e => e.Name.EqualIgnoreCase(group));
-        if (ginf != null)
-            Redis.WriteLog("消费组[{0}]现有消费者：{1}，最后消费时间：{2}，挂起：{3}", ginf.Name, ginf.Consumers, ginf.LastDelivered, ginf.Pending);
-    }
+            var group = Group;
+            var ginf = GetGroups()?.FirstOrDefault(e => e.Name.EqualIgnoreCase(group));
+            if (ginf != null)
+                Redis.WriteLog("消费组[{0}]现有消费者：{1}，最后消费时间：{2}，挂起：{3}", ginf.Name, ginf.Consumers, ginf.LastDelivered, ginf.Pending);
+        }
         catch (Exception ex)
         {
+            DefaultSpan.Current?.SetError(ex, null);
             Redis.WriteLog("显示队列[{0}]信息异常：{1}", Key, ex.Message);
         }
     }
@@ -1035,6 +1036,8 @@ XREAD count 3 streams stream_key 0-0
     /// <returns></returns>
     public async Task ConsumeAsync(Func<T, Message, CancellationToken, Task> onMessage, CancellationToken cancellationToken = default)
     {
+        CheckSupport();
+
         // 打断状态机，后续逻辑在其它线程执行。使用者可能直接调用ConsumeAsync且没有使用Task.Run
         await Task.Yield();
 
@@ -1045,13 +1048,18 @@ XREAD count 3 streams stream_key 0-0
         // 超时时间，用于阻塞等待
         var timeout = BlockTime;
         var group = Group;
-        Redis.WriteLog("开始消费[{0}]，消费组：{1}，阻塞时间：{2}秒，最大重试消费：{3}次，消息保存：{4}", topic, group, timeout, MaxRetry, Expire);
+        // 消费开始埋点，包裹初始化操作
+        using (Redis.Tracer?.NewSpan($"redismq:{topic}:ConsumeBegin", new { topic, group, timeout, MaxRetry, Expire }))
+        {
+            Redis.WriteLog("开始消费[{0}]，消费组：{1}，阻塞时间：{2}秒，最大重试消费：{3}次，消息保存：{4}", topic, group, timeout, MaxRetry, Expire);
 
-        // 自动创建消费组
-        if (!group.IsNullOrEmpty()) SetGroup(group);
+            // 自动创建消费组
+            if (!group.IsNullOrEmpty()) SetGroup(group);
 
-        ShowInfo();
+            ShowInfo();
+        }
 
+        var reason = "Cancelled";
         while (!cancellationToken.IsCancellationRequested)
         {
             // 大循环之前，打断性能追踪调用链
@@ -1097,8 +1105,8 @@ XREAD count 3 streams stream_key 0-0
                     await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
                 }
             }
-            catch (ThreadAbortException) { break; }
-            catch (ThreadInterruptedException) { break; }
+            catch (ThreadAbortException) { reason = "ThreadAbort"; break; }
+            catch (ThreadInterruptedException) { reason = "ThreadInterrupt"; break; }
             catch (RedisException ex)
             {
                 span?.SetError(ex, null);
@@ -1109,7 +1117,7 @@ XREAD count 3 streams stream_key 0-0
             }
             catch (Exception ex)
             {
-                if (cancellationToken.IsCancellationRequested) break;
+                if (cancellationToken.IsCancellationRequested) { reason = "Cancelled"; break; }
 
                 span?.SetError(ex, null);
             }
@@ -1119,7 +1127,11 @@ XREAD count 3 streams stream_key 0-0
             }
         }
 
-        Redis.WriteLog("消费[{0}]结束", topic);
+        // 消费结束埋点，记录退出原因
+        using (Redis.Tracer?.NewSpan($"redismq:{topic}:ConsumeEnd", new { topic, group, reason }))
+        {
+            Redis.WriteLog("消费[{0}]结束，退出原因：{1}", topic, reason);
+        }
     }
 
     /// <summary>队列消费大循环，处理消息后自动确认</summary>
@@ -1140,6 +1152,8 @@ XREAD count 3 streams stream_key 0-0
     /// <returns></returns>
     public async Task ConsumeAsync(Func<T[], Message[], CancellationToken, Task> onMessage, Int32 batchSize = 100, CancellationToken cancellationToken = default)
     {
+        CheckSupport();
+
         // 打断状态机，后续逻辑在其它线程执行。使用者可能直接调用ConsumeAsync且没有使用Task.Run
         await Task.Yield();
 
@@ -1152,13 +1166,18 @@ XREAD count 3 streams stream_key 0-0
         if (batchSize <= 0) batchSize = 100;
 
         var group = Group;
-        Redis.WriteLog("开始批量消费[{0}]，消费组：{1}，阻塞时间：{2}秒，最大重试消费：{3}次，消息保存：{4}，批大小：{5}", topic, group, timeout, MaxRetry, Expire, batchSize);
+        // 消费开始埋点，包裹初始化操作
+        using (Redis.Tracer?.NewSpan($"redismq:{topic}:ConsumeBegin", new { topic, group, timeout, MaxRetry, Expire, batchSize }))
+        {
+            Redis.WriteLog("开始批量消费[{0}]，消费组：{1}，阻塞时间：{2}秒，最大重试消费：{3}次，消息保存：{4}，批大小：{5}", topic, group, timeout, MaxRetry, Expire, batchSize);
 
-        // 自动创建消费组
-        if (!group.IsNullOrEmpty()) SetGroup(group);
+            // 自动创建消费组
+            if (!group.IsNullOrEmpty()) SetGroup(group);
 
-        ShowInfo();
+            ShowInfo();
+        }
 
+        var reason = "Cancelled";
         while (!cancellationToken.IsCancellationRequested)
         {
             // 大循环之前，打断性能追踪调用链
@@ -1203,8 +1222,8 @@ XREAD count 3 streams stream_key 0-0
                     await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
                 }
             }
-            catch (ThreadAbortException) { break; }
-            catch (ThreadInterruptedException) { break; }
+            catch (ThreadAbortException) { reason = "ThreadAbort"; break; }
+            catch (ThreadInterruptedException) { reason = "ThreadInterrupt"; break; }
             catch (RedisException ex)
             {
                 span?.SetError(ex, null);
@@ -1215,7 +1234,7 @@ XREAD count 3 streams stream_key 0-0
             }
             catch (Exception ex)
             {
-                if (cancellationToken.IsCancellationRequested) break;
+                if (cancellationToken.IsCancellationRequested) { reason = "Cancelled"; break; }
 
                 span?.SetError(ex, null);
             }
@@ -1225,7 +1244,11 @@ XREAD count 3 streams stream_key 0-0
             }
         }
 
-        Redis.WriteLog("批量消费[{0}]结束", topic);
+        // 消费结束埋点，记录退出原因
+        using (Redis.Tracer?.NewSpan($"redismq:{topic}:ConsumeEnd", new { topic, group, reason }))
+        {
+            Redis.WriteLog("批量消费[{0}]结束，退出原因：{1}", topic, reason);
+        }
     }
 
     /// <summary>队列批量消费大循环，批量处理消息后自动确认</summary>
