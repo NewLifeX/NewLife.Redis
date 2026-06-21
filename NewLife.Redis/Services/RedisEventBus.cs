@@ -30,6 +30,7 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
 
     private RedisEventContext? _context;
     private CancellationTokenSource? _source;
+    private Int32 _consuming;
 
     /// <summary>销毁</summary>
     /// <param name="disposing"></param>
@@ -37,12 +38,19 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
     {
         base.Dispose(disposing);
 
+        // 取消消费循环，停止 ConsumeAsync 内部循环
+        try
+        {
+            _source?.Cancel();
+        }
+        catch (ObjectDisposedException) { }
+
         _source?.TryDispose();
     }
 
-    /// <summary>初始化</summary>
+    /// <summary>确保队列已初始化（仅创建队列，不启动消费）</summary>
     [MemberNotNull(nameof(_queue))]
-    protected virtual void Init()
+    protected virtual void EnsureQueue()
     {
         if (_queue != null) return;
 
@@ -55,10 +63,20 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
         stream.Expire = TimeSpan.FromDays(3);
 
         _queue = stream;
+    }
 
-        if (_source != null)
-            //_ = Task.Factory.StartNew(() => ConsumeMessage(_source), TaskCreationOptions.LongRunning);
-            _ = stream.ConsumeAsync(OnMessage, _source.Token);
+    /// <summary>启动消费循环</summary>
+    /// <remarks>
+    /// 调用 RedisStream.ConsumeAsync 启动后台消费大循环。
+    /// 曾经尝试过 Task.Factory.StartNew(() => ConsumeMessage(_source), TaskCreationOptions.LongRunning) 手动循环，
+    /// 但改用 RedisStream 内置的 ConsumeAsync 更稳定可靠，且支持消费组自动管理。
+    /// </remarks>
+    protected virtual void StartConsuming()
+    {
+        if (_source == null) return;
+        if (Interlocked.CompareExchange(ref _consuming, 1, 0) != 0) return;
+
+        _ = _queue!.ConsumeAsync(OnMessage, _source.Token);
     }
 
     /// <summary>发布消息到消息队列</summary>
@@ -70,7 +88,7 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
         // 待发布消息增加追踪标识
         if (@event is ITraceMessage tm && tm.TraceId.IsNullOrEmpty()) tm.TraceId = DefaultSpan.Current?.ToString();
 
-        Init();
+        EnsureQueue();
 
         var rs = _queue.Add(@event);
 
@@ -88,7 +106,8 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
             var source = new CancellationTokenSource();
             if (Interlocked.CompareExchange(ref _source, source, null) == null)
             {
-                Init();
+                EnsureQueue();
+                StartConsuming();
             }
         }
 
@@ -109,78 +128,4 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
         _context.Message = null!;
     }
 
-    /// <summary>从队列中消费消息，经事件总线送给设备会话</summary>
-    /// <param name="source"></param>
-    /// <returns></returns>
-    protected virtual async Task ConsumeMessage(CancellationTokenSource source)
-    {
-        DefaultSpan.Current = null;
-        var cancellationToken = source.Token;
-        var stream = _queue!;
-        if (!stream.Group.IsNullOrEmpty()) stream.SetGroup(stream.Group);
-        var timeout = stream.BlockTime;
-
-        var context = new RedisEventContext(this, null!);
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            // try-catch 放在循环内，避免单次异常退出循环
-            ISpan? span = null;
-            try
-            {
-                var msg = await stream.TakeMessageAsync(timeout, cancellationToken).ConfigureAwait(false);
-                if (msg != null)
-                {
-                    var msg2 = msg.GetBody<TEvent>();
-                    if (msg2 != null)
-                    {
-                        span = Tracer?.NewSpan($"event:{topic}", msg);
-                        if (span != null && msg is ITraceMessage tm) span.Detach(tm.TraceId);
-
-                        // 发布到事件总线
-                        context.Message = msg;
-                        await base.PublishAsync(msg2, context, cancellationToken).ConfigureAwait(false);
-                        context.Message = null!;
-                    }
-
-                    // 确认消息
-                    stream.Acknowledge(msg.Id!);
-                }
-                else
-                {
-                    await Task.Delay(1_000, cancellationToken).ConfigureAwait(false);
-                }
-            }
-            catch (ThreadAbortException) { break; }
-            catch (ThreadInterruptedException) { break; }
-            catch (TaskCanceledException) { }
-            catch (OperationCanceledException) { }
-            catch (RedisException ex)
-            {
-                span?.SetError(ex, null);
-
-                // 消费组不存在时，自动创建消费组。可能是Redis重启或者主从切换等原因，导致消费组丢失
-                if (!group.IsNullOrEmpty() && ex.Message.StartsWithIgnoreCase("NOGROUP"))
-                    stream.SetGroup(group);
-            }
-            catch (Exception ex)
-            {
-                if (cancellationToken.IsCancellationRequested) break;
-
-                span?.SetError(ex);
-                XTrace.WriteException(ex);
-            }
-            finally
-            {
-                span?.Dispose();
-            }
-        }
-
-        // 通知取消
-        try
-        {
-            if (!source.IsCancellationRequested) source.Cancel();
-        }
-        catch (ObjectDisposedException) { }
-        _queue = null;
-    }
 }
