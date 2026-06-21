@@ -27,9 +27,11 @@ public class GroupInfo
     /// <param name="vs"></param>
     public void Parse(Object[] vs)
     {
+        if (vs == null || vs.Length < 2) return;
+
         for (var i = 0; i < vs.Length - 1; i += 2)
         {
-            var key = (vs[i] as IPacket)!.ToStr();
+            var key = (vs[i] as IPacket)?.ToStr();
             if (key.IsNullOrEmpty()) continue;
 
             var value = vs[i + 1];
@@ -46,7 +48,7 @@ public class GroupInfo
         if (!last.IsNullOrEmpty())
         {
             var p = last.IndexOf('-');
-            if (p > 0) last = last.Substring(0, p);
+            if (p > 0) last = last[..p];
 
             LastDelivered = last.ToLong().ToDateTime().ToLocalTime();
         }

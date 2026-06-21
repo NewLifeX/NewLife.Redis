@@ -21,11 +21,11 @@ public class ConsumerInfo
     /// <param name="vs"></param>
     public void Parse(Object[] vs)
     {
-        if (vs == null || vs.Length == 0) return;
+        if (vs == null || vs.Length < 2) return;
 
         for (var i = 0; i < vs.Length - 1; i += 2)
         {
-            var key = (vs[i] as IPacket)!.ToStr();
+            var key = (vs[i] as IPacket)?.ToStr();
             if (key.IsNullOrEmpty()) continue;
 
             switch (key)

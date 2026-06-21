@@ -35,6 +35,9 @@ public class StreamInfo
 
     /// <summary>最后生成时间</summary>
     public DateTime LastGenerated { get; set; }
+
+    /// <summary>累计添加条目数（Redis 7.0+）</summary>
+    public Int32 EntriesAdded { get; set; }
     #endregion
 
     #region 方法
@@ -42,9 +45,13 @@ public class StreamInfo
     /// <param name="vs"></param>
     public void Parse(Object[] vs)
     {
+        if (vs == null || vs.Length < 2) return;
+
         for (var i = 0; i < vs.Length - 1; i += 2)
         {
-            var key = (vs[i] as IPacket)!.ToStr();
+            var key = (vs[i] as IPacket)?.ToStr();
+            if (key.IsNullOrEmpty()) continue;
+
             var value = vs[i + 1];
             switch (key)
             {
@@ -53,15 +60,16 @@ public class StreamInfo
                 case "radix-tree-nodes": RadixTreeNodes = value.ToInt(); break;
                 case "last-generated-id": LastGeneratedId = (value as IPacket)?.ToStr(); break;
                 case "groups": Groups = value.ToInt(); break;
+                case "entries-added": EntriesAdded = value.ToInt(); break;
                 case "first-entry":
-                    if (value is Object[] fs)
+                    if (value is Object[] fs && fs.Length >= 2)
                     {
                         if (fs[0] is IPacket pk) FirstId = pk.ToStr();
                         if (fs[1] is Object[] objs) FirstValues = objs.Select(e => (e as IPacket)?.ToStr() ?? String.Empty).ToArray();
                     }
                     break;
                 case "last-entry":
-                    if (value is Object[] ls)
+                    if (value is Object[] ls && ls.Length >= 2)
                     {
                         if (ls[0] is IPacket pk) LastId = pk.ToStr();
                         if (ls[1] is Object[] objs) LastValues = objs.Select(e => (e as IPacket)?.ToStr() ?? String.Empty).ToArray();
@@ -74,7 +82,7 @@ public class StreamInfo
         if (!last.IsNullOrEmpty())
         {
             var p = last.IndexOf('-');
-            if (p > 0) last = last.Substring(0, p);
+            if (p > 0) last = last[..p];
 
             LastGenerated = last.ToLong().ToDateTime().ToLocalTime();
         }

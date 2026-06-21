@@ -1009,6 +1009,8 @@ XREAD count 3 streams stream_key 0-0
     /// <summary>显示队列信息</summary>
     public void ShowInfo()
     {
+        try
+        {
         var topic = Key;
         var sinf = GetInfo();
         if (sinf != null)
@@ -1018,6 +1020,11 @@ XREAD count 3 streams stream_key 0-0
         var ginf = GetGroups()?.FirstOrDefault(e => e.Name.EqualIgnoreCase(group));
         if (ginf != null)
             Redis.WriteLog("消费组[{0}]现有消费者：{1}，最后消费时间：{2}，挂起：{3}", ginf.Name, ginf.Consumers, ginf.LastDelivered, ginf.Pending);
+    }
+        catch (Exception ex)
+        {
+            Redis.WriteLog("显示队列[{0}]信息异常：{1}", Key, ex.Message);
+        }
     }
     #endregion
 
