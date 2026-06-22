@@ -94,7 +94,7 @@
     <Content Include="..\Doc\leaf.png" Link="leaf.png" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\Readme.MD">
+    <None Include="Readme.MD">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
