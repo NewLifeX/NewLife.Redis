@@ -172,6 +172,69 @@ public class HashTest
         Assert.Equal(2, rh.Count);
     }
 
+    [Fact(DisplayName = "HRANDFIELD随机字段测试")]
+    public void HRandFieldTest()
+    {
+        var key = "hash_randfield";
+
+        _redis.Remove(key);
+
+        var hash = _redis.GetDictionary<String>(key) as RedisHash<String, String>;
+        Assert.NotNull(hash);
+
+        hash.HMSet(new Dictionary<String, String>
+        {
+            ["a"] = "1",
+            ["b"] = "2",
+            ["c"] = "3"
+        });
+
+        var fields = hash.HRandField(2);
+        Assert.NotNull(fields);
+        Assert.Equal(2, fields.Length);
+    }
+
+    [Fact(DisplayName = "HGETDEL获取并删除字段测试")]
+    public void HGetDelTest()
+    {
+        var key = "hash_getdel";
+
+        _redis.Remove(key);
+
+        var hash = _redis.GetDictionary<String>(key) as RedisHash<String, String>;
+        Assert.NotNull(hash);
+
+        hash.HMSet(new Dictionary<String, String>
+        {
+            ["field1"] = "value1",
+            ["field2"] = "value2"
+        });
+
+        var val = hash.HGetDel("field1");
+        Assert.Equal("value1", val);
+        Assert.False(hash.ContainsKey("field1"));
+        Assert.True(hash.ContainsKey("field2"));
+    }
+
+    [Fact(DisplayName = "HGETEX获取并设置过期测试")]
+    public void HGetExTest()
+    {
+        var key = "hash_getex";
+
+        _redis.Remove(key);
+
+        var hash = _redis.GetDictionary<String>(key) as RedisHash<String, String>;
+        Assert.NotNull(hash);
+
+        hash.HMSet(new Dictionary<String, String>
+        {
+            ["field1"] = "value1"
+        });
+
+        var val = hash.HGetEx("field1", 60);
+        Assert.Equal("value1", val);
+    }
+
     class EventInfo
     {
         public String EventId { get; set; }

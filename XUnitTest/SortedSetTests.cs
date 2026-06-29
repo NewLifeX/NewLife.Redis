@@ -472,4 +472,65 @@ public class SortedSetTests
         var r2 = zset.Execute((r, k) => r.Execute<Double>("ZSCORE", zset.Key, "stone"), false);
         Assert.Equal(r, r2);
     }
+
+    [Fact(DisplayName = "ZRANGESTORE范围存储测试")]
+    public void RangeStoreTest()
+    {
+        var rkey = "zset_rangestore";
+        var dest = "zset_rangestore_dest";
+
+        _redis.Remove(rkey, dest);
+
+        var zset = new RedisSortedSet<String>(_redis, rkey);
+
+        zset.Add("a", 10);
+        zset.Add("b", 20);
+        zset.Add("c", 30);
+        zset.Add("d", 40);
+
+        var count = zset.RangeStore(dest, 20, 35, byScore: true);
+        Assert.Equal(2, count);
+    }
+
+    [Fact(DisplayName = "ZDIFF差集测试")]
+    public void DiffTest()
+    {
+        var rkey1 = "zset_diff1";
+        var rkey2 = "zset_diff2";
+
+        _redis.Remove(rkey1, rkey2);
+
+        var zset1 = new RedisSortedSet<String>(_redis, rkey1);
+        zset1.Add("a", 10);
+        zset1.Add("b", 20);
+        zset1.Add("c", 30);
+
+        var zset2 = new RedisSortedSet<String>(_redis, rkey2);
+        zset2.Add("b", 20);
+
+        var diff = zset1.Diff(rkey2);
+        Assert.NotNull(diff);
+        Assert.Contains("a", diff);
+        Assert.Contains("c", diff);
+    }
+
+    [Fact(DisplayName = "ZDIFFSTORE差集存储测试")]
+    public void DiffStoreTest()
+    {
+        var rkey1 = "zset_diffstore1";
+        var rkey2 = "zset_diffstore2";
+        var dest = "zset_diffstore_dest";
+
+        _redis.Remove(rkey1, rkey2, dest);
+
+        var zset1 = new RedisSortedSet<String>(_redis, rkey1);
+        zset1.Add("a", 10);
+        zset1.Add("b", 20);
+
+        var zset2 = new RedisSortedSet<String>(_redis, rkey2);
+        zset2.Add("b", 20);
+
+        var count = zset1.DiffStore(dest, rkey2);
+        Assert.Equal(1, count);
+    }
 }

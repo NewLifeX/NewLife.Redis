@@ -262,4 +262,96 @@ public class RedisSortedSet<T> : RedisBase
         }
     }
     #endregion
+
+    #region 集合运算
+    /// <summary>存储有序集合的范围结果到目标键（Redis 6.2+）</summary>
+    /// <param name="destination">目标键</param>
+    /// <param name="min">起始排名/分数</param>
+    /// <param name="max">结束排名/分数</param>
+    /// <param name="byScore">按分数而非排名</param>
+    /// <param name="rev">是否逆序</param>
+    /// <param name="offset">偏移量</param>
+    /// <param name="count">数量</param>
+    /// <returns>存储的元素数量</returns>
+    public Int32 RangeStore(String destination, Double min, Double max, Boolean byScore = false, Boolean rev = false, Int32 offset = 0, Int32 count = 0)
+    {
+        var args = new List<Object> { GetKey(destination), Key, min, max };
+
+        if (byScore) args.Add("BYSCORE");
+        if (rev) args.Add("REV");
+        if (count > 0)
+        {
+            args.Add("LIMIT");
+            args.Add(offset);
+            args.Add(count);
+        }
+
+        return Execute((rc, k) => rc.Execute<Int32>("ZRANGESTORE", args.ToArray()), true);
+    }
+
+    /// <summary>获取多个有序集合的差集（Redis 6.2+）</summary>
+    /// <param name="keys">其他有序集合键</param>
+    /// <returns>差集成员</returns>
+    public T[]? Diff(params String[] keys)
+    {
+        var args = new List<Object> { keys.Length + 1, Key };
+        args.AddRange(keys.Select(k => (Object)GetKey(k)));
+        return Execute((rc, k) => rc.Execute<T[]>("ZDIFF", args.ToArray()));
+    }
+
+    /// <summary>存储多个有序集合的差集（Redis 6.2+）</summary>
+    /// <param name="destination">目标键</param>
+    /// <param name="keys">其他有序集合键</param>
+    /// <returns>差集元素数量</returns>
+    public Int32 DiffStore(String destination, params String[] keys)
+    {
+        var args = new List<Object> { GetKey(destination), keys.Length + 1, Key };
+        args.AddRange(keys.Select(k => (Object)GetKey(k)));
+        return Execute((rc, k) => rc.Execute<Int32>("ZDIFFSTORE", args.ToArray()), true);
+    }
+
+    /// <summary>计算多个有序集合的并集（Redis 6.2+）</summary>
+    /// <param name="keys">其他有序集合键</param>
+    /// <param name="weights">权重数组，null表示默认权重1</param>
+    /// <param name="aggregate">聚合方式：SUM/MIN/MAX，默认SUM</param>
+    /// <param name="withScores">是否返回分数</param>
+    /// <returns>并集成员</returns>
+    public T[]? Union(String[] keys, Double[]? weights = null, String? aggregate = null, Boolean withScores = false)
+    {
+        var args = new List<Object> { keys.Length + 1, Key };
+        args.AddRange(keys.Select(k => (Object)GetKey(k)));
+
+        if (weights != null)
+        {
+            args.Add("WEIGHTS");
+            args.AddRange(weights.Cast<Object>());
+        }
+        if (!aggregate.IsNullOrEmpty()) args.AddRange(["AGGREGATE", aggregate]);
+        if (withScores) args.Add("WITHSCORES");
+
+        return Execute((rc, k) => rc.Execute<T[]>("ZUNION", args.ToArray()));
+    }
+
+    /// <summary>计算多个有序集合的交集（Redis 6.2+）</summary>
+    /// <param name="keys">其他有序集合键</param>
+    /// <param name="weights">权重数组，null表示默认权重1</param>
+    /// <param name="aggregate">聚合方式：SUM/MIN/MAX，默认SUM</param>
+    /// <param name="withScores">是否返回分数</param>
+    /// <returns>交集成员</returns>
+    public T[]? Inter(String[] keys, Double[]? weights = null, String? aggregate = null, Boolean withScores = false)
+    {
+        var args = new List<Object> { keys.Length + 1, Key };
+        args.AddRange(keys.Select(k => (Object)GetKey(k)));
+
+        if (weights != null)
+        {
+            args.Add("WEIGHTS");
+            args.AddRange(weights.Cast<Object>());
+        }
+        if (!aggregate.IsNullOrEmpty()) args.AddRange(["AGGREGATE", aggregate]);
+        if (withScores) args.Add("WITHSCORES");
+
+        return Execute((rc, k) => rc.Execute<T[]>("ZINTER", args.ToArray()));
+    }
+    #endregion
 }

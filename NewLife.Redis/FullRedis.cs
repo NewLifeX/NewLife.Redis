@@ -694,6 +694,76 @@ public class FullRedis : Redis
     /// <param name="key"></param>
     /// <returns></returns>
     public virtual Int32 StrLen(String key) => Execute(key, (r, k) => r.Execute<Int32>("STRLEN", k));
+
+    /// <summary>设置键值并返回旧值（Redis 6.2+ SET ... GET）</summary>
+    /// <typeparam name="T">值类型</typeparam>
+    /// <param name="key">键</param>
+    /// <param name="value">新值</param>
+    /// <param name="expire">过期时间（秒），0表示不过期</param>
+    /// <returns>旧值，键不存在返回默认值</returns>
+    public virtual T? SetGet<T>(String key, T value, Int32 expire = 0)
+    {
+        if (expire > 0)
+            return Execute(key, (rc, k) => rc.Execute<T>("SET", k, value, "EX", expire, "GET"), true);
+        else
+            return Execute(key, (rc, k) => rc.Execute<T>("SET", k, value, "GET"), true);
+    }
+    #endregion
+
+    #region 位图操作
+    /// <summary>设置键的位值（SETBIT）</summary>
+    /// <param name="key">键</param>
+    /// <param name="offset">位偏移（0-based）</param>
+    /// <param name="value">位值（0或1）</param>
+    /// <returns>该位原来的值</returns>
+    public virtual Int32 SetBit(String key, Int64 offset, Int32 value) => Execute(key, (rc, k) => rc.Execute<Int32>("SETBIT", k, offset, value), true);
+
+    /// <summary>获取键的位值（GETBIT）</summary>
+    /// <param name="key">键</param>
+    /// <param name="offset">位偏移（0-based）</param>
+    /// <returns>该位的值（0或1）</returns>
+    public virtual Int32 GetBit(String key, Int64 offset) => Execute(key, (rc, k) => rc.Execute<Int32>("GETBIT", k, offset));
+
+    /// <summary>统计键中设置为1的位数（BITCOUNT）</summary>
+    /// <param name="key">键</param>
+    /// <param name="start">起始字节偏移</param>
+    /// <param name="end">结束字节偏移</param>
+    /// <returns>1的位数</returns>
+    public virtual Int64 BitCount(String key, Int64 start = 0, Int64 end = -1) => Execute(key, (rc, k) => rc.Execute<Int64>("BITCOUNT", k, start, end));
+
+    /// <summary>查找第一个设置为指定位值的位位置（BITPOS）</summary>
+    /// <param name="key">键</param>
+    /// <param name="bit">要查找的位值（0或1）</param>
+    /// <param name="start">起始字节偏移</param>
+    /// <param name="end">结束字节偏移</param>
+    /// <returns>位位置，未找到返回-1</returns>
+    public virtual Int64 BitPos(String key, Int32 bit, Int64 start = 0, Int64 end = -1) => Execute(key, (rc, k) => rc.Execute<Int64>("BITPOS", k, bit, start, end));
+
+    /// <summary>对多个键执行位运算（BITOP）</summary>
+    /// <param name="operation">操作类型：AND/OR/XOR/NOT</param>
+    /// <param name="destKey">目标键</param>
+    /// <param name="keys">源键列表</param>
+    /// <returns>存储到目标键的字符串长度</returns>
+    public virtual Int64 BitOp(String operation, String destKey, params String[] keys)
+    {
+        var args = new List<Object> { operation, GetKey(destKey) };
+        foreach (var key in keys)
+        {
+            args.Add(GetKey(key));
+        }
+        return Execute(destKey, (rc, k) => rc.Execute<Int64>("BITOP", args.ToArray()), true);
+    }
+
+    /// <summary>执行位域操作（BITFIELD）</summary>
+    /// <param name="key">键</param>
+    /// <param name="args">位域命令参数，如 "INCRBY", "i5", "0", "1", "GET", "u4", "0"</param>
+    /// <returns>操作结果数组</returns>
+    public virtual Int64[]? BitField(String key, params String[] args)
+    {
+        var ps = new List<Object> { GetKey(key) };
+        ps.AddRange(args.Cast<Object>());
+        return Execute(key, (rc, k) => rc.Execute<Int64[]>("BITFIELD", ps.ToArray()), true);
+    }
     #endregion
 
     #region 高级操作
@@ -712,6 +782,122 @@ public class FullRedis : Redis
 
         return rs == "OK" || rs.ToInt() > 0;
     }
+
+    /// <summary>异步删除键（Redis 4.0+），与DEL不同，UNLINK在另一个线程中回收内存，不会阻塞</summary>
+    /// <param name="keys">键集合</param>
+    /// <returns>实际删除的键数量</returns>
+    public virtual Int32 Unlink(params String[] keys)
+    {
+        if (keys == null || keys.Length == 0) return 0;
+
+        var ks = new List<String>();
+        foreach (var key in keys)
+        {
+            ks.Add(GetKey(key));
+        }
+
+        return Execute(ks[0], (rc, k) => rc.Execute<Int32>("UNLINK", ks.ToArray()), true);
+    }
+
+    /// <summary>更新键的最后访问时间（Redis 3.2.1+）</summary>
+    /// <param name="keys">键集合</param>
+    /// <returns>成功更新的键数量</returns>
+    public virtual Int32 Touch(params String[] keys)
+    {
+        if (keys == null || keys.Length == 0) return 0;
+
+        var ks = new List<String>();
+        foreach (var key in keys)
+        {
+            ks.Add(GetKey(key));
+        }
+
+        return Execute(ks[0], (rc, k) => rc.Execute<Int32>("TOUCH", ks.ToArray()), true);
+    }
+
+    /// <summary>复制键（Redis 6.2+）</summary>
+    /// <param name="source">源键</param>
+    /// <param name="destination">目标键</param>
+    /// <param name="destinationDb">目标数据库，不指定则同库</param>
+    /// <param name="replace">是否替换目标键（相当于COPY ... REPLACE）</param>
+    /// <returns>成功返回true，源键不存在返回false</returns>
+    public virtual Boolean Copy(String source, String destination, Int32? destinationDb = null, Boolean replace = false)
+    {
+        source = GetKey(source);
+        destination = GetKey(destination);
+
+        if (destinationDb != null)
+        {
+            if (replace)
+                return Execute(source, (rc, k) => rc.Execute<Int32>("COPY", k, destination, "DB", destinationDb.Value, "REPLACE"), true) > 0;
+            else
+                return Execute(source, (rc, k) => rc.Execute<Int32>("COPY", k, destination, "DB", destinationDb.Value), true) > 0;
+        }
+        else
+        {
+            if (replace)
+                return Execute(source, (rc, k) => rc.Execute<Int32>("COPY", k, destination, "REPLACE"), true) > 0;
+            else
+                return Execute(source, (rc, k) => rc.Execute<Int32>("COPY", k, destination), true) > 0;
+        }
+    }
+
+    /// <summary>获取键值并设置过期时间（Redis 6.2+）</summary>
+    /// <typeparam name="T">值类型</typeparam>
+    /// <param name="key">键</param>
+    /// <param name="expire">过期时间（秒），正数为EX，负数为PX（毫秒）</param>
+    /// <returns>键的值，如果键不存在返回默认值</returns>
+    /// <remarks>
+    /// expire>0: EX seconds（秒级过期）
+    /// expire&lt;0: PX milliseconds（毫秒级过期，取绝对值）
+    /// expire=0: PERSIST（移除过期时间）
+    /// </remarks>
+    public virtual T? GetEx<T>(String key, Int32 expire)
+    {
+        if (expire > 0)
+            return Execute(key, (rc, k) => rc.Execute<T>("GETEX", k, "EX", expire), true);
+        else if (expire < 0)
+            return Execute(key, (rc, k) => rc.Execute<T>("GETEX", k, "PX", -expire), true);
+        else
+            return Execute(key, (rc, k) => rc.Execute<T>("GETEX", k, "PERSIST"), true);
+    }
+
+    /// <summary>获取键的过期时间戳（Redis 7.0+）</summary>
+    /// <param name="key">键</param>
+    /// <returns>Unix时间戳（秒），-1表示永不过期，-2表示键不存在</returns>
+    public virtual Int64 ExpireTime(String key) => Execute(key, (rc, k) => rc.Execute<Int64>("EXPIRETIME", k));
+
+    /// <summary>获取键的过期时间戳（毫秒级，Redis 7.0+）</summary>
+    /// <param name="key">键</param>
+    /// <returns>Unix时间戳（毫秒），-1表示永不过期，-2表示键不存在</returns>
+    public virtual Int64 PExpireTime(String key) => Execute(key, (rc, k) => rc.Execute<Int64>("PEXPIRETIME", k));
+
+    /// <summary>估算键的内存占用（Redis 4.0+）</summary>
+    /// <param name="key">键</param>
+    /// <param name="samples">采样数量，0=默认（5），更大的值更精确但更慢</param>
+    /// <returns>内存占用字节数，键不存在返回0</returns>
+    public virtual Int64 MemoryUsage(String key, Int32 samples = 0)
+    {
+        if (samples > 0)
+            return Execute(key, (rc, k) => rc.Execute<Int64>("MEMORY", "USAGE", k, "SAMPLES", samples));
+        else
+            return Execute(key, (rc, k) => rc.Execute<Int64>("MEMORY", "USAGE", k));
+    }
+
+    /// <summary>获取键的内部编码类型（OBJECT ENCODING）</summary>
+    /// <param name="key">键</param>
+    /// <returns>编码类型，如raw/embstr/int/ziplist/listpack/skiplist等</returns>
+    public virtual String? ObjectEncoding(String key) => Execute(key, (rc, k) => rc.Execute<String>("OBJECT", "ENCODING", k));
+
+    /// <summary>获取键的空闲时间（OBJECT IDLETIME），即自上次读写以来的秒数</summary>
+    /// <param name="key">键</param>
+    /// <returns>空闲秒数，键不存在返回null</returns>
+    public virtual Int64? ObjectIdleTime(String key) => Execute(key, (rc, k) => rc.Execute<Int64>("OBJECT", "IDLETIME", k));
+
+    /// <summary>获取键的访问频率计数器（OBJECT FREQ），需要maxmemory-policy为LFU</summary>
+    /// <param name="key">键</param>
+    /// <returns>访问频率计数，键不存在返回null</returns>
+    public virtual Int64? ObjectFreq(String key) => Execute(key, (rc, k) => rc.Execute<Int64>("OBJECT", "FREQ", k));
 
     ///// <summary>模糊搜索，支持?和*</summary>
     ///// <param name="pattern"></param>
@@ -856,6 +1042,45 @@ public class FullRedis : Redis
     /// <returns></returns>
     public virtual T? BRPOPLPUSH<T>(String source, String destination, Int32 secTimeout) => Execute(source, (rc, k) => rc.Execute<T>("BRPOPLPUSH", k, GetKey(destination), secTimeout), true);
 
+    /// <summary>原子移动列表元素（Redis 6.2+）</summary>
+    /// <remarks>
+    /// 从source列表弹出元素并推入destination列表，可指定左右方向。
+    /// whereFrom: LEFT=头部弹出, RIGHT=尾部弹出
+    /// whereTo: LEFT=头部推入, RIGHT=尾部推入
+    /// </remarks>
+    /// <typeparam name="T">元素类型</typeparam>
+    /// <param name="source">源列表</param>
+    /// <param name="destination">目标列表</param>
+    /// <param name="whereFrom">弹出方向（LEFT/RIGHT）</param>
+    /// <param name="whereTo">推入方向（LEFT/RIGHT）</param>
+    /// <returns>弹出的元素</returns>
+    public virtual T? LMove<T>(String source, String destination, String whereFrom, String whereTo)
+    {
+        source = GetKey(source);
+        destination = GetKey(destination);
+        return Execute(source, (rc, k) => rc.Execute<T>("LMOVE", k, destination, whereFrom, whereTo), true);
+    }
+
+    /// <summary>阻塞式原子移动列表元素（Redis 6.2+）</summary>
+    /// <remarks>
+    /// LMOVE的阻塞版本，如果source列表为空则阻塞等待。
+    /// whereFrom: LEFT=头部弹出, RIGHT=尾部弹出
+    /// whereTo: LEFT=头部推入, RIGHT=尾部推入
+    /// </remarks>
+    /// <typeparam name="T">元素类型</typeparam>
+    /// <param name="source">源列表</param>
+    /// <param name="destination">目标列表</param>
+    /// <param name="whereFrom">弹出方向（LEFT/RIGHT）</param>
+    /// <param name="whereTo">推入方向（LEFT/RIGHT）</param>
+    /// <param name="secTimeout">阻塞超时，单位秒。设置前请确认该值不能超过FullRedis.Timeout</param>
+    /// <returns>弹出的元素，超时返回默认值</returns>
+    public virtual T? BLMove<T>(String source, String destination, String whereFrom, String whereTo, Int32 secTimeout)
+    {
+        source = GetKey(source);
+        destination = GetKey(destination);
+        return Execute(source, (rc, k) => rc.Execute<T>("BLMOVE", k, destination, whereFrom, whereTo, secTimeout), true);
+    }
+
     /// <summary>从列表头部弹出一个元素</summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="key"></param>
@@ -940,6 +1165,133 @@ public class FullRedis : Redis
         return rs == null ? default : rs.Item2;
     }
 
+    /// <summary>查找列表中元素的位置（Redis 6.0.6+）</summary>
+    /// <param name="key">列表键</param>
+    /// <param name="element">要查找的元素</param>
+    /// <param name="rank">指定返回第几个匹配项（1=第一个，-1=最后一个，0=全部）</param>
+    /// <param name="count">最多返回多少个匹配项</param>
+    /// <param name="maxLen">最大比较长度，0表示不限制</param>
+    /// <returns>匹配位置列表，找不到返回空数组</returns>
+    public virtual Int32[]? LPos(String key, String element, Int32 rank = 0, Int32 count = 0, Int32 maxLen = 0)
+    {
+        var args = new List<Object> { GetKey(key), element };
+        if (rank != 0) { args.Add("RANK"); args.Add(rank); }
+        if (count > 0) { args.Add("COUNT"); args.Add(count); }
+        if (maxLen > 0) { args.Add("MAXLEN"); args.Add(maxLen); }
+
+        var rs = Execute(key, (rc, k) => rc.Execute<Object[]>("LPOS", args.ToArray()));
+        if (rs == null || rs.Length == 0) return [];
+        return rs.Select(e => (e as IPacket)?.ToStr().ToInt() ?? 0).ToArray();
+    }
+
+    /// <summary>批量判断成员是否属于集合（Redis 6.2+）</summary>
+    /// <param name="key">集合键</param>
+    /// <param name="members">成员列表</param>
+    /// <returns>每个成员的判断结果（1=存在，0=不存在）</returns>
+    public virtual Int32[]? SMIsMember(String key, params String[] members)
+    {
+        var args = new List<Object> { GetKey(key) };
+        args.AddRange(members.Cast<Object>());
+        return Execute(key, (rc, k) => rc.Execute<Int32[]>("SMISMEMBER", args.ToArray()));
+    }
+
+    /// <summary>批量获取有序集合成员的分数（Redis 6.2+）</summary>
+    /// <param name="key">有序集合键</param>
+    /// <param name="members">成员列表</param>
+    /// <returns>每个成员对应的分数</returns>
+    public virtual Double[]? ZMScore(String key, params String[] members)
+    {
+        var args = new List<Object> { GetKey(key) };
+        args.AddRange(members.Cast<Object>());
+        var rs = Execute(key, (rc, k) => rc.Execute<Object[]>("ZMSCORE", args.ToArray()));
+        if (rs == null || rs.Length == 0) return [];
+        return rs.Select(e => (e as IPacket)?.ToStr().ToDouble() ?? 0).ToArray();
+    }
+
+    /// <summary>随机获取有序集合中的成员（Redis 6.2+）</summary>
+    /// <typeparam name="T">成员类型</typeparam>
+    /// <param name="key">有序集合键</param>
+    /// <param name="count">获取数量，正数=不重复，负数=可重复</param>
+    /// <param name="withScores">是否同时返回分数</param>
+    /// <returns>成员列表（如果withScores则交替返回成员和分数）</returns>
+    public virtual T[]? ZRandMember<T>(String key, Int32 count = 1, Boolean withScores = false)
+    {
+        if (withScores)
+            return Execute(key, (rc, k) => rc.Execute<T[]>("ZRANDMEMBER", k, count, "WITHSCORES"));
+        else
+            return Execute(key, (rc, k) => rc.Execute<T[]>("ZRANDMEMBER", k, count));
+    }
+
+    /// <summary>从有序集合中弹出最小分数的成员（阻塞版）</summary>
+    /// <typeparam name="T">成员类型</typeparam>
+    /// <param name="keys">有序集合键列表</param>
+    /// <param name="secTimeout">阻塞超时（秒）</param>
+    /// <returns>(键名, 成员, 分数) 或 null</returns>
+    public virtual Tuple<String, T?, Double>? BZPopMin<T>(String[] keys, Int32 secTimeout = 0)
+    {
+        var args = new List<Object>();
+        foreach (var key in keys)
+        {
+            args.Add(GetKey(key));
+        }
+        args.Add(secTimeout);
+
+        var rs = Execute(keys[0], (rc, k) => rc.Execute<Object[]>("BZPOPMIN", args.ToArray()), true);
+        if (rs == null || rs.Length < 3) return null;
+
+        var keyName = (rs[0] as IPacket)?.ToStr() ?? "";
+        var member = rs[1] is IPacket pk ? (T)Encoder.Decode(pk, typeof(T))! : default!;
+        var score = (rs[2] as IPacket)?.ToStr().ToDouble() ?? 0;
+
+        return new Tuple<String, T?, Double>(keyName, member, score);
+    }
+
+    /// <summary>从有序集合中弹出最小分数的成员（阻塞版）</summary>
+    /// <typeparam name="T">成员类型</typeparam>
+    /// <param name="key">有序集合键</param>
+    /// <param name="secTimeout">阻塞超时（秒）</param>
+    /// <returns>(成员, 分数) 或 null</returns>
+    public virtual Tuple<T?, Double>? BZPopMin<T>(String key, Int32 secTimeout = 0)
+    {
+        var rs = BZPopMin<T>([key], secTimeout);
+        return rs == null ? null : new Tuple<T?, Double>(rs.Item2, rs.Item3);
+    }
+
+    /// <summary>从有序集合中弹出最大分数的成员（阻塞版）</summary>
+    /// <typeparam name="T">成员类型</typeparam>
+    /// <param name="keys">有序集合键列表</param>
+    /// <param name="secTimeout">阻塞超时（秒）</param>
+    /// <returns>(键名, 成员, 分数) 或 null</returns>
+    public virtual Tuple<String, T?, Double>? BZPopMax<T>(String[] keys, Int32 secTimeout = 0)
+    {
+        var args = new List<Object>();
+        foreach (var key in keys)
+        {
+            args.Add(GetKey(key));
+        }
+        args.Add(secTimeout);
+
+        var rs = Execute(keys[0], (rc, k) => rc.Execute<Object[]>("BZPOPMAX", args.ToArray()), true);
+        if (rs == null || rs.Length < 3) return null;
+
+        var keyName = (rs[0] as IPacket)?.ToStr() ?? "";
+        var member = rs[1] is IPacket pk ? (T)Encoder.Decode(pk, typeof(T))! : default!;
+        var score = (rs[2] as IPacket)?.ToStr().ToDouble() ?? 0;
+
+        return new Tuple<String, T?, Double>(keyName, member, score);
+    }
+
+    /// <summary>从有序集合中弹出最大分数的成员（阻塞版）</summary>
+    /// <typeparam name="T">成员类型</typeparam>
+    /// <param name="key">有序集合键</param>
+    /// <param name="secTimeout">阻塞超时（秒）</param>
+    /// <returns>(成员, 分数) 或 null</returns>
+    public virtual Tuple<T?, Double>? BZPopMax<T>(String key, Int32 secTimeout = 0)
+    {
+        var rs = BZPopMax<T>([key], secTimeout);
+        return rs == null ? null : new Tuple<T?, Double>(rs.Item2, rs.Item3);
+    }
+
     /// <summary>向集合添加多个元素</summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="key"></param>
@@ -996,6 +1348,103 @@ public class FullRedis : Redis
     /// <param name="count"></param>
     /// <returns></returns>
     public virtual T[]? SPOP<T>(String key, Int32 count) => Execute(key, (r, k) => r.Execute<T[]>("SPOP", k, count), true);
+
+    /// <summary>获取多个集合交集基数（Redis 7.0+）</summary>
+    /// <remarks>仅返回交集元素数量，不返回具体元素，比SINTER更省内存</remarks>
+    /// <param name="keys">集合键列表</param>
+    /// <param name="limit">最大返回数量，0表示不限制</param>
+    /// <returns>交集元素数量</returns>
+    public virtual Int32 SInterCard(String[] keys, Int32 limit = 0)
+    {
+        var args = new List<Object> { keys.Length };
+        foreach (var key in keys)
+        {
+            args.Add(GetKey(key));
+        }
+        if (limit > 0)
+        {
+            args.Add("LIMIT");
+            args.Add(limit);
+        }
+        return Execute(keys[0], (rc, k) => rc.Execute<Int32>("SINTERCARD", args.ToArray()));
+    }
+
+    /// <summary>交换两个数据库的所有键（Redis 4.0+）</summary>
+    /// <remarks>交换后客户端连接不会自动切换数据库</remarks>
+    /// <param name="db1">第一个数据库编号</param>
+    /// <param name="db2">第二个数据库编号</param>
+    /// <returns>成功返回OK</returns>
+    public virtual String SwapDB(Int32 db1, Int32 db2) => Execute(rds => rds.Execute<String>("SWAPDB", db1, db2));
+
+    /// <summary>获取慢查询日志</summary>
+    /// <param name="count">获取条数，默认10</param>
+    /// <returns>慢查询日志条目列表</returns>
+    public virtual Object[]? SlowLogGet(Int32 count = 10) => Execute(rds => rds.Execute<Object[]>("SLOWLOG", "GET", count));
+
+    /// <summary>获取慢查询日志当前条数</summary>
+    /// <returns>慢查询日志数量</returns>
+    public virtual Int32 SlowLogLen() => Execute(rds => rds.Execute<Int32>("SLOWLOG", "LEN"));
+
+    /// <summary>清空慢查询日志</summary>
+    /// <returns>成功返回OK</returns>
+    public virtual String SlowLogReset() => Execute(rds => rds.Execute<String>("SLOWLOG", "RESET"));
+
+    /// <summary>等待副本写入确认（Redis 3.0+）</summary>
+    /// <remarks>阻塞当前客户端直到指定数量的副本确认写入，或超时</remarks>
+    /// <param name="numSlaves">需要确认的副本数量</param>
+    /// <param name="timeout">超时时间（毫秒），0表示一直阻塞</param>
+    /// <returns>确认的副本数量</returns>
+    public virtual Int32 Wait(Int32 numSlaves, Int32 timeout) => Execute(rds => rds.Execute<Int32>("WAIT", numSlaves, timeout));
+
+    /// <summary>获取延迟分析报告（Redis 2.8.13+）</summary>
+    /// <param name="eventName">事件名称，不指定返回所有</param>
+    /// <returns>延迟分析数据</returns>
+    public virtual Object[]? LatencyDoctor(String? eventName = null)
+    {
+        if (eventName != null)
+            return Execute(rds => rds.Execute<Object[]>("LATENCY", "DOCTOR", eventName));
+        else
+            return Execute(rds => rds.Execute<Object[]>("LATENCY", "DOCTOR"));
+    }
+
+    /// <summary>获取延迟历史记录</summary>
+    /// <param name="eventName">事件名称</param>
+    /// <returns>延迟事件历史</returns>
+    public virtual Object[]? LatencyHistory(String eventName) => Execute(rds => rds.Execute<Object[]>("LATENCY", "HISTORY", eventName));
+
+    /// <summary>获取最新延迟事件</summary>
+    /// <param name="eventName">事件名称，不指定返回所有</param>
+    /// <returns>最新延迟事件</returns>
+    public virtual Object[]? LatencyLatest(String? eventName = null)
+    {
+        if (eventName != null)
+            return Execute(rds => rds.Execute<Object[]>("LATENCY", "LATEST", eventName));
+        else
+            return Execute(rds => rds.Execute<Object[]>("LATENCY", "LATEST"));
+    }
+
+    /// <summary>重置延迟事件统计</summary>
+    /// <param name="eventName">事件名称，不指定重置所有</param>
+    /// <returns>重置的事件数量</returns>
+    public virtual Int32 LatencyReset(String? eventName = null)
+    {
+        if (eventName != null)
+            return Execute(rds => rds.Execute<Int32>("LATENCY", "RESET", eventName));
+        else
+            return Execute(rds => rds.Execute<Int32>("LATENCY", "RESET"));
+    }
+
+    /// <summary>配置主从复制（SLAVEOF/REPLICAOF）</summary>
+    /// <param name="host">主节点地址，null或空字符串表示取消复制</param>
+    /// <param name="port">主节点端口</param>
+    /// <returns>成功返回OK</returns>
+    public virtual String ReplicaOf(String? host, Int32 port = 6379)
+    {
+        if (host.IsNullOrEmpty())
+            return Execute(rds => rds.Execute<String>("REPLICAOF", "NO", "ONE"));
+        else
+            return Execute(rds => rds.Execute<String>("REPLICAOF", host, port));
+    }
 
     /// <summary>执行lua脚本</summary>
     /// <typeparam name="T"></typeparam>

@@ -54,6 +54,25 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
     /// <returns></returns>
     public Boolean Remove(TKey key) => HDel(key) > 0;
 
+    /// <summary>获取字段值并删除该字段（Redis 7.4+）</summary>
+    /// <param name="field">字段名</param>
+    /// <returns>字段值，字段不存在返回默认值</returns>
+    public TValue? HGetDel(TKey field) => Execute((r, k) => r.Execute<TValue>("HGETDEL", Key, field), true);
+
+    /// <summary>获取字段值并设置过期时间（Redis 7.4+）</summary>
+    /// <param name="field">字段名</param>
+    /// <param name="expire">过期时间（秒），正数为EX，负数为PX（毫秒），0为PERSIST</param>
+    /// <returns>字段值，字段不存在返回默认值</returns>
+    public TValue? HGetEx(TKey field, Int32 expire)
+    {
+        if (expire > 0)
+            return Execute((r, k) => r.Execute<TValue>("HGETEX", Key, field, "EX", expire), true);
+        else if (expire < 0)
+            return Execute((r, k) => r.Execute<TValue>("HGETEX", Key, field, "PX", -expire), true);
+        else
+            return Execute((r, k) => r.Execute<TValue>("HGETEX", Key, field, "PERSIST"), true);
+    }
+
     /// <summary>尝试获取</summary>
     /// <param name="key"></param>
     /// <param name="value"></param>
@@ -169,6 +188,18 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
     /// <param name="field"></param>
     /// <returns></returns>
     public Int32 HStrLen(TKey field) => Execute((r, k) => r.Execute<Int32>("HSTRLEN", Key, field));
+
+    /// <summary>随机获取哈希表中的字段（Redis 6.2+）</summary>
+    /// <param name="count">获取数量，正数=不重复，负数=可重复</param>
+    /// <param name="withValues">是否同时返回值，默认仅返回字段名</param>
+    /// <returns>字段名列表，如果withValues则交替返回字段名和值</returns>
+    public TKey[]? HRandField(Int32 count = 1, Boolean withValues = false)
+    {
+        if (withValues)
+            return Execute((r, k) => r.Execute<TKey[]>("HRANDFIELD", Key, count, "WITHVALUES"));
+        else
+            return Execute((r, k) => r.Execute<TKey[]>("HRANDFIELD", Key, count));
+    }
 
     /// <summary>模糊搜索，支持?和*</summary>
     /// <param name="model">搜索模型</param>

@@ -153,4 +153,81 @@ public class RedisGeo : RedisBase
 
         return Parse(rs);
     }
+
+    /// <summary>通用地理空间搜索（Redis 6.2+），替代GEORADIUS/GEORADIUSBYMEMBER</summary>
+    /// <param name="member">中心成员名，与longitude+latitude二选一</param>
+    /// <param name="longitude">中心经度，与member二选一</param>
+    /// <param name="latitude">中心纬度，与member二选一</param>
+    /// <param name="radius">搜索半径</param>
+    /// <param name="unit">距离单位（m/km/mi/ft），默认m</param>
+    /// <param name="count">返回数量，0表示全部</param>
+    /// <param name="ascending">是否升序排列（距离由近到远）</param>
+    /// <returns></returns>
+    public GeoInfo[] Search(String? member, Double? longitude, Double? latitude, Double radius, String? unit = null, Int32 count = 0, Boolean ascending = true)
+    {
+        if (unit.IsNullOrEmpty()) unit = "m";
+
+        var args = new List<Object> { Key };
+
+        // 中心点
+        if (!member.IsNullOrEmpty())
+            args.AddRange(["FROMMEMBER", member]);
+        else if (longitude != null && latitude != null)
+            args.AddRange(["FROMLONLAT", longitude.Value, latitude.Value]);
+
+        // 搜索方式
+        args.AddRange(["BYRADIUS", radius, unit]);
+
+        // 排序
+        args.Add(ascending ? "ASC" : "DESC");
+
+        // 返回选项
+        args.AddRange(["WITHDIST", "WITHCOORD"]);
+
+        if (count > 0)
+            args.AddRange(["COUNT", count]);
+
+        var rs = Execute((rc, k) => rc.Execute<Object[]>("GEOSEARCH", args.ToArray()), false);
+        if (rs == null || rs.Length == 0) return [];
+
+        return Parse(rs);
+    }
+
+    /// <summary>通用地理空间搜索并存储结果（Redis 6.2+）</summary>
+    /// <param name="destination">存储目标键</param>
+    /// <param name="member">中心成员名，与longitude+latitude二选一</param>
+    /// <param name="longitude">中心经度，与member二选一</param>
+    /// <param name="latitude">中心纬度，与member二选一</param>
+    /// <param name="radius">搜索半径</param>
+    /// <param name="unit">距离单位（m/km/mi/ft），默认m</param>
+    /// <param name="count">返回数量，0表示全部</param>
+    /// <param name="ascending">是否升序排列</param>
+    /// <param name="storeDistance">是否存储距离而非成员名</param>
+    /// <returns>存储的成员数量</returns>
+    public Int32 SearchStore(String destination, String? member, Double? longitude, Double? latitude, Double radius, String? unit = null, Int32 count = 0, Boolean ascending = true, Boolean storeDistance = false)
+    {
+        if (unit.IsNullOrEmpty()) unit = "m";
+
+        var args = new List<Object> { GetKey(destination), Key };
+
+        // 中心点
+        if (!member.IsNullOrEmpty())
+            args.AddRange(["FROMMEMBER", member]);
+        else if (longitude != null && latitude != null)
+            args.AddRange(["FROMLONLAT", longitude.Value, latitude.Value]);
+
+        // 搜索方式
+        args.AddRange(["BYRADIUS", radius, unit]);
+
+        // 排序
+        args.Add(ascending ? "ASC" : "DESC");
+
+        if (count > 0)
+            args.AddRange(["COUNT", count]);
+
+        if (storeDistance)
+            args.Add("STOREDIST");
+
+        return Execute((rc, k) => rc.Execute<Int32>("GEOSEARCHSTORE", args.ToArray()), true);
+    }
 }
