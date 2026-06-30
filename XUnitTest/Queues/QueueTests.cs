@@ -31,7 +31,7 @@ public class QueueTests
 #endif
     }
 
-    [Fact]
+    [RedisFact]
     public void Queue_Normal()
     {
         var key = "Queue_normal";
@@ -77,7 +77,7 @@ public class QueueTests
         Assert.Equal(count, count3);
     }
 
-    [Fact]
+    [RedisFact]
     public void Queue_Block()
     {
         var key = "Queue_block";
@@ -119,7 +119,7 @@ public class QueueTests
         Assert.True(sw.ElapsedMilliseconds >= 2000);
     }
 
-    [Fact]
+    [RedisFact]
     public void Queue_NotEnough()
     {
         var key = "Queue_not_enough";
@@ -160,7 +160,7 @@ public class QueueTests
         Assert.Equal(count, count3);
     }
 
-    [Fact]
+    [RedisFact(Skip = "手动性能测试：100,000条消息，不适合CI")]
     public void Queue_Benchmark()
     {
         var key = "Queue_benchmark";
@@ -191,7 +191,7 @@ public class QueueTests
         Assert.Equal(1_000 * 100, count);
     }
 
-    [Fact]
+    [RedisFact(Skip = "手动性能测试：16线程并发消费100,000条消息，不适合CI")]
     public async Task Queue_Benchmark_Mutilate()
     {
         var key = "Queue_benchmark_mutilate";
@@ -228,7 +228,7 @@ public class QueueTests
         Assert.Equal(1_000 * 100, count);
     }
 
-    [Fact]
+    [RedisFact]
     public async Task Queue_Async()
     {
         var key = "Queue_Async";
@@ -263,7 +263,7 @@ public class QueueTests
         Assert.True(sw.ElapsedMilliseconds >= 2000);
     }
 
-    [Fact]
+    [RedisFact]
     public void Queue_NoAck()
     {
         var key = "Queue_NoAck";

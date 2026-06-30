@@ -32,7 +32,7 @@ public class StreamTests
 #endif
     }
 
-    [Fact]
+    [RedisFact]
     public void Stream_Primitive()
     {
         var key = "stream_Primitive";
@@ -98,7 +98,7 @@ public class StreamTests
         public Int32 Age { get; set; }
     }
 
-    [Fact]
+    [RedisFact]
     public void Stream_Normal()
     {
         var key = "stream_key";
@@ -173,7 +173,7 @@ public class StreamTests
         //s.Add(new UserInfo { Name = "xxyy" });
     }
 
-    [Fact]
+    [RedisFact]
     public void CreateGroup()
     {
         var key = "stream_group";
@@ -195,7 +195,7 @@ public class StreamTests
         s.GroupDestroy("mygroup");
     }
 
-    [Fact]
+    [RedisFact]
     public void GetInfo()
     {
         var key = "stream_info";
@@ -245,7 +245,7 @@ public class StreamTests
         XTrace.WriteLine(consumers.ToJson(true));
     }
 
-    [Fact]
+    [RedisFact]
     public async Task GlobalConsume()
     {
         var key = "stream_GlobalConsume";
@@ -275,7 +275,7 @@ public class StreamTests
         Assert.True(sw.ElapsedMilliseconds >= 2000);
     }
 
-    [Fact]
+    [RedisFact]
     public async Task GroupConsume()
     {
         var key = "stream_GroupConsume";
@@ -341,7 +341,7 @@ public class StreamTests
         Assert.Equal(7, ps.Length);
     }
 
-    [Fact]
+    [RedisFact]
     public void EmptyMessagItem()
     {
         var key = "stream_empty_item";
@@ -388,7 +388,7 @@ public class StreamTests
         pi.Parse(vs);
     }
 
-    [Fact]
+    [RedisFact]
     public async Task Claim()
     {
         var key = "stream_Claim";

@@ -31,7 +31,7 @@ public class DelayQueueTests
 #endif
     }
 
-    [Fact]
+    [RedisFact]
     public void Queue_Normal()
     {
         var key = "DelayQueue_normal";
@@ -103,7 +103,7 @@ public class DelayQueueTests
         //Assert.Equal(2 + vs.Length - 1 - 1 - 1, ackList.Count);
     }
 
-    [Fact]
+    [RedisFact]
     public void Queue_Block()
     {
         var key = "DelayQueue_block";
@@ -149,7 +149,7 @@ public class DelayQueueTests
         Assert.True(sw.ElapsedMilliseconds >= 2000);
     }
 
-    [Fact]
+    [RedisFact]
     public void Queue_NotEnough()
     {
         var key = "DelayQueue_not_enough";
@@ -193,7 +193,7 @@ public class DelayQueueTests
         Assert.Equal(count, count3);
     }
 
-    [Fact]
+    [RedisFact(Skip = "手动性能测试：20,000条延迟消息，不适合CI")]
     public void Queue_Benchmark()
     {
         var key = "DelayQueue_benchmark";
@@ -233,7 +233,7 @@ public class DelayQueueTests
         Assert.Equal(1_000 * 20, count);
     }
 
-    [Fact]
+    [RedisFact(Skip = "手动性能测试：20,000条延迟消息，不适合CI")]
     public async Task Queue_Benchmark_Mutilate()
     {
         var key = "DelayQueue_benchmark_mutilate";
@@ -283,7 +283,7 @@ public class DelayQueueTests
         Assert.Equal(1_000 * 20, count);
     }
 
-    [Fact]
+    [RedisFact]
     public async Task Queue_Async()
     {
         var key = "DelayQueue_Async";
@@ -330,7 +330,7 @@ public class DelayQueueTests
         Assert.True(sw.ElapsedMilliseconds >= 2000);
     }
 
-    [Fact]
+    [RedisFact]
     public async Task NoAck()
     {
         var key = "DelayQueue_NoAck";
@@ -353,7 +353,7 @@ public class DelayQueueTests
         Assert.Equal("新生命团队", await queue.TakeOneAsync(0));
     }
 
-    [Fact]
+    [RedisFact]
     public async Task TransferAsync()
     {
         var key = "transfer_delay";

@@ -21,6 +21,8 @@ public class StackTests
 
         _redis = new FullRedis();
         _redis.Init(config);
+        _redis.Retry = 0;
+        _redis.Timeout = 2_000;
         _redis.Log = XTrace.Log;
 
 #if DEBUG
@@ -28,7 +30,7 @@ public class StackTests
 #endif
     }
 
-    [Fact]
+    [RedisFact]
     public void Stack_Normal()
     {
         var key = "Stack_Normal";
@@ -72,7 +74,7 @@ public class StackTests
         Assert.Equal(count, count3);
     }
 
-    [Fact]
+    [RedisFact]
     public async Task Queue_Async()
     {
         var key = "Stack_Async";

@@ -27,7 +27,7 @@ namespace XUnitTest
 #endif
         }
 
-        [Fact(DisplayName = "单通道定义")]
+        [RedisFact(DisplayName = "单通道定义")]
         public void Subscribe()
         {
             var pb = new PubSub(_redis, "pb_test");
@@ -57,7 +57,7 @@ namespace XUnitTest
             Assert.Equal(3, count);
         }
 
-        [Fact(DisplayName = "多通道定义")]
+        [RedisFact(DisplayName = "多通道定义")]
         public void Subscribes()
         {
             var pb = new PubSub(_redis, "pb_t1,pb_t2");
@@ -89,7 +89,7 @@ namespace XUnitTest
             Assert.Equal(3, count);
         }
 
-        [Fact]
+        [RedisFact]
         public void Test1()
         {
             var pb = new PubSub(_redis, "pb_test1");
@@ -97,7 +97,7 @@ namespace XUnitTest
             Assert.Equal(0, rs);
         }
 
-        [Fact(DisplayName = "模式订阅-单模式")]
+        [RedisFact(DisplayName = "模式订阅-单模式")]
         public void PSubscribe()
         {
             var pb = new PubSub(_redis, "pb_ps_*");
@@ -126,7 +126,7 @@ namespace XUnitTest
             Assert.Equal(2, count);
         }
 
-        [Fact(DisplayName = "PubSub自省-活跃频道")]
+        [RedisFact(DisplayName = "PubSub自省-活跃频道")]
         public void PubSubChannels()
         {
             var pb = new PubSub(_redis, "pb_introspect");
@@ -141,7 +141,7 @@ namespace XUnitTest
             Assert.Contains("pb_introspect", channels);
         }
 
-        [Fact(DisplayName = "PubSub自省-订阅者数量")]
+        [RedisFact(DisplayName = "PubSub自省-订阅者数量")]
         public void PubSubNumSub()
         {
             var pb = new PubSub(_redis, "pb_numsub");
@@ -155,7 +155,7 @@ namespace XUnitTest
             Assert.NotNull(rs);
         }
 
-        [Fact(DisplayName = "PubSub自省-模式订阅数量")]
+        [RedisFact(DisplayName = "PubSub自省-模式订阅数量")]
         public void PubSubNumPat()
         {
             var pb = new PubSub(_redis, "pb_numpat");
@@ -165,7 +165,7 @@ namespace XUnitTest
             Assert.True(count >= 0);
         }
 
-        [Fact(DisplayName = "分片订阅-单频道")]
+        [RedisFact(DisplayName = "分片订阅-单频道")]
         public void SSubscribe()
         {
             var pb = new PubSub(_redis, "pb_shard");

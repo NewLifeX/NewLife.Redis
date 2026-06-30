@@ -27,7 +27,7 @@ public class SearchTest
 #endif
     }
 
-    [Fact(DisplayName = "搜索测试")]
+    [RedisFact(DisplayName = "搜索测试")]
     public void GetSearchTest()
     {
         var ic = _redis;

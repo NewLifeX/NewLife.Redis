@@ -23,7 +23,7 @@ public class HyperLogLogTests
 #endif
     }
 
-    [Fact]
+    [RedisFact]
     public void HyperLogLog_Normal()
     {
         var key = "hyper_key";

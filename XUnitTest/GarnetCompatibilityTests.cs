@@ -25,7 +25,7 @@ public class GarnetCompatibilityTests
 #endif
     }
 
-    [Fact(DisplayName = "服务器类型检测")]
+    [RedisFact(DisplayName = "服务器类型检测")]
     public void ServerTypeDetection()
     {
         // 获取服务器类型
@@ -43,7 +43,7 @@ public class GarnetCompatibilityTests
         Assert.True(info.ContainsKey("redis_version"));
     }
 
-    [Fact(DisplayName = "基础功能兼容性")]
+    [RedisFact(DisplayName = "基础功能兼容性")]
     public void BasicOperationsCompatibility()
     {
         var key = "garnet:test:basic";
@@ -64,7 +64,7 @@ public class GarnetCompatibilityTests
         _redis.Remove(key, counterKey);
     }
 
-    [Fact(DisplayName = "List 操作兼容性")]
+    [RedisFact(DisplayName = "List 操作兼容性")]
     public void ListOperationsCompatibility()
     {
         var key = "garnet:test:list";
@@ -81,7 +81,7 @@ public class GarnetCompatibilityTests
         _redis.Remove(key);
     }
 
-    [Fact(DisplayName = "Hash 操作兼容性")]
+    [RedisFact(DisplayName = "Hash 操作兼容性")]
     public void HashOperationsCompatibility()
     {
         var key = "garnet:test:hash";
@@ -97,7 +97,7 @@ public class GarnetCompatibilityTests
         _redis.Remove(key);
     }
 
-    [Fact(DisplayName = "RedisQueue 兼容性")]
+    [RedisFact(DisplayName = "RedisQueue 兼容性")]
     public void RedisQueueCompatibility()
     {
         var key = "garnet:test:queue";
@@ -113,7 +113,7 @@ public class GarnetCompatibilityTests
         _redis.Remove(key);
     }
 
-    [Fact(DisplayName = "Stream 功能检测")]
+    [RedisFact(DisplayName = "Stream 功能检测")]
     public void StreamSupportDetection()
     {
         var key = "garnet:test:stream";
@@ -145,7 +145,7 @@ public class GarnetCompatibilityTests
         _redis.Remove(key);
     }
 
-    [Fact(DisplayName = "Stream 替代方案")]
+    [RedisFact(DisplayName = "Stream 替代方案")]
     public void StreamAlternative()
     {
         var key = "garnet:test:alternative";

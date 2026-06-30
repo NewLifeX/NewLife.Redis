@@ -28,7 +28,7 @@ public class HashTest
 #endif
     }
 
-    [Fact]
+    [RedisFact]
     public void HMSETTest()
     {
         var key = "hash_key";
@@ -51,7 +51,7 @@ public class HashTest
         Assert.True(hash.ContainsKey("aaa"));
     }
 
-    [Fact]
+    [RedisFact]
     public void Search()
     {
         var rkey = "hash_Search";
@@ -76,7 +76,7 @@ public class HashTest
         Assert.Equal("stone3", dic.Skip(2).First().Key);
     }
 
-    [Fact]
+    [RedisFact]
     public void QuoteTest()
     {
         var key = "hash_quote";
@@ -97,7 +97,7 @@ public class HashTest
         Assert.Equal(org5, hash["org5"]);
     }
 
-    [Fact]
+    [RedisFact]
     public void CheckHashTest()
     {
         var key = $"NewLife:eventinfo:adsfasdfasdfdsaf";
@@ -115,7 +115,7 @@ public class HashTest
         rh["0"] = new EventInfo { EventId = "1234", EventName = "Stone" };
     }
 
-    [Fact(DisplayName = "获取所有数据，丢失数据bug")]
+    [RedisFact(DisplayName = "获取所有数据，丢失数据bug")]
     public void ValuesHashTest()
     {
         //RedisHash、RedisList[Values、Values、GetAll、Search] redis 5.0 都有类似的情况
@@ -149,7 +149,7 @@ public class HashTest
         }
     }
 
-    [Fact]
+    [RedisFact]
     public void RemoveTest()
     {
         var key = $"NewLife:eventinfo:adsfasdfasdfdsaf";
@@ -172,7 +172,7 @@ public class HashTest
         Assert.Equal(2, rh.Count);
     }
 
-    [Fact(DisplayName = "HRANDFIELD随机字段测试")]
+    [RedisFact(DisplayName = "HRANDFIELD随机字段测试")]
     public void HRandFieldTest()
     {
         var key = "hash_randfield";
@@ -194,7 +194,7 @@ public class HashTest
         Assert.Equal(2, fields.Length);
     }
 
-    [Fact(DisplayName = "HGETDEL获取并删除字段测试")]
+    [RedisFact(DisplayName = "HGETDEL获取并删除字段测试")]
     public void HGetDelTest()
     {
         var key = "hash_getdel";
@@ -216,7 +216,7 @@ public class HashTest
         Assert.True(hash.ContainsKey("field2"));
     }
 
-    [Fact(DisplayName = "HGETEX获取并设置过期测试")]
+    [RedisFact(DisplayName = "HGETEX获取并设置过期测试")]
     public void HGetExTest()
     {
         var key = "hash_getex";

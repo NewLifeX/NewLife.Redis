@@ -25,7 +25,7 @@ public class GeoTests
 #endif
     }
 
-    [Fact]
+    [RedisFact]
     public void Test()
     {
         var key = "geo";
@@ -64,7 +64,7 @@ public class GeoTests
         Assert.Equal(744, (Int32)Math.Round(gis[2].Latitude * 100));
     }
 
-    [Fact]
+    [RedisFact]
     public void GetDistance()
     {
         var key = "geo_distance";
@@ -83,7 +83,7 @@ public class GeoTests
         Assert.Equal(1066019.9908, d);
     }
 
-    [Fact]
+    [RedisFact]
     public void GetHash()
     {
         var key = "geo_hash";
@@ -104,7 +104,7 @@ public class GeoTests
         Assert.Equal("wtw3u88z910", hs[1]);
     }
 
-    [Fact]
+    [RedisFact]
     public void GetRadiusByXY()
     {
         var key = "geo_radius_xy";
@@ -145,7 +145,7 @@ public class GeoTests
         Assert.Equal(156.4278, gis[1].Distance);
     }
 
-    [Fact]
+    [RedisFact]
     public void GetRadiusByMember()
     {
         var key = "geo_radius_member";
@@ -186,7 +186,7 @@ public class GeoTests
         Assert.Equal(157.1110, gis[1].Distance);
     }
 
-    [Fact(DisplayName = "GEOSEARCH通用地理搜索测试")]
+    [RedisFact(DisplayName = "GEOSEARCH通用地理搜索测试")]
     public void GeoSearchTest()
     {
         var key = "geo_search";
@@ -212,7 +212,7 @@ public class GeoTests
         Assert.Equal(2, gis.Length);
     }
 
-    [Fact(DisplayName = "GEOSEARCHSTORE搜索存储测试")]
+    [RedisFact(DisplayName = "GEOSEARCHSTORE搜索存储测试")]
     public void GeoSearchStoreTest()
     {
         var key = "geo_search_store";

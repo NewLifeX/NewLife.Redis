@@ -17,7 +17,7 @@ namespace XUnitTest
             provider = services.BuildServiceProvider();
         }
 
-        [Fact]
+        [RedisFact]
         public void SetAndGet()
         {
             var fullRedis = provider.GetService<FullRedis>();

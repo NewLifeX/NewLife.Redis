@@ -27,7 +27,7 @@ public class RedisSentinelTests
     }
 
 #if DEBUG
-    [Fact]
+    [RedisFact]
 #else
     [Fact(Skip = "No Cluster")]
 #endif

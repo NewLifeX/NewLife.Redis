@@ -28,7 +28,7 @@ public class Resp3Tests
         _redis.Log = XTrace.Log;
     }
 
-    [Fact(DisplayName = "RESP3协议协商")]
+    [RedisFact(DisplayName = "RESP3协议协商")]
     public void HelloTest()
     {
         // 使用连接池获取客户端测试HELLO命令
@@ -57,7 +57,7 @@ public class Resp3Tests
         }
     }
 
-    [Fact(DisplayName = "RESP3协议版本切换")]
+    [RedisFact(DisplayName = "RESP3协议版本切换")]
     public void ProtocolVersionTest()
     {
         var config = BasicTest.GetConfig();
@@ -85,7 +85,7 @@ public class Resp3Tests
         }
     }
 
-    [Fact(DisplayName = "RESP3计数器操作")]
+    [RedisFact(DisplayName = "RESP3计数器操作")]
     public void Resp3IncrTest()
     {
         var config = BasicTest.GetConfig();
@@ -113,7 +113,7 @@ public class Resp3Tests
         }
     }
 
-    [Fact(DisplayName = "RESP3哈希操作")]
+    [RedisFact(DisplayName = "RESP3哈希操作")]
     public void Resp3HashTest()
     {
         var config = BasicTest.GetConfig();
@@ -146,7 +146,7 @@ public class Resp3Tests
         }
     }
 
-    [Fact(DisplayName = "RESP3批量操作")]
+    [RedisFact(DisplayName = "RESP3批量操作")]
     public void Resp3BatchTest()
     {
         var config = BasicTest.GetConfig();

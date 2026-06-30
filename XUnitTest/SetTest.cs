@@ -26,7 +26,7 @@ public class SetTest
 #endif
     }
 
-    [Fact]
+    [RedisFact]
     public void Search()
     {
         var rkey = "set_Search";

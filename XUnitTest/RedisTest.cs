@@ -29,6 +29,8 @@ public class RedisTest
 
         _redis = new Redis();
         _redis.Init(config);
+        _redis.Retry = 0;
+        _redis.Timeout = 2_000;
         _redis.Log = XTrace.Log;
 
 #if DEBUG
@@ -36,7 +38,7 @@ public class RedisTest
 #endif
 
         // 测试高级功能，如果keys过多，则清空
-        if (_redis.Count > 10000) _redis.Clear();
+        if (BasicTest.RedisAvailable && _redis.Count > 10000) _redis.Clear();
     }
 
     [TestOrder(0)]
@@ -85,7 +87,7 @@ public class RedisTest
     //}
 
     [TestOrder(4)]
-    [Fact(DisplayName = "基础测试")]
+    [RedisFact(DisplayName = "基础测试")]
     public void NormalTest()
     {
         var ic = _redis;
@@ -121,7 +123,7 @@ public class RedisTest
     }
 
     [TestOrder(6)]
-    [Fact(DisplayName = "集合测试")]
+    [RedisFact(DisplayName = "集合测试")]
     public void DictionaryTest()
     {
         var ic = _redis;
@@ -144,7 +146,7 @@ public class RedisTest
     }
 
     [TestOrder(8)]
-    [Fact(DisplayName = "高级添加")]
+    [RedisFact(DisplayName = "高级添加")]
     public void AddReplace()
     {
         var ic = _redis;
@@ -175,7 +177,7 @@ public class RedisTest
     }
 
     [TestOrder(10)]
-    [Fact]
+    [RedisFact]
     public void TryGet()
     {
         var ic = _redis;
@@ -217,7 +219,7 @@ public class RedisTest
     }
 
     [TestOrder(12)]
-    [Fact(DisplayName = "累加累减")]
+    [RedisFact(DisplayName = "累加累减")]
     public void IncDec()
     {
         var ic = _redis;
@@ -233,7 +235,7 @@ public class RedisTest
         Assert.True(Math.Round(45.6d + 2.2d - ic.Get<Double>(key2), 4) < 0.0001);
     }
 
-    [Fact(DisplayName = "累加并获取TTL")]
+    [RedisFact(DisplayName = "累加并获取TTL")]
     public void IncrementWithTtl()
     {
         var ic = _redis;
@@ -264,7 +266,7 @@ public class RedisTest
         ic.Remove(key);
     }
 
-    [Fact(DisplayName = "累加Double并获取TTL")]
+    [RedisFact(DisplayName = "累加Double并获取TTL")]
     public void IncrementDoubleWithTtl()
     {
         var ic = _redis;
@@ -290,7 +292,7 @@ public class RedisTest
         ic.Remove(key);
     }
 
-    [Fact(DisplayName = "递减并获取TTL")]
+    [RedisFact(DisplayName = "递减并获取TTL")]
     public void DecrementWithTtl()
     {
         var ic = _redis;
@@ -317,7 +319,7 @@ public class RedisTest
         ic.Remove(key);
     }
 
-    [Fact(DisplayName = "递减Double并获取TTL")]
+    [RedisFact(DisplayName = "递减Double并获取TTL")]
     public void DecrementDoubleWithTtl()
     {
         var ic = _redis;
@@ -345,7 +347,7 @@ public class RedisTest
     }
 
     [TestOrder(14)]
-    [Fact(DisplayName = "复杂对象")]
+    [RedisFact(DisplayName = "复杂对象")]
     public void TestObject()
     {
         var obj = new User
@@ -376,7 +378,7 @@ public class RedisTest
     }
 
     [TestOrder(20)]
-    [Fact(DisplayName = "字节数组")]
+    [RedisFact(DisplayName = "字节数组")]
     public void TestBuffer()
     {
         var ic = _redis;
@@ -392,7 +394,7 @@ public class RedisTest
     }
 
     [TestOrder(30)]
-    [Fact(DisplayName = "数据包")]
+    [RedisFact(DisplayName = "数据包")]
     public void TestPacket()
     {
         var ic = _redis;
@@ -410,7 +412,7 @@ public class RedisTest
     /// <summary>超大数据包</summary>
     /// <remarks>https://github.com/NewLifeX/NewLife.Redis/issues/149</remarks>
     [TestOrder(31)]
-    [Fact(DisplayName = "超大数据包")]
+    [RedisFact(DisplayName = "超大数据包")]
     public void TestBigPacket()
     {
         var ic = _redis;
@@ -426,7 +428,7 @@ public class RedisTest
     }
 
     [TestOrder(40)]
-    [Fact(DisplayName = "管道")]
+    [RedisFact(DisplayName = "管道")]
     public void TestPipeline()
     {
         var ap = _redis.AutoPipeline;
@@ -438,7 +440,7 @@ public class RedisTest
     }
 
     [TestOrder(42)]
-    [Fact(DisplayName = "管道2")]
+    [RedisFact(DisplayName = "管道2")]
     public void TestPipeline2()
     {
         var ap = _redis.AutoPipeline;
@@ -482,7 +484,7 @@ public class RedisTest
     }
 
     [TestOrder(60)]
-    [Fact(DisplayName = "搜索测试")]
+    [RedisFact(DisplayName = "搜索测试")]
     public void SearchTest()
     {
         var ic = _redis;
@@ -529,7 +531,7 @@ public class RedisTest
     }
 
     [TestOrder(70)]
-    [Fact]
+    [RedisFact]
     public async Task PopAsync()
     {
         var rds = _redis;
@@ -560,7 +562,7 @@ public class RedisTest
     }
 
     [TestOrder(80)]
-    [Fact(DisplayName = "从机测试")]
+    [RedisFact(DisplayName = "从机测试", Skip = "需要从机环境（127.0.0.1:6000/7000），单机环境跳过")]
     public void SlaveTest()
     {
         // 配置两个地址，第一个地址是不可访问的，它会自动切换到第二地址
@@ -641,7 +643,7 @@ public class RedisTest
     }
 
     [TestOrder(100)]
-    [Fact]
+    [RedisFact]
     public void MaxMessageSizeTest()
     {
         var ic = _redis;
@@ -655,7 +657,7 @@ public class RedisTest
         Assert.Equal("命令[SET]的数据包大小[1060]超过最大限制[1028]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。", ex.Message);
     }
 
-    [Fact]
+    [RedisFact]
     public void EvalLua()
     {
         var ic = _redis;
@@ -676,7 +678,7 @@ public class RedisTest
         Assert.Equal("新生命", rs);
     }
 
-    [Fact]
+    [RedisFact]
     public void EvalLua2()
     {
         var ic = _redis;
@@ -695,7 +697,7 @@ public class RedisTest
 
     }
 
-    [Fact]
+    [RedisFact]
     public void GetAllWithNull()
     {
         var rds = _redis;

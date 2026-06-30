@@ -26,7 +26,7 @@ public class SortedSetTests
 #endif
     }
 
-    [Fact]
+    [RedisFact]
     public void SortedSet_Normal()
     {
         var rkey = "zset_test";
@@ -109,7 +109,7 @@ public class SortedSetTests
         }
     }
 
-    [Fact]
+    [RedisFact]
     public void Adds()
     {
         var rkey = "zset_adds";
@@ -134,7 +134,7 @@ public class SortedSetTests
         Assert.Equal(count, zset.Count);
     }
 
-    [Fact]
+    [RedisFact]
     public void Adds_null()
     {
         var rkey = "zset_adds_null";
@@ -160,7 +160,7 @@ public class SortedSetTests
         Assert.Equal(count, zset.Count);
     }
 
-    [Fact]
+    [RedisFact]
     public void Add_xx()
     {
         var rkey = "zset_add_xx";
@@ -190,7 +190,7 @@ public class SortedSetTests
         Assert.Equal(33.44, zset.GetScore("stone"));
     }
 
-    [Fact]
+    [RedisFact]
     public void Add_xx2()
     {
         var rkey = "zset_add_xx2";
@@ -216,7 +216,7 @@ public class SortedSetTests
         Assert.NotEqual("0", r2);
     }
 
-    [Fact]
+    [RedisFact]
     public void Add_nx()
     {
         var rkey = "zset_add_nx";
@@ -245,7 +245,7 @@ public class SortedSetTests
         Assert.Equal(123.456, zset.GetScore("stone"));
     }
 
-    [Fact]
+    [RedisFact]
     public void Add_ch()
     {
         var rkey = "zset_add_ch";
@@ -284,7 +284,7 @@ public class SortedSetTests
         Assert.Equal(33.44, zset.GetScore("stone"));
     }
 
-    [Fact]
+    [RedisFact]
     public void Add_incr()
     {
         var rkey = "zset_add_incr";
@@ -314,7 +314,7 @@ public class SortedSetTests
         Assert.Equal(123.456 + 33.44, zset.GetScore("stone"));
     }
 
-    [Fact]
+    [RedisFact]
     public void Range_Test()
     {
         var rkey = "zset_Range";
@@ -346,7 +346,7 @@ public class SortedSetTests
         Assert.Equal(13.56, kv2.Value);
     }
 
-    [Fact]
+    [RedisFact]
     public void RangeByScore_Test()
     {
         var rkey = "zset_RangeByScore";
@@ -377,7 +377,7 @@ public class SortedSetTests
         Assert.Equal(14.34, kv2.Value);
     }
 
-    [Fact]
+    [RedisFact]
     public void Incr_Test()
     {
         var rkey = "zset_zincr";
@@ -395,7 +395,7 @@ public class SortedSetTests
         Assert.Equal(12.34 + 13.56, zset.GetScore("stone"));
     }
 
-    [Fact]
+    [RedisFact]
     public void PopMaxMin_Test()
     {
         var rkey = "zset_pop";
@@ -428,7 +428,7 @@ public class SortedSetTests
         Assert.Equal(13.56, vs[1]);
     }
 
-    [Fact]
+    [RedisFact]
     public void Search()
     {
         var rkey = "zset_Search";
@@ -451,7 +451,7 @@ public class SortedSetTests
         //Assert.Equal("stone4", dic[1]);
     }
 
-    [Fact]
+    [RedisFact]
     public void LongInt_Test()
     {
         var rkey = "zset_long";
@@ -473,7 +473,7 @@ public class SortedSetTests
         Assert.Equal(r, r2);
     }
 
-    [Fact(DisplayName = "ZRANGESTORE范围存储测试")]
+    [RedisFact(DisplayName = "ZRANGESTORE范围存储测试")]
     public void RangeStoreTest()
     {
         var rkey = "zset_rangestore";
@@ -492,7 +492,7 @@ public class SortedSetTests
         Assert.Equal(2, count);
     }
 
-    [Fact(DisplayName = "ZDIFF差集测试")]
+    [RedisFact(DisplayName = "ZDIFF差集测试")]
     public void DiffTest()
     {
         var rkey1 = "zset_diff1";
@@ -514,7 +514,7 @@ public class SortedSetTests
         Assert.Contains("c", diff);
     }
 
-    [Fact(DisplayName = "ZDIFFSTORE差集存储测试")]
+    [RedisFact(DisplayName = "ZDIFFSTORE差集存储测试")]
     public void DiffStoreTest()
     {
         var rkey1 = "zset_diffstore1";

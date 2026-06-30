@@ -28,7 +28,7 @@ public class RedisDeferredTests
 #endif
     }
 
-    [Fact]
+    [RedisFact]
     public void Test1()
     {
         String[] keys = null;

@@ -29,7 +29,7 @@ public class StatTests
 #endif
     }
 
-    [Fact]
+    [RedisFact]
     public void Test1()
     {
         using var st = new RedisStat(_redis, "SiteHourStat")

@@ -20,6 +20,8 @@ public class RedisLockTest
 
         _redis = new Redis();
         _redis.Init(config);
+        _redis.Retry = 0;
+        _redis.Timeout = 2_000;
         _redis.Log = XTrace.Log;
 
 #if DEBUG
@@ -27,7 +29,7 @@ public class RedisLockTest
 #endif
     }
     [TestOrder(50)]
-    [Fact(DisplayName = "正常锁")]
+    [RedisFact(DisplayName = "正常锁")]
     public void TestLock1()
     {
         var ic = _redis;
@@ -53,7 +55,7 @@ public class RedisLockTest
     }
 
     [TestOrder(52)]
-    [Fact(DisplayName = "抢锁失败")]
+    [RedisFact(DisplayName = "抢锁失败")]
     public void TestLock2()
     {
         var ic = _redis;
@@ -79,7 +81,7 @@ public class RedisLockTest
     }
 
     [TestOrder(54)]
-    [Fact(DisplayName = "抢锁失败2")]
+    [RedisFact(DisplayName = "抢锁失败2")]
     public void TestLock3()
     {
         var ic = _redis;
@@ -106,7 +108,7 @@ public class RedisLockTest
     }
 
     [TestOrder(56)]
-    [Fact(DisplayName = "抢死锁")]
+    [RedisFact(DisplayName = "抢死锁")]
     public void TestLock4()
     {
         var ic = _redis;

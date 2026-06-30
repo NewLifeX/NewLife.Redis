@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using NewLife;
 using NewLife.Caching;
 using NewLife.Log;
@@ -24,6 +25,7 @@ public class BasicTest
         _redis.Init(config);
         _redis.Db = 2;
         _redis.Retry = 0;
+        _redis.Timeout = 2_000;
         _redis.Log = XTrace.Log;
 
 #if DEBUG
@@ -31,7 +33,10 @@ public class BasicTest
 #endif
     }
 
+    #region Redis连接配置
     private static String _config;
+    /// <summary>获取Redis连接配置。优先级：环境变量 REDIS_CONNECTION > config\redis.config 文件 > 默认127.0.0.1:6379</summary>
+    /// <returns></returns>
     public static String GetConfig()
     {
         if (_config != null) return _config;
@@ -40,25 +45,196 @@ public class BasicTest
             if (_config != null) return _config;
 
             var config = "";
+
+            // 优先环境变量
+            config = Environment.GetEnvironmentVariable("REDIS_CONNECTION");
+            if (!config.IsNullOrEmpty())
+            {
+                XTrace.WriteLine("Redis配置（环境变量REDIS_CONNECTION）：{0}", config);
+                return _config = config;
+            }
+
+            // 次选配置文件
             var file = @"config\redis.config";
             if (File.Exists(file)) config = File.ReadAllText(file.GetFullPath())?.Trim();
+
+            // 最后用默认地址
             if (config.IsNullOrEmpty()) config = "server=127.0.0.1:6379;db=3";
-            if (!File.Exists(file)) File.WriteAllText(file.EnsureDirectory(true).GetFullPath(), config);
 
             XTrace.WriteLine("Redis配置：{0}", config);
 
             return _config = config;
         }
     }
+    #endregion
 
-    [Fact(DisplayName = "信息测试")]
+    #region Redis可用性检测
+    private static Int32 _redisStatus; // 0=未检测, 1=可用, -1=不可用
+    private static readonly Object _statusLock = new();
+
+    /// <summary>从连接字符串中解析主机地址</summary>
+    /// <param name="config">Redis连接字符串</param>
+    /// <returns>主机和端口</returns>
+    private static (String host, Int32 port) ParseServer(String config)
+    {
+        if (config.IsNullOrEmpty()) return ("127.0.0.1", 6379);
+
+        // 支持格式: "server=127.0.0.1:6379;db=3" 或 "127.0.0.1:6379,password=xxx"
+        var p = config.IndexOf("server=", StringComparison.OrdinalIgnoreCase);
+        var str = p >= 0 ? config[(p + 7)..] : config;
+
+        // 取第一个地址（逗号分隔多个地址）
+        var comma = str.IndexOf(',');
+        if (comma > 0) str = str[..comma];
+
+        // 处理分号结束
+        var semi = str.IndexOf(';');
+        if (semi > 0) str = str[..semi];
+
+        var host = "127.0.0.1";
+        var port = 6379;
+
+        var colon = str.IndexOf(':');
+        if (colon > 0)
+        {
+            host = str[..colon];
+            Int32.TryParse(str[(colon + 1)..], out port);
+        }
+        else
+            host = str;
+
+        return (host, port);
+    }
+
+    /// <summary>从连接字符串中解析密码</summary>
+    /// <param name="config">Redis连接字符串</param>
+    /// <returns>密码，未找到则返回null</returns>
+    private static String ParsePassword(String config)
+    {
+        if (config.IsNullOrEmpty()) return null;
+
+        // 支持格式: "server=127.0.0.1:6379;password=xxx;db=3"
+        var parts = config.Split(';');
+        foreach (var part in parts)
+        {
+            var kv = part.Split('=', 2);
+            if (kv.Length == 2 && kv[0].Trim().Equals("password", StringComparison.OrdinalIgnoreCase))
+                return kv[1].Trim();
+        }
+
+        // 尝试逗号分隔格式: "127.0.0.1:6379,password=xxx"
+        parts = config.Split(',');
+        foreach (var part in parts)
+        {
+            var kv = part.Split('=', 2);
+            if (kv.Length == 2 && kv[0].Trim().Equals("password", StringComparison.OrdinalIgnoreCase))
+                return kv[1].Trim();
+        }
+
+        return null;
+    }
+
+    /// <summary>Redis是否可用。首次访问时通过Redis PING协议检测，结果缓存整个进程生命周期</summary>
+    /// <remarks>
+    /// 使用 Socket 发送 Redis PING 命令并等待响应，3秒超时。
+    /// 相比仅检测 TCP 端口，协议级检测能识别"端口开放但 Redis 僵死"的异常状态，
+    /// 避免集成测试在 Redis 不响应时卡死。
+    /// </remarks>
+    public static Boolean RedisAvailable
+    {
+        get
+        {
+            if (_redisStatus != 0) return _redisStatus == 1;
+            lock (_statusLock)
+            {
+                if (_redisStatus != 0) return _redisStatus == 1;
+
+                try
+                {
+                    var config = GetConfig();
+                    var (host, port) = ParseServer(config);
+
+                    // Socket直连 + Redis PING 协议检测，3秒超时
+                    using var socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                    var ias = socket.BeginConnect(host, port, null, null);
+                    if (ias.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(3), exitContext: true))
+                    {
+                        socket.EndConnect(ias);
+                        socket.ReceiveTimeout = 3_000;
+                        socket.SendTimeout = 3_000;
+
+                        // 发送 Redis PING 命令
+                        var ping = "*1\r\n$4\r\nPING\r\n"u8;
+                        socket.Send(ping);
+
+                        // 等待响应
+                        var buf = new Byte[1024];
+                        var len = socket.Receive(buf);
+                        var resp = System.Text.Encoding.ASCII.GetString(buf, 0, len);
+
+                        if (resp.StartsWith("+PONG"))
+                        {
+                            _redisStatus = 1;
+                        }
+                        else if (resp.StartsWith("-NOAUTH"))
+                        {
+                            // Redis 需要密码验证，尝试 AUTH 命令
+                            var password = ParsePassword(config);
+                            if (!password.IsNullOrEmpty())
+                            {
+                                var pwdBytes = System.Text.Encoding.UTF8.GetBytes(password);
+                                var authStr = $"*2\r\n$4\r\nAUTH\r\n${pwdBytes.Length}\r\n";
+                                var authHeader = System.Text.Encoding.UTF8.GetBytes(authStr);
+
+                                var authFull = new Byte[authHeader.Length + pwdBytes.Length + 2];
+                                authHeader.CopyTo(authFull, 0);
+                                pwdBytes.CopyTo(authFull, authHeader.Length);
+                                authFull[^2] = (Byte)'\r';
+                                authFull[^1] = (Byte)'\n';
+                                socket.Send(authFull);
+
+                                len = socket.Receive(buf);
+                                resp = System.Text.Encoding.ASCII.GetString(buf, 0, len);
+                                _redisStatus = resp.StartsWith("+OK") ? 1 : -1;
+                            }
+                            else
+                            {
+                                _redisStatus = -1;
+                            }
+                        }
+                        else
+                        {
+                            _redisStatus = -1;
+                        }
+                    }
+                    else
+                    {
+                        _redisStatus = -1;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    XTrace.WriteLine("Redis不可用（{0}），集成测试将跳过: {1}", ex.GetType().Name, ex.Message);
+                    _redisStatus = -1;
+                }
+
+                if (_redisStatus == -1)
+                    XTrace.WriteLine("Redis不可用，集成测试将跳过。设置环境变量 REDIS_CONNECTION 或确保 Redis 服务可用。");
+
+                return _redisStatus == 1;
+            }
+        }
+    }
+    #endregion
+
+    [RedisFact(DisplayName = "信息测试")]
     public void InfoTest()
     {
         var inf = _redis.Execute(null, (client, k) => client.Execute<String>("info"));
         Assert.NotNull(inf);
     }
 
-    [Fact(DisplayName = "字符串测试")]
+    [RedisFact(DisplayName = "字符串测试")]
     public void GetSet()
     {
         var ic = _redis;
@@ -81,7 +257,7 @@ public class BasicTest
         Assert.Equal((Environment.UserName + "_XYY").Length, len);
     }
 
-    [Fact(DisplayName = "搜索测试")]
+    [RedisFact(DisplayName = "搜索测试")]
     public void SearchTest()
     {
         var ic = _redis;
@@ -104,7 +280,7 @@ public class BasicTest
         //Assert.True(ss3.Length > 0);
     }
 
-    [Fact]
+    [RedisFact]
     public void GetInfo()
     {
         var rds = _redis.CreateSub(0);
@@ -112,7 +288,7 @@ public class BasicTest
         Assert.NotNull(inf);
     }
 
-    [Fact(DisplayName = "UNLINK异步删除测试")]
+    [RedisFact(DisplayName = "UNLINK异步删除测试")]
     public void UnlinkTest()
     {
         var ic = _redis;
@@ -130,7 +306,7 @@ public class BasicTest
         Assert.False(ic.ContainsKey(key2));
     }
 
-    [Fact(DisplayName = "TOUCH更新LRU测试")]
+    [RedisFact(DisplayName = "TOUCH更新LRU测试")]
     public void TouchTest()
     {
         var ic = _redis;
@@ -144,7 +320,7 @@ public class BasicTest
         Assert.Equal(2, count);
     }
 
-    [Fact(DisplayName = "COPY复制键测试")]
+    [RedisFact(DisplayName = "COPY复制键测试")]
     public void CopyTest()
     {
         var ic = _redis;
@@ -158,7 +334,7 @@ public class BasicTest
         Assert.Equal("hello", ic.Get<String>(dst));
     }
 
-    [Fact(DisplayName = "COPY复制键覆盖测试")]
+    [RedisFact(DisplayName = "COPY复制键覆盖测试")]
     public void CopyReplaceTest()
     {
         var ic = _redis;
@@ -172,7 +348,7 @@ public class BasicTest
         Assert.Equal("new_value", ic.Get<String>(dst));
     }
 
-    [Fact(DisplayName = "GETEX获取并设置过期测试")]
+    [RedisFact(DisplayName = "GETEX获取并设置过期测试")]
     public void GetExTest()
     {
         var ic = _redis;
@@ -186,7 +362,7 @@ public class BasicTest
         Assert.True(ic.ContainsKey(key));
     }
 
-    [Fact(DisplayName = "LMOVE原子移动测试")]
+    [RedisFact(DisplayName = "LMOVE原子移动测试")]
     public void LMoveTest()
     {
         var ic = _redis;
@@ -204,7 +380,7 @@ public class BasicTest
         Assert.Equal(1, ic.Execute(dst, (rc, k) => rc.Execute<Int32>("LLEN", k)));
     }
 
-    [Fact(DisplayName = "BLMOVE阻塞移动测试")]
+    [RedisFact(DisplayName = "BLMOVE阻塞移动测试")]
     public void BLMoveTest()
     {
         var ic = _redis;
@@ -220,7 +396,7 @@ public class BasicTest
         Assert.Equal("x", val);
     }
 
-    [Fact(DisplayName = "SWAPDB交换数据库测试")]
+    [RedisFact(DisplayName = "SWAPDB交换数据库测试")]
     public void SwapDBTest()
     {
         var ic = _redis;
@@ -234,7 +410,7 @@ public class BasicTest
         Assert.Equal("OK", rs);
     }
 
-    [Fact(DisplayName = "LPOS查找元素位置测试")]
+    [RedisFact(DisplayName = "LPOS查找元素位置测试")]
     public void LPosTest()
     {
         var ic = _redis;
@@ -249,7 +425,7 @@ public class BasicTest
         Assert.Equal(2, pos[0]);
     }
 
-    [Fact(DisplayName = "SMISMEMBER批量判断成员测试")]
+    [RedisFact(DisplayName = "SMISMEMBER批量判断成员测试")]
     public void SMIsMemberTest()
     {
         var ic = _redis;
@@ -266,7 +442,7 @@ public class BasicTest
         Assert.Equal(0, rs[2]);
     }
 
-    [Fact(DisplayName = "ZMSCORE批量获取分数测试")]
+    [RedisFact(DisplayName = "ZMSCORE批量获取分数测试")]
     public void ZMScoreTest()
     {
         var ic = _redis;
@@ -283,7 +459,7 @@ public class BasicTest
         Assert.Equal(0, scores[2]); // x 不存在，返回 null 转为 0
     }
 
-    [Fact(DisplayName = "ZRANDMEMBER随机成员测试")]
+    [RedisFact(DisplayName = "ZRANDMEMBER随机成员测试")]
     public void ZRandMemberTest()
     {
         var ic = _redis;
@@ -297,7 +473,7 @@ public class BasicTest
         Assert.Equal(2, members.Length);
     }
 
-    [Fact(DisplayName = "BZPOPMIN阻塞弹出最小测试")]
+    [RedisFact(DisplayName = "BZPOPMIN阻塞弹出最小测试")]
     public void BZPopMinTest()
     {
         var ic = _redis;
@@ -312,7 +488,7 @@ public class BasicTest
         Assert.Equal(10, rs.Item2);
     }
 
-    [Fact(DisplayName = "BZPOPMAX阻塞弹出最大测试")]
+    [RedisFact(DisplayName = "BZPOPMAX阻塞弹出最大测试")]
     public void BZPopMaxTest()
     {
         var ic = _redis;
@@ -327,7 +503,7 @@ public class BasicTest
         Assert.Equal(20, rs.Item2);
     }
 
-    [Fact(DisplayName = "EXPIRETIME获取过期时间戳测试")]
+    [RedisFact(DisplayName = "EXPIRETIME获取过期时间戳测试")]
     public void ExpireTimeTest()
     {
         var ic = _redis;
@@ -338,7 +514,7 @@ public class BasicTest
         Assert.True(ts > 0);
     }
 
-    [Fact(DisplayName = "PEXPIRETIME获取毫秒过期时间戳测试")]
+    [RedisFact(DisplayName = "PEXPIRETIME获取毫秒过期时间戳测试")]
     public void PExpireTimeTest()
     {
         var ic = _redis;
@@ -349,7 +525,7 @@ public class BasicTest
         Assert.True(ts > 0);
     }
 
-    [Fact(DisplayName = "MEMORY USAGE内存占用测试")]
+    [RedisFact(DisplayName = "MEMORY USAGE内存占用测试")]
     public void MemoryUsageTest()
     {
         var ic = _redis;
@@ -360,7 +536,7 @@ public class BasicTest
         Assert.True(usage > 0);
     }
 
-    [Fact(DisplayName = "SET...GET替换并返回旧值测试")]
+    [RedisFact(DisplayName = "SET...GET替换并返回旧值测试")]
     public void SetGetTest()
     {
         var ic = _redis;
@@ -372,7 +548,7 @@ public class BasicTest
         Assert.Equal("new_value", ic.Get<String>(key));
     }
 
-    [Fact(DisplayName = "SINTERCARD交集基数测试")]
+    [RedisFact(DisplayName = "SINTERCARD交集基数测试")]
     public void SInterCardTest()
     {
         var ic = _redis;
@@ -388,7 +564,7 @@ public class BasicTest
         Assert.Equal(2, count);
     }
 
-    [Fact(DisplayName = "OBJECT ENCODING编码测试")]
+    [RedisFact(DisplayName = "OBJECT ENCODING编码测试")]
     public void ObjectEncodingTest()
     {
         var ic = _redis;
@@ -399,7 +575,7 @@ public class BasicTest
         Assert.NotNull(enc);
     }
 
-    [Fact(DisplayName = "SLOWLOG慢查询日志测试")]
+    [RedisFact(DisplayName = "SLOWLOG慢查询日志测试")]
     public void SlowLogTest()
     {
         var ic = _redis;
@@ -411,7 +587,7 @@ public class BasicTest
         Assert.NotNull(logs);
     }
 
-    [Fact(DisplayName = "WAIT等待副本确认测试")]
+    [RedisFact(DisplayName = "WAIT等待副本确认测试")]
     public void WaitTest()
     {
         var ic = _redis;
@@ -421,7 +597,7 @@ public class BasicTest
         Assert.True(count >= 0);
     }
 
-    [Fact(DisplayName = "LATENCY延迟分析测试")]
+    [RedisFact(DisplayName = "LATENCY延迟分析测试")]
     public void LatencyTest()
     {
         var ic = _redis;
@@ -430,7 +606,7 @@ public class BasicTest
         Assert.NotNull(latest);
     }
 
-    [Fact(DisplayName = "SETBIT设置位值测试")]
+    [RedisFact(DisplayName = "SETBIT设置位值测试")]
     public void SetBitTest()
     {
         var ic = _redis;
@@ -444,7 +620,7 @@ public class BasicTest
         Assert.Equal(1, old);
     }
 
-    [Fact(DisplayName = "GETBIT获取位值测试")]
+    [RedisFact(DisplayName = "GETBIT获取位值测试")]
     public void GetBitTest()
     {
         var ic = _redis;
@@ -460,7 +636,7 @@ public class BasicTest
         Assert.Equal(0, bit);
     }
 
-    [Fact(DisplayName = "BITCOUNT位计数测试")]
+    [RedisFact(DisplayName = "BITCOUNT位计数测试")]
     public void BitCountTest()
     {
         var ic = _redis;
@@ -475,7 +651,7 @@ public class BasicTest
         Assert.Equal(2, count);
     }
 
-    [Fact(DisplayName = "BITOP位运算测试")]
+    [RedisFact(DisplayName = "BITOP位运算测试")]
     public void BitOpTest()
     {
         var ic = _redis;
@@ -493,7 +669,7 @@ public class BasicTest
         Assert.True(len >= 0);
     }
 
-    [Fact(DisplayName = "LMPOP多列表弹出测试")]
+    [RedisFact(DisplayName = "LMPOP多列表弹出测试")]
     public void LMPopTest()
     {
         var ic = _redis;
@@ -510,7 +686,7 @@ public class BasicTest
         Assert.Equal(2, rs.Item2.Length);
     }
 
-    [Fact(DisplayName = "ZMPOP多ZSet弹出测试")]
+    [RedisFact(DisplayName = "ZMPOP多ZSet弹出测试")]
     public void ZMPopTest()
     {
         var ic = _redis;
@@ -526,7 +702,7 @@ public class BasicTest
         Assert.Single(rs.Item2);
     }
 
-    [Fact(DisplayName = "FCALL函数调用测试")]
+    [RedisFact(DisplayName = "FCALL函数调用测试")]
     public void FCallTest()
     {
         var ic = _redis;
@@ -538,7 +714,7 @@ public class BasicTest
         var result = ic.FCall<String>("myecho", [], ["hello"]);
         Assert.Equal("hello", result);
     }
-    [Fact(DisplayName = "TairString ExSet/ExGet测试")]
+    [RedisFact(DisplayName = "TairString ExSet/ExGet测试")]
     public void TairStringTest()
     {
         var ic = _redis;
@@ -555,7 +731,7 @@ public class BasicTest
         Assert.True(tuple.Item2 >= 1);
     }
 
-    [Fact(DisplayName = "TairHash ExHSet/ExHGet测试")]
+    [RedisFact(DisplayName = "TairHash ExHSet/ExHGet测试")]
     public void TairHashTest()
     {
         var ic = _redis;

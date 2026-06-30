@@ -27,7 +27,7 @@ public class ListTests
 #endif
     }
 
-    [Fact]
+    [RedisFact]
     public void List_Normal()
     {
         var key = "lkey";
@@ -65,7 +65,7 @@ public class ListTests
         Assert.True(exist);
     }
 
-    [Fact]
+    [RedisFact]
     public void List_Copy()
     {
         var key = "lkey_copy";
@@ -89,7 +89,7 @@ public class ListTests
         Assert.Equal(vs[1], vs3[1]);
     }
 
-    [Fact]
+    [RedisFact]
     public void List_Remove()
     {
         var key = "lkey_remove";
@@ -128,7 +128,7 @@ public class ListTests
         Assert.Equal("新生命团队", list[1]);
     }
 
-    [Fact]
+    [RedisFact]
     public void List_Advance()
     {
         var key = "lkey_advance";
@@ -165,7 +165,7 @@ public class ListTests
         Assert.Equal(vs3[1], item2);
     }
 
-    [Fact]
+    [RedisFact]
     public void List_IndexOf()
     {
         var key = "lkey_indexof";
@@ -197,7 +197,7 @@ public class ListTests
         _redis.Remove(key);
     }
 
-    [Fact]
+    [RedisFact]
     public void RPOPLPUSH_Test()
     {
         var key = "lkey_rpoplpush";
@@ -230,7 +230,7 @@ public class ListTests
         Assert.Single(l2);
     }
 
-    [Fact]
+    [RedisFact]
     public async Task BRPOPLPUSH_Test()
     {
         // 一个队列多个消费，阻塞是否叠加

@@ -45,7 +45,7 @@ public class RedisClusterTests
         cluster.ParseNodes(str);
     }
 
-    [Fact]
+    [RedisFact]
     public void InitCluster()
     {
         _redis.InitCluster();

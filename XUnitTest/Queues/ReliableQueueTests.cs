@@ -32,7 +32,7 @@ public class ReliableQueueTests
 #endif
     }
 
-    [Fact]
+    [RedisFact]
     public void Queue_Normal()
     {
         var key = "ReliableQueue";
@@ -96,7 +96,7 @@ public class ReliableQueueTests
         Assert.Null(v5);
     }
 
-    [Fact]
+    [RedisFact]
     public void Queue_Batch()
     {
         var key = "ReliableQueue_batch";
@@ -155,7 +155,7 @@ public class ReliableQueueTests
         Assert.Single(vs4);
     }
 
-    [Fact]
+    [RedisFact]
     public void Queue_Block()
     {
         var key = "ReliableQueue_block";
@@ -199,7 +199,7 @@ public class ReliableQueueTests
         Assert.True(sw.ElapsedMilliseconds >= 2000);
     }
 
-    [Fact]
+    [RedisFact]
     public void Queue_NotEnough()
     {
         var key = "ReliableQueue_not_enough";
@@ -243,7 +243,7 @@ public class ReliableQueueTests
     }
 
     /// <summary>AckKey独一无二，一百万个key测试</summary>
-    [Fact]
+    [RedisFact]
     public void UniqueAckKey()
     {
         var key = "ReliableQueue_unique";
@@ -262,7 +262,7 @@ public class ReliableQueueTests
         }
     }
 
-    [Fact]
+    [RedisFact(Skip = "手动性能测试：大量消息，不适合CI")]
     public void Queue_Benchmark()
     {
         var key = "ReliableQueue_benchmark";
@@ -296,7 +296,7 @@ public class ReliableQueueTests
         Assert.Equal(1_000 * 100, count);
     }
 
-    [Fact]
+    [RedisFact(Skip = "手动性能测试：16线程并发消费大量消息，不适合CI")]
     public async Task Queue_Benchmark_Mutilate()
     {
         var key = "ReliableQueue_benchmark_mutilate";
@@ -349,7 +349,7 @@ public class ReliableQueueTests
         Assert.Equal(1_000 * 100, rs);
     }
 
-    [Fact]
+    [RedisFact]
     public void RetryDeadAck()
     {
         var key = "ReliableQueue_RetryDeadAck";
@@ -395,7 +395,7 @@ public class ReliableQueueTests
         Assert.Empty(q2);
     }
 
-    [Fact]
+    [RedisFact]
     public async Task Queue_Async()
     {
         var key = "ReliableQueue_Async";
@@ -441,7 +441,7 @@ public class ReliableQueueTests
         Assert.True(sw.ElapsedMilliseconds >= 2000);
     }
 
-    [Fact]
+    [RedisFact]
     public async Task Queue_PublishAndConsume()
     {
         var key = "ReliableQueue_PublishAndConsume";
@@ -524,7 +524,7 @@ public class ReliableQueueTests
         public String TraceParent { get; set; }
     }
 
-    [Fact]
+    [RedisFact]
     public void AttachTraceId()
     {
         var key = "ReliableQueue_AttachTraceId";
@@ -589,7 +589,7 @@ public class ReliableQueueTests
         }
     }
 
-    [Fact]
+    [RedisFact]
     public async Task AddDelay()
     {
         var key = "ReliableQueue_addDelay";
@@ -639,7 +639,7 @@ public class ReliableQueueTests
         queue.Acknowledge(v2);
     }
 
-    [Fact]
+    [RedisFact]
     public async Task BlockTest()
     {
         // 一个队列两个消费，阻塞是否叠加
@@ -668,7 +668,7 @@ public class ReliableQueueTests
     }
 
     private class RedisMessage<T> { public MyModel Data { get; set; } }
-    [Fact]
+    [RedisFact]
     public async Task TakeOneNotDataAsync()
     {
         var queue = _redis.GetReliableQueue<RedisMessage<MyModel>>("TakeOneNotDataAsync");

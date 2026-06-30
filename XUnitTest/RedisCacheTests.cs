@@ -27,7 +27,7 @@ namespace XUnitTest
             provider = services.BuildServiceProvider();
         }
 
-        [Fact]
+        [RedisFact]
         public void Get()
         {
             var key = "key1";
@@ -41,7 +41,7 @@ namespace XUnitTest
             Assert.Equal(value, rs);
         }
 
-        [Fact]
+        [RedisFact]
         public async Task GetAsync()
         {
             var key = "key2";
@@ -55,7 +55,7 @@ namespace XUnitTest
             Assert.Equal(value, rs);
         }
 
-        [Fact]
+        [RedisFact]
         public void Set()
         {
             var key = "key3";
@@ -69,7 +69,7 @@ namespace XUnitTest
             Assert.Equal(value, rs);
         }
 
-        [Fact]
+        [RedisFact]
         public async Task SetAsync()
         {
             var key = "key4";
@@ -83,7 +83,7 @@ namespace XUnitTest
             Assert.Equal(value, rs);
         }
 
-        [Fact]
+        [RedisFact]
         public void Set_With_Options()
         {
             var key = "key5";
@@ -101,7 +101,7 @@ namespace XUnitTest
             Assert.Equal(value, rs);
         }
 
-        [Fact]
+        [RedisFact]
         public async Task SetAsync_With_Options()
         {
             var key = "key6";
@@ -119,7 +119,7 @@ namespace XUnitTest
             Assert.Equal(value, rs);
         }
 
-        [Fact]
+        [RedisFact]
         public void Set_With_Options_AbsoluteExpirationRelativeToNow()
         {
             var key = "key7";
@@ -140,7 +140,7 @@ namespace XUnitTest
         /// <summary>
         /// 测试缓存Key前缀
         /// </summary>
-        [Fact]
+        [RedisFact]
         public void PrefixTest()
         {
             var key = "key8";
