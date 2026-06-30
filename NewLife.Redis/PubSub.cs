@@ -80,6 +80,42 @@ public class PubSub : RedisBase
     /// <param name="message">消息内容</param>
     /// <returns>返回接收到消息的客户端个数</returns>
     public Int32 Publish(String message) => Execute((rc, k) => rc.Execute<Int32>("PUBLISH", Key, message), true);
+
+    /// <summary>分片发布消息（Redis 7.0+ SPUBLISH）</summary>
+    /// <remarks>分片发布将消息路由到特定集群分片，适合大规模消息广播</remarks>
+    /// <param name="message">消息内容</param>
+    /// <returns>返回接收到消息的客户端个数</returns>
+    public Int32 SPublish(String message) => Execute((rc, k) => rc.Execute<Int32>("SPUBLISH", Key, message), true);
+    #endregion
+
+    #region 分片订阅
+    /// <summary>分片订阅大循环（Redis 7.0+）</summary>
+    /// <param name="onMessage">回调函数，参数为(频道, 消息)</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public async Task SSubscribeAsync(Action<String, String> onMessage, CancellationToken cancellationToken = default)
+    {
+        if (onMessage == null) throw new ArgumentNullException(nameof(onMessage));
+
+        var client = Redis.Pool.Get();
+        client.Reset();
+
+        var channels = Key.Split(",", ";").Cast<Object>().ToArray();
+        await client.ExecuteAsync<String[]>("SSUBSCRIBE", channels, cancellationToken).ConfigureAwait(false);
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var source = new CancellationTokenSource(Redis.Timeout);
+            var source2 = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, source.Token);
+
+            var rs = await client.ReadMoreAsync<String[]>(source2.Token).ConfigureAwait(false);
+            if (rs != null && rs.Length == 3 && rs[0] == "smessage") onMessage(rs[1], rs[2]);
+        }
+
+        await client.ExecuteAsync<String[]>("SUNSUBSCRIBE", channels, cancellationToken).ConfigureAwait(false);
+
+        Redis.Pool.Return(client);
+    }
     #endregion
 
     #region 自省

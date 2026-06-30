@@ -10,6 +10,7 @@ using NewLife.Data;
 using NewLife.Log;
 using NewLife.Messaging;
 using NewLife.Model;
+using NewLife.Security;
 
 namespace NewLife.Caching;
 
@@ -984,6 +985,120 @@ public class FullRedis : Redis
         key = GetKey(key);
         return base.AcquireLock(key, msTimeout, msExpire, throwOnFailure);
     }
+
+    /// <summary>申请RedLock多实例分布式锁</summary>
+    /// <remarks>
+    /// Redlock算法：在多数独立Redis实例上成功加锁才算获得锁。
+    /// 需要提供至少3个独立的Redis实例（建议奇数个），适用于跨机房高可用场景。
+    /// </remarks>
+    /// <param name="otherInstances">其他独立Redis实例</param>
+    /// <param name="key">锁键名</param>
+    /// <param name="msTimeout">获取锁超时时间（毫秒）</param>
+    /// <param name="msExpire">锁过期时间（毫秒）</param>
+    /// <returns>锁对象，获取失败返回null</returns>
+    public virtual IDisposable? AcquireRedLock(Redis[] otherInstances, String key, Int32 msTimeout, Int32 msExpire)
+    {
+        key = GetKey(key);
+
+        var instances = new List<Redis> { this };
+        if (otherInstances != null) instances.AddRange(otherInstances);
+
+        return AcquireRedLockCore(instances.ToArray(), key, msTimeout, msExpire);
+    }
+
+    private static IDisposable? AcquireRedLockCore(Redis[] instances, String key, Int32 msTimeout, Int32 msExpire)
+    {
+        if (instances == null || instances.Length == 0) throw new ArgumentNullException(nameof(instances));
+        if (key.IsNullOrEmpty()) throw new ArgumentNullException(nameof(key));
+        if (msTimeout <= 0) throw new ArgumentOutOfRangeException(nameof(msTimeout));
+        if (msExpire <= 0) throw new ArgumentOutOfRangeException(nameof(msExpire));
+
+        var token = Rand.NextString(22);
+        var quorum = instances.Length / 2 + 1;
+        var startTime = DateTime.UtcNow;
+
+        // 循环重试，直到超时
+        while (true)
+        {
+            var lockStart = DateTime.UtcNow;
+            var successCount = 0;
+            var lockedList = new List<Redis>();
+
+            // 尝试在每个实例上加锁
+            foreach (var rds in instances)
+            {
+                try
+                {
+                    if (rds.Set(key, token, msExpire / 1000))
+                    {
+                        lockedList.Add(rds);
+                        successCount++;
+                    }
+                }
+                catch
+                {
+                    // 单实例失败不中断
+                }
+            }
+
+            // 计算已用时间
+            var lockElapsed = (Int32)(DateTime.UtcNow - lockStart).TotalMilliseconds;
+
+            // 判断：多数节点成功 且 总耗时小于锁有效期
+            var validityTime = msExpire - lockElapsed - (Int32)(msExpire * 0.01);
+            if (successCount >= quorum && validityTime > 0)
+            {
+                return new RedLockHolder(key, token, lockedList);
+            }
+
+            // 释放已获得的锁
+            foreach (var rds in lockedList)
+            {
+                try
+                {
+                    var lua = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
+                    rds.Execute(key, (rc, k) => rc.Execute<Int32>("EVAL", lua, 1, k, token), true);
+                }
+                catch { }
+            }
+
+            // 检查是否超时
+            var elapsed = (Int32)(DateTime.UtcNow - startTime).TotalMilliseconds;
+            if (elapsed >= msTimeout) return null;
+
+            // 等待后重试
+            var delay = Math.Min(200 + Rand.Next(50), msTimeout - elapsed);
+            Thread.Sleep(delay);
+        }
+    }
+
+    private class RedLockHolder : IDisposable
+    {
+        private readonly String _key;
+        private readonly String _token;
+        private readonly List<Redis> _instances;
+
+        public RedLockHolder(String key, String token, List<Redis> instances)
+        {
+            _key = key;
+            _token = token;
+            _instances = instances;
+        }
+
+        public void Dispose()
+        {
+            foreach (var rds in _instances)
+            {
+                try
+                {
+                    var lua = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
+                    rds.Execute(_key, (rc, k) => rc.Execute<Int32>("EVAL", lua, 1, k, _token), true);
+                }
+                catch { }
+            }
+            _instances.Clear();
+        }
+    }
     #endregion
 
     #region 常用原生命令
@@ -1086,6 +1201,35 @@ public class FullRedis : Redis
     /// <param name="key"></param>
     /// <returns></returns>
     public virtual T? LPOP<T>(String key) => Execute(key, (rc, k) => rc.Execute<T>("LPOP", k), true);
+
+    /// <summary>从多个列表中弹出元素（Redis 7.0+）</summary>
+    /// <typeparam name="T">元素类型</typeparam>
+    /// <param name="keys">列表键列表</param>
+    /// <param name="fromLeft">true=从左弹出(LMPOP LEFT), false=从右弹出(LMPOP RIGHT)</param>
+    /// <param name="count">弹出数量，默认1</param>
+    /// <returns>(键名, 元素数组) 或 null（所有列表为空）</returns>
+    public virtual Tuple<String, T[]?>? LMPop<T>(String[] keys, Boolean fromLeft = true, Int32 count = 1)
+    {
+        var args = new List<Object> { keys.Length };
+        foreach (var key in keys)
+        {
+            args.Add(GetKey(key));
+        }
+        args.Add(fromLeft ? "LEFT" : "RIGHT");
+        if (count > 1)
+        {
+            args.Add("COUNT");
+            args.Add(count);
+        }
+
+        var rs = Execute(keys[0], (rc, k) => rc.Execute<Object[]>("LMPOP", args.ToArray()), true);
+        if (rs == null || rs.Length < 2) return null;
+
+        var keyName = (rs[0] as IPacket)?.ToStr() ?? "";
+        var items = rs[1] is Object[] arr ? arr.Select(e => (T?)Encoder.Decode((IPacket)e!, typeof(T))!).ToArray() : [];
+
+        return new Tuple<String, T[]?>(keyName, items);
+    }
 
     /// <summary>从列表末尾弹出一个元素，阻塞</summary>
     /// <remarks>
@@ -1292,6 +1436,44 @@ public class FullRedis : Redis
         return rs == null ? null : new Tuple<T?, Double>(rs.Item2, rs.Item3);
     }
 
+    /// <summary>从多个有序集合中弹出元素（Redis 7.0+）</summary>
+    /// <typeparam name="T">成员类型</typeparam>
+    /// <param name="keys">有序集合键列表</param>
+    /// <param name="min">true=弹出最小分数(MIN), false=弹出最大分数(MAX)</param>
+    /// <param name="count">弹出数量，默认1</param>
+    /// <returns>(键名, 成员分数对列表) 或 null（所有集合为空）</returns>
+    public virtual Tuple<String, IDictionary<T, Double>?>? ZMPop<T>(String[] keys, Boolean min = true, Int32 count = 1)
+    {
+        var args = new List<Object> { keys.Length };
+        foreach (var key in keys)
+        {
+            args.Add(GetKey(key));
+        }
+        args.Add(min ? "MIN" : "MAX");
+        if (count > 1)
+        {
+            args.Add("COUNT");
+            args.Add(count);
+        }
+
+        var rs = Execute(keys[0], (rc, k) => rc.Execute<Object[]>("ZMPOP", args.ToArray()), true);
+        if (rs == null || rs.Length < 2) return null;
+
+        var keyName = (rs[0] as IPacket)?.ToStr() ?? "";
+        var dic = new Dictionary<T, Double>();
+        if (rs[1] is Object[] arr)
+        {
+            for (var i = 0; i < arr.Length - 1; i += 2)
+            {
+                var member = Encoder.Decode<T>((IPacket)arr[i]!);
+                var score = (arr[i + 1] as IPacket)?.ToStr().ToDouble() ?? 0;
+                if (member != null) dic[member] = score;
+            }
+        }
+
+        return new Tuple<String, IDictionary<T, Double>?>(keyName, dic);
+    }
+
     /// <summary>向集合添加多个元素</summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="key"></param>
@@ -1472,6 +1654,137 @@ public class FullRedis : Redis
         }
 
         return Execute("", (rc, k) => rc.Execute<T>("EVAL", ps), true);
+    }
+
+    /// <summary>调用已加载的Redis函数（Redis 7.0+）</summary>
+    /// <typeparam name="T">返回类型</typeparam>
+    /// <param name="function">函数名</param>
+    /// <param name="keys">键列表</param>
+    /// <param name="args">参数列表</param>
+    /// <returns>函数返回值</returns>
+    public virtual T? FCall<T>(String function, String[] keys, Object[] args)
+    {
+        keys ??= [];
+        args ??= [];
+        var ps = new List<Object> { function, keys.Length };
+        foreach (var k in keys)
+        {
+            ps.Add(GetKey(k));
+        }
+        foreach (var a in args)
+        {
+            ps.Add(a);
+        }
+        return Execute("", (rc, k) => rc.Execute<T>("FCALL", ps), true);
+    }
+
+    /// <summary>以只读模式调用Redis函数（Redis 7.0+）</summary>
+    /// <typeparam name="T">返回类型</typeparam>
+    /// <param name="function">函数名</param>
+    /// <param name="keys">键列表</param>
+    /// <param name="args">参数列表</param>
+    /// <returns>函数返回值</returns>
+    public virtual T? FCallRO<T>(String function, String[] keys, Object[] args)
+    {
+        keys ??= [];
+        args ??= [];
+        var ps = new List<Object> { function, keys.Length };
+        foreach (var k in keys)
+        {
+            ps.Add(GetKey(k));
+        }
+        foreach (var a in args)
+        {
+            ps.Add(a);
+        }
+        return Execute("", (rc, k) => rc.Execute<T>("FCALL_RO", ps));
+    }
+
+    /// <summary>加载函数库到Redis（Redis 7.0+ FUNCTION LOAD）</summary>
+    /// <param name="libraryCode">Lua函数库代码</param>
+    /// <param name="replace">是否替换已有函数库</param>
+    /// <returns>函数库名称</returns>
+    public virtual String? FunctionLoad(String libraryCode, Boolean replace = false)
+    {
+        if (replace)
+            return Execute(rds => rds.Execute<String>("FUNCTION", "LOAD", "REPLACE", libraryCode));
+        else
+            return Execute(rds => rds.Execute<String>("FUNCTION", "LOAD", libraryCode));
+    }
+
+    /// <summary>列出已加载的函数库（Redis 7.0+ FUNCTION LIST）</summary>
+    /// <param name="libraryName">函数库名称，不指定返回所有</param>
+    /// <returns>函数库信息</returns>
+    public virtual Object[]? FunctionList(String? libraryName = null)
+    {
+        if (libraryName != null)
+            return Execute(rds => rds.Execute<Object[]>("FUNCTION", "LIST", "LIBRARYNAME", libraryName));
+        else
+            return Execute(rds => rds.Execute<Object[]>("FUNCTION", "LIST"));
+    }
+
+    /// <summary>删除函数库（Redis 7.0+ FUNCTION DELETE）</summary>
+    /// <param name="libraryName">函数库名称</param>
+    /// <returns>成功返回OK</returns>
+    public virtual String FunctionDelete(String libraryName) => Execute(rds => rds.Execute<String>("FUNCTION", "DELETE", libraryName));
+
+    /// <summary>导出Prometheus格式的Redis指标</summary>
+    /// <remarks>
+    /// 基于INFO命令导出的指标转换为Prometheus文本格式。
+    /// 包含连接数、内存、命令统计、CPU、键空间等核心指标。
+    /// </remarks>
+    /// <returns>Prometheus格式指标文本</returns>
+    public virtual String GetPrometheusMetrics()
+    {
+        var inf = Info;
+        if (inf == null || inf.Count == 0) return "";
+
+        var sb = new StringBuilder();
+        var prefix = "newlife_redis";
+
+        // 连接数
+        if (inf.TryGetValue("connected_clients", out var v))
+            sb.AppendLine($"{prefix}_connected_clients {v}");
+        if (inf.TryGetValue("blocked_clients", out v))
+            sb.AppendLine($"{prefix}_blocked_clients {v}");
+
+        // 内存
+        if (inf.TryGetValue("used_memory", out v))
+            sb.AppendLine($"{prefix}_used_memory_bytes {v}");
+        if (inf.TryGetValue("used_memory_rss", out v))
+            sb.AppendLine($"{prefix}_used_memory_rss_bytes {v}");
+        if (inf.TryGetValue("mem_fragmentation_ratio", out v))
+            sb.AppendLine($"{prefix}_mem_fragmentation_ratio {v}");
+
+        // 命令统计
+        if (inf.TryGetValue("total_commands_processed", out v))
+            sb.AppendLine($"{prefix}_commands_processed_total {v}");
+        if (inf.TryGetValue("instantaneous_ops_per_sec", out v))
+            sb.AppendLine($"{prefix}_instantaneous_ops_per_sec {v}");
+
+        // CPU
+        if (inf.TryGetValue("used_cpu_sys", out v))
+            sb.AppendLine($"{prefix}_used_cpu_sys_seconds {v}");
+        if (inf.TryGetValue("used_cpu_user", out v))
+            sb.AppendLine($"{prefix}_used_cpu_user_seconds {v}");
+
+        // 键空间
+        if (inf.TryGetValue("db0", out v) && v != null)
+        {
+            var parts = v.Split(',');
+            foreach (var part in parts)
+            {
+                var kv = part.Split('=');
+                if (kv.Length == 2)
+                    sb.AppendLine($"{prefix}_db0_{kv[0]} {kv[1]}");
+            }
+        }
+
+        // 复制
+        if (inf.TryGetValue("connected_slaves", out v))
+            sb.AppendLine($"{prefix}_connected_slaves {v}");
+
+        return sb.ToString();
     }
     #endregion
 }

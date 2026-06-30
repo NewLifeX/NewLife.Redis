@@ -164,5 +164,29 @@ namespace XUnitTest
             // 可能为0（无模式订阅）或正数
             Assert.True(count >= 0);
         }
+
+        [Fact(DisplayName = "分片订阅-单频道")]
+        public void SSubscribe()
+        {
+            var pb = new PubSub(_redis, "pb_shard");
+
+            var source = new CancellationTokenSource(2_000);
+
+            var count = 0;
+            Task.Run(() => pb.SSubscribeAsync((channel, msg) =>
+            {
+                count++;
+                XTrace.WriteLine("ShardConsume: [{0}] {1}", channel, msg);
+            }, source.Token));
+
+            Thread.Sleep(100);
+
+            var rs = pb.SPublish("shard_msg");
+            Assert.Equal(1, rs);
+
+            Thread.Sleep(100);
+
+            Assert.Equal(1, count);
+        }
     }
 }

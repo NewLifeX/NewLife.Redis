@@ -492,6 +492,52 @@ public class BasicTest
         var len = ic.BitOp("AND", dest, key1, key2);
         Assert.True(len >= 0);
     }
+
+    [Fact(DisplayName = "LMPOP多列表弹出测试")]
+    public void LMPopTest()
+    {
+        var ic = _redis;
+        var key1 = "lmpop_test1";
+        var key2 = "lmpop_test2";
+
+        ic.Remove(key1, key2);
+        ic.RPUSH(key1, "a", "b", "c");
+
+        var rs = ic.LMPop<String>([key1, key2], fromLeft: true, count: 2);
+        Assert.NotNull(rs);
+        Assert.Equal(key1, rs.Item1);
+        Assert.NotNull(rs.Item2);
+        Assert.Equal(2, rs.Item2.Length);
+    }
+
+    [Fact(DisplayName = "ZMPOP多ZSet弹出测试")]
+    public void ZMPopTest()
+    {
+        var ic = _redis;
+        var key1 = "zmpop_test1";
+
+        ic.Remove(key1);
+        ic.Execute(key1, (rc, k) => rc.Execute<Int32>("ZADD", k, 10, "a", 20, "b"), true);
+
+        var rs = ic.ZMPop<String>([key1], min: true, count: 1);
+        Assert.NotNull(rs);
+        Assert.Equal(key1, rs.Item1);
+        Assert.NotNull(rs.Item2);
+        Assert.Single(rs.Item2);
+    }
+
+    [Fact(DisplayName = "FCALL函数调用测试")]
+    public void FCallTest()
+    {
+        var ic = _redis;
+
+        // 先加载一个简单函数
+        var lib = "#!lua name=mylib\nredis.register_function('myecho', function(k, a) return a[1] end)";
+        ic.FunctionLoad(lib, replace: true);
+
+        var result = ic.FCall<String>("myecho", [], ["hello"]);
+        Assert.Equal("hello", result);
+    }
 }
 
 public class BasicTest2 : BasicTest

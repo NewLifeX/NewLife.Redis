@@ -124,12 +124,25 @@ public class Redis : Cache, IConfigMapping, ILogFeature
                 var inf = Info;
                 if (inf != null)
                 {
-                    // Garnet 在 redis_version 中包含 "Garnet" 字符串
+                    // Garnet 在 redis_version 或 server 字段中包含 "Garnet" 字符串
                     if (inf.TryGetValue("redis_version", out var ver) && ver?.Contains("Garnet") == true)
                         _ServerType = Caching.ServerType.Garnet;
-                    // 检查 server 字段，Garnet 可能在此标识
                     else if (inf.TryGetValue("server", out var server) && server?.Contains("Garnet") == true)
                         _ServerType = Caching.ServerType.Garnet;
+                    // Pika 在 redis_version 中包含 "pika" 或 server 字段中包含 "Pika"
+                    else if (inf.TryGetValue("redis_version", out var ver2) && ver2?.Contains("pika", StringComparison.OrdinalIgnoreCase) == true)
+                        _ServerType = Caching.ServerType.Pika;
+                    else if (inf.TryGetValue("server", out var server2) && server2?.Contains("Pika") == true)
+                        _ServerType = Caching.ServerType.Pika;
+                    // DragonflyDB 在 server 字段中包含 "dragonfly"
+                    else if (inf.TryGetValue("server", out var server3) && server3?.Contains("dragonfly", StringComparison.OrdinalIgnoreCase) == true)
+                        _ServerType = Caching.ServerType.DragonflyDB;
+                    else if (inf.TryGetValue("os", out var os) && os?.Contains("Huawei") == true)
+                        _ServerType = Caching.ServerType.HuaweiCloud;
+                    else if (inf.TryGetValue("server", out var server4) && (server4?.Contains("Tair") == true || server4?.Contains("Alibaba") == true))
+                        _ServerType = Caching.ServerType.AlibabaCloud;
+                    else if (inf.TryGetValue("server", out var server5) && server5?.Contains("Tencent") == true)
+                        _ServerType = Caching.ServerType.TencentCloud;
                     else
                         _ServerType = Caching.ServerType.Redis;
                 }
@@ -142,6 +155,21 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
     /// <summary>是否为 Garnet 服务器</summary>
     public Boolean IsGarnet => ServerType == Caching.ServerType.Garnet;
+
+    /// <summary>是否为 Pika 服务器</summary>
+    public Boolean IsPika => ServerType == Caching.ServerType.Pika;
+
+    /// <summary>是否为 DragonflyDB 服务器</summary>
+    public Boolean IsDragonflyDB => ServerType == Caching.ServerType.DragonflyDB;
+
+    /// <summary>是否为华为云 DCS</summary>
+    public Boolean IsHuaweiCloud => ServerType == Caching.ServerType.HuaweiCloud;
+
+    /// <summary>是否为阿里云 KVStore（Tair）</summary>
+    public Boolean IsAlibabaCloud => ServerType == Caching.ServerType.AlibabaCloud;
+
+    /// <summary>是否为腾讯云 Redis</summary>
+    public Boolean IsTencentCloud => ServerType == Caching.ServerType.TencentCloud;
     #endregion
 
     #region 构造
