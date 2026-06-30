@@ -538,6 +538,40 @@ public class BasicTest
         var result = ic.FCall<String>("myecho", [], ["hello"]);
         Assert.Equal("hello", result);
     }
+    [Fact(DisplayName = "TairString ExSet/ExGet测试")]
+    public void TairStringTest()
+    {
+        var ic = _redis;
+        var key = "tair_exset_test";
+
+        ic.Remove(key);
+
+        var rs = ic.ExSet(key, "hello", version: 1);
+        Assert.Equal("OK", rs);
+
+        var tuple = ic.ExGet<String>(key);
+        Assert.NotNull(tuple);
+        Assert.Equal("hello", tuple.Item1);
+        Assert.True(tuple.Item2 >= 1);
+    }
+
+    [Fact(DisplayName = "TairHash ExHSet/ExHGet测试")]
+    public void TairHashTest()
+    {
+        var ic = _redis;
+        var key = "tair_exhash_test";
+
+        ic.Remove(key);
+
+        var rs = ic.ExHSet(key, "field1", "value1", expire: 60);
+        Assert.Equal(1, rs);
+
+        var val = ic.ExHGet<String>(key, "field1");
+        Assert.Equal("value1", val);
+
+        var len = ic.ExHLen(key);
+        Assert.Equal(1, len);
+    }
 }
 
 public class BasicTest2 : BasicTest

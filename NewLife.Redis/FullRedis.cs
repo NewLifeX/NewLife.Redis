@@ -1787,4 +1787,147 @@ public class FullRedis : Redis
         return sb.ToString();
     }
     #endregion
+
+    #region Tair扩展（阿里云）
+    /// <summary>TairString：带版本号的设置（阿里云 Tair 扩展）</summary>
+    /// <typeparam name="T">值类型</typeparam>
+    /// <param name="key">键</param>
+    /// <param name="value">值</param>
+    /// <param name="version">版本号，用于CAS操作</param>
+    /// <param name="expire">过期时间（秒），0表示不过期</param>
+    /// <returns>成功返回OK</returns>
+    public virtual String? ExSet<T>(String key, T value, Int64 version = 0, Int32 expire = 0)
+    {
+        if (expire > 0)
+            return Execute(key, (rc, k) => rc.Execute<String>("EXSET", k, value, "EX", expire, "VER", version), true);
+        else
+            return Execute(key, (rc, k) => rc.Execute<String>("EXSET", k, value, "VER", version), true);
+    }
+
+    /// <summary>TairString：获取值及版本号（阿里云 Tair 扩展）</summary>
+    /// <typeparam name="T">值类型</typeparam>
+    /// <param name="key">键</param>
+    /// <returns>(值, 版本号)，键不存在返回null</returns>
+    public virtual Tuple<T?, Int64>? ExGet<T>(String key) where T : class
+    {
+        var rs = Execute(key, (rc, k) => rc.Execute<Object[]>("EXGET", k));
+        if (rs == null || rs.Length < 2) return null;
+
+        var val = rs[0] is IPacket pk ? (T)Encoder.Decode(pk, typeof(T))! : default!;
+        var ver = (rs[1] as IPacket)?.ToStr().ToLong() ?? 0;
+        return new Tuple<T?, Int64>(val, ver);
+    }
+
+    /// <summary>TairString：带版本号的递增（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="increment">增量</param>
+    /// <param name="version">版本号，0表示不校验</param>
+    /// <param name="expire">过期时间（秒），0表示不过期</param>
+    /// <returns>(新值, 新版本号)</returns>
+    public virtual Tuple<Int64, Int64>? ExIncrBy(String key, Int64 increment, Int64 version = 0, Int32 expire = 0)
+    {
+        var rs = expire > 0
+            ? Execute(key, (rc, k) => rc.Execute<Object[]>("EXINCRBY", k, increment, "EX", expire, "VER", version), true)
+            : Execute(key, (rc, k) => rc.Execute<Object[]>("EXINCRBY", k, increment, "VER", version), true);
+        if (rs == null || rs.Length < 2) return null;
+
+        var val = (rs[0] as IPacket)?.ToStr().ToLong() ?? 0;
+        var ver = (rs[1] as IPacket)?.ToStr().ToLong() ?? 0;
+        return new Tuple<Int64, Int64>(val, ver);
+    }
+
+    /// <summary>TairHash：设置哈希字段（支持字段级过期，阿里云 Tair 扩展）</summary>
+    /// <typeparam name="T">值类型</typeparam>
+    /// <param name="key">键</param>
+    /// <param name="field">字段名</param>
+    /// <param name="value">值</param>
+    /// <param name="expire">字段过期时间（秒），0表示不过期</param>
+    /// <param name="nx">仅当字段不存在时设置</param>
+    /// <param name="ver">版本号，用于CAS</param>
+    /// <returns>成功返回1</returns>
+    public virtual Int32 ExHSet<T>(String key, String field, T value, Int32 expire = 0, Boolean nx = false, Int64 ver = 0)
+    {
+        var args = new List<Object> { GetKey(key), field, value };
+        if (expire > 0) { args.Add("EX"); args.Add(expire); }
+        if (nx) args.Add("NX");
+        if (ver > 0) { args.Add("VER"); args.Add(ver); }
+        return Execute(key, (rc, k) => rc.Execute<Int32>("EXHSET", args.ToArray()), true);
+    }
+
+    /// <summary>TairHash：获取哈希字段值（阿里云 Tair 扩展）</summary>
+    /// <typeparam name="T">值类型</typeparam>
+    /// <param name="key">键</param>
+    /// <param name="field">字段名</param>
+    /// <returns>字段值，不存在返回默认值</returns>
+    public virtual T? ExHGet<T>(String key, String field) => Execute(key, (rc, k) => rc.Execute<T>("EXHGET", k, field));
+
+    /// <summary>TairHash：批量获取哈希字段（阿里云 Tair 扩展）</summary>
+    /// <typeparam name="T">值类型</typeparam>
+    /// <param name="key">键</param>
+    /// <param name="fields">字段名列表</param>
+    /// <returns>字段值列表</returns>
+    public virtual T[]? ExHMGet<T>(String key, params String[] fields) => Execute(key, (rc, k) => rc.ExecuteByKey<String, T[]>("EXHMGET", k, fields));
+
+    /// <summary>TairHash：获取字段值及版本号（阿里云 Tair 扩展）</summary>
+    /// <typeparam name="T">值类型</typeparam>
+    /// <param name="key">键</param>
+    /// <param name="field">字段名</param>
+    /// <returns>(值, 版本号)</returns>
+    public virtual Tuple<T?, Int64>? ExHGetWithVer<T>(String key, String field)
+    {
+        var rs = Execute(key, (rc, k) => rc.Execute<Object[]>("EXHGETWITHVER", k, field));
+        if (rs == null || rs.Length < 2) return null;
+
+        var val = rs[0] is IPacket pk ? (T)Encoder.Decode(pk, typeof(T))! : default!;
+        var ver = (rs[1] as IPacket)?.ToStr().ToLong() ?? 0;
+        return new Tuple<T?, Int64>(val, ver);
+    }
+
+    /// <summary>TairHash：字段值递增（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="field">字段名</param>
+    /// <param name="increment">增量</param>
+    /// <param name="expire">字段过期时间（秒），0表示不过期</param>
+    /// <returns>递增后的值</returns>
+    public virtual Int64 ExHIncrBy(String key, String field, Int64 increment, Int32 expire = 0)
+    {
+        if (expire > 0)
+            return Execute(key, (rc, k) => rc.Execute<Int64>("EXHINCRBY", k, field, increment, "EX", expire), true);
+        else
+            return Execute(key, (rc, k) => rc.Execute<Int64>("EXHINCRBY", k, field, increment), true);
+    }
+
+    /// <summary>TairHash：获取字段剩余过期时间（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="field">字段名</param>
+    /// <returns>剩余秒数，-1永不过期，-2不存在</returns>
+    public virtual Int64 ExHPExpire(String key, String field) => Execute(key, (rc, k) => rc.Execute<Int64>("EXHPTTL", k, field));
+
+    /// <summary>TairHash：获取所有字段名（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <returns>字段名列表</returns>
+    public virtual String[]? ExHKeys(String key) => Execute(key, (rc, k) => rc.Execute<String[]>("EXHKEYS", k));
+
+    /// <summary>TairHash：获取所有字段值（阿里云 Tair 扩展）</summary>
+    /// <typeparam name="T">值类型</typeparam>
+    /// <param name="key">键</param>
+    /// <returns>字段值列表</returns>
+    public virtual T[]? ExHVals<T>(String key) => Execute(key, (rc, k) => rc.Execute<T[]>("EXHVALS", k));
+
+    /// <summary>TairHash：获取字段数量（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <returns>字段数量</returns>
+    public virtual Int32 ExHLen(String key) => Execute(key, (rc, k) => rc.Execute<Int32>("EXHLEN", k));
+
+    /// <summary>TairHash：删除字段（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="fields">字段名列表</param>
+    /// <returns>成功删除的数量</returns>
+    public virtual Int32 ExHDel(String key, params String[] fields)
+    {
+        var args = new List<Object> { GetKey(key) };
+        args.AddRange(fields.Cast<Object>());
+        return Execute(key, (rc, k) => rc.Execute<Int32>("EXHDEL", args.ToArray()), true);
+    }
+    #endregion
 }
