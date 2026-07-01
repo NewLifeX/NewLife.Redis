@@ -32,7 +32,7 @@
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Redis</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>6月例行维护发布，持续提供稳定的Redis客户端能力；无新增公共API，保持与6.5系列完全兼容；延续RedisStream异常恢复与消费组健壮性增强成果</PackageReleaseNotes>
+    <PackageReleaseNotes>启用NuGet安全审计，扫描依赖包已知漏洞；补全Redis 6.2~7.4+新命令与API；支持阿里云Tair扩展（TairString/TairHash）；引入RedisFact特性自动跳过不可用集成测试；增强Redis版本与ACL兼容性；优化Stream/EventBus埋点与消费逻辑</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -62,7 +62,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="11.16.2026.601" />
+    <PackageReference Include="NewLife.Core" Version="11.17.2026.701" />
   </ItemGroup>
 
   <ItemGroup>

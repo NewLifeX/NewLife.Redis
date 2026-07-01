@@ -6,7 +6,7 @@
 ![Nuget](https://img.shields.io/nuget/v/NewLife.Redis?logo=nuget)
 ![Nuget (with prereleases)](https://img.shields.io/nuget/vpre/NewLife.Redis?label=dev%20nuget&logo=nuget)
 
-## [[中文]](https://github.com/NewLifeX/NewLife.Redis/blob/master/Readme.MD)
+🌐 [中文](Readme.MD) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Español](README.es.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Русский](README.ru.md)
 
 `NewLife.Redis` is a **high-performance / high-throughput / easy-to-integrate** .NET Redis client component built by the NewLife team. Since 2017, it has been running stably on multiple production platforms handling billions of records and high concurrency, processing **80+ billion** command calls daily.
 
@@ -654,7 +654,7 @@ See: [Garnet Compatibility Documentation (中文)](Doc/Garnet兼容性.md)
 | Feature | Status |
 |---------|--------|
 | RESP2 Full Support | ✅ |
-| RESP3 | 🔄 Planned |
+| RESP3 | ✅ |
 | SSL/TLS | ✅ |
 | ACL Authentication | ✅ |
 | Transactions MULTI/EXEC/WATCH | ✅ |
@@ -732,7 +732,7 @@ A: Basic operations, List/Hash/Set/ZSet/HLL/Geo, and queues are all supported. S
 - [ ] Pattern subscription PSUBSCRIBE full implementation
 - [ ] UNLINK async delete
 - [ ] Prometheus metrics export adapter
-- [ ] Alibaba Cloud Tair extended commands (TairString / TairZSet / TairHash)
+- [x] Alibaba Cloud Tair Extension (TairString / TairHash supported, TairZSet planned)
 - [ ] Huawei Cloud DCS cluster edition node address mapping adapter
 - [x] ~~Pub/Sub~~ (Completed)
 - [x] ~~RedisStream multi-consumer-group~~ (Completed)
@@ -755,7 +755,7 @@ Feedback and feature requests welcome via Issue / PR.
 | Garnet Explicit Adapter | ✅ | ❌ | ❌ | Type detection + graceful degradation |
 | kvrocks Adapter | ✅ | ❌ | ❌ | Auto-detection |
 | APM Tracing | ITracer interface | ActivitySource | ❌ | Integrable with OpenTelemetry |
-| RESP3 | 🔄 | ✅ | ✅ | SE.Redis already supports |
+| RESP3 | ✅ | ✅ | ✅ | Verified via RESP3 test suite |
 
 See [Competitive Analysis Document (中文)](Doc/竞品分析.md) for details.
 

@@ -1,5 +1,24 @@
 # NewLife.Redis 变更日志
 
+## v6.5.2026.0702 (2026-07-02)
+
+### 新特性
+- **NuGet 安全审计**：启用 NuGet 审计，自动扫描依赖包已知漏洞，提升供应链安全
+- **Redis 6.2~7.4+ 命令补全**：补全更多 Redis 命令与 API，提升命令覆盖率
+- **阿里云 Tair 扩展**：支持 TairString/TairHash 等阿里云 Tair 企业版专属数据结构
+
+### 测试与质量
+- **RedisFact 智能测试特性**：引入 RedisFact 特性，自动跳过不可用 Redis 集成测试，提升 CI 测试稳定性
+- **Redis 版本与 ACL 兼容**：增强对不同 Redis 版本和 ACL 认证场景的兼容性，优化测试健壮性
+- **StreamInfo 解析增强**：增强 StreamInfo 等返回信息解析的健壮性，补充单元测试覆盖
+
+### 优化改进
+- **Stream/EventBus 埋点增强**：优化 RedisStream 消费埋点与链路追踪，增强 EventBus 消费循环启动与销毁逻辑
+- **扩展包文档独立**：为各扩展包添加独立 Readme，标记旧包 `NewLife.Extensions.Caching.Redis` 为废弃
+- **分布式锁完善**：支持 Redis 7.0+ 新特性与多云兼容场景下的分布式锁
+
+---
+
 ## v6.5.2026.0601 (2026-06-01)
 
 ### 发布维护
