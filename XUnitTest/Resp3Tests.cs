@@ -31,11 +31,11 @@ public class Resp3Tests
     [RedisFact(DisplayName = "RESP3协议协商")]
     public void HelloTest()
     {
-        // 使用连接池获取客户端测试HELLO命令
+        // 使用连接池获取客户端测试HELLO命令，带密码认证
         var client = _redis.Pool.Get();
         try
         {
-            var rs = client.Hello(3);
+            var rs = client.Hello(3, _redis.UserName, _redis.Password);
             if (rs != null)
             {
                 // 服务器支持RESP3
