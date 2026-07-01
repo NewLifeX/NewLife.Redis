@@ -1306,6 +1306,8 @@ public class RedisClient : DisposeBase
             {
                 if (objs[i] is IPacket pk4)
                     arr.SetValue(Host.Encoder.Decode(pk4, elmType), i);
+                else if (objs[i] is String strElm)
+                    arr.SetValue(Convert.ChangeType(strElm, elmType), i);
                 else if (elmType == typeof(Object))
                     arr.SetValue(objs[i], i);
                 else if (objs[i] != null && objs[i].GetType().As(elmType))

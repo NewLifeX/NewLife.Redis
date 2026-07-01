@@ -53,6 +53,17 @@ public class FullRedis : Redis
 
     /// <summary>集群。包括集群、主从复制、哨兵，一旦存在则从Cluster获取节点进行连接，而不是当前实例的Pool池</summary>
     public IRedisCluster? Cluster { get; set; }
+
+    /// <summary>检查Redis版本是否满足最低要求，不满足则抛出明确异常</summary>
+    /// <param name="requiredVersion">最低版本要求，如 "7.0"</param>
+    /// <param name="commandName">命令名称，用于错误提示</param>
+    /// <exception cref="RedisException">版本不满足时抛出，包含当前版本和所需版本信息</exception>
+    protected void RequireVersion(String requiredVersion, String commandName)
+    {
+        var minVer = new Version(requiredVersion);
+        if (Version < minVer)
+            throw new RedisException($"命令 {commandName} 需要 Redis {requiredVersion}+ 版本，当前服务器版本: {Version}。请升级 Redis 或使用兼容版本。");
+    }
     #endregion
 
     #region 构造
@@ -866,12 +877,20 @@ public class FullRedis : Redis
     /// <summary>获取键的过期时间戳（Redis 7.0+）</summary>
     /// <param name="key">键</param>
     /// <returns>Unix时间戳（秒），-1表示永不过期，-2表示键不存在</returns>
-    public virtual Int64 ExpireTime(String key) => Execute(key, (rc, k) => rc.Execute<Int64>("EXPIRETIME", k));
+    public virtual Int64 ExpireTime(String key)
+    {
+        RequireVersion("7.0", "EXPIRETIME");
+        return Execute(key, (rc, k) => rc.Execute<Int64>("EXPIRETIME", k));
+    }
 
     /// <summary>获取键的过期时间戳（毫秒级，Redis 7.0+）</summary>
     /// <param name="key">键</param>
     /// <returns>Unix时间戳（毫秒），-1表示永不过期，-2表示键不存在</returns>
-    public virtual Int64 PExpireTime(String key) => Execute(key, (rc, k) => rc.Execute<Int64>("PEXPIRETIME", k));
+    public virtual Int64 PExpireTime(String key)
+    {
+        RequireVersion("7.0", "PEXPIRETIME");
+        return Execute(key, (rc, k) => rc.Execute<Int64>("PEXPIRETIME", k));
+    }
 
     /// <summary>估算键的内存占用（Redis 4.0+）</summary>
     /// <param name="key">键</param>
@@ -1210,6 +1229,8 @@ public class FullRedis : Redis
     /// <returns>(键名, 元素数组) 或 null（所有列表为空）</returns>
     public virtual Tuple<String, T[]?>? LMPop<T>(String[] keys, Boolean fromLeft = true, Int32 count = 1)
     {
+        RequireVersion("7.0", "LMPOP");
+
         var args = new List<Object> { keys.Length };
         foreach (var key in keys)
         {
@@ -1225,8 +1246,13 @@ public class FullRedis : Redis
         var rs = Execute(keys[0], (rc, k) => rc.Execute<Object[]>("LMPOP", args.ToArray()), true);
         if (rs == null || rs.Length < 2) return null;
 
-        var keyName = (rs[0] as IPacket)?.ToStr() ?? "";
-        var items = rs[1] is Object[] arr ? arr.Select(e => (T?)Encoder.Decode((IPacket)e!, typeof(T))!).ToArray() : [];
+        var keyName = (rs[0] as IPacket)?.ToStr() ?? rs[0]?.ToString() ?? "";
+        var items = rs[1] is Object[] arr ? arr.Select(e =>
+        {
+            if (e is IPacket pk) return (T?)Encoder.Decode(pk, typeof(T));
+            if (e is String str) return (T?)Convert.ChangeType(str, typeof(T));
+            return default;
+        }).ToArray() : null;
 
         return new Tuple<String, T[]?>(keyName, items);
     }
@@ -1323,9 +1349,21 @@ public class FullRedis : Redis
         if (count > 0) { args.Add("COUNT"); args.Add(count); }
         if (maxLen > 0) { args.Add("MAXLEN"); args.Add(maxLen); }
 
-        var rs = Execute(key, (rc, k) => rc.Execute<Object[]>("LPOS", args.ToArray()));
-        if (rs == null || rs.Length == 0) return [];
-        return rs.Select(e => (e as IPacket)?.ToStr().ToInt() ?? 0).ToArray();
+        // LPOS 在不指定 COUNT 时返回单个整数，指定 COUNT 时返回数组
+        if (count > 0)
+        {
+            var rs = Execute(key, (rc, k) => rc.Execute<Object[]>("LPOS", args.ToArray()));
+            if (rs == null || rs.Length == 0) return [];
+            return rs.Select(e => (e as IPacket)?.ToStr().ToInt() ?? (e is String s ? s.ToInt() : 0)).ToArray();
+        }
+        else
+        {
+            var obj = Execute(key, (rc, k) => rc.Execute<Object>("LPOS", args.ToArray()));
+            if (obj == null) return [];
+
+            var pos = (obj is IPacket pk) ? pk.ToStr().ToInt() : obj.ToInt();
+            return [pos];
+        }
     }
 
     /// <summary>批量判断成员是否属于集合（Redis 6.2+）</summary>
@@ -1444,6 +1482,7 @@ public class FullRedis : Redis
     /// <returns>(键名, 成员分数对列表) 或 null（所有集合为空）</returns>
     public virtual Tuple<String, IDictionary<T, Double>?>? ZMPop<T>(String[] keys, Boolean min = true, Int32 count = 1)
     {
+        RequireVersion("7.0", "ZMPOP");
         var args = new List<Object> { keys.Length };
         foreach (var key in keys)
         {
@@ -1459,16 +1498,40 @@ public class FullRedis : Redis
         var rs = Execute(keys[0], (rc, k) => rc.Execute<Object[]>("ZMPOP", args.ToArray()), true);
         if (rs == null || rs.Length < 2) return null;
 
-        var keyName = (rs[0] as IPacket)?.ToStr() ?? "";
+        var keyName = (rs[0] as IPacket)?.ToStr() ?? rs[0]?.ToString() ?? "";
         var dic = new Dictionary<T, Double>();
         if (rs[1] is Object[] arr)
         {
             for (var i = 0; i < arr.Length - 1; i += 2)
             {
-                var member = Encoder.Decode<T>((IPacket)arr[i]!);
-                var score = (arr[i + 1] as IPacket)?.ToStr().ToDouble() ?? 0;
+                T? member;
+                if (arr[i] is IPacket pkM)
+                    member = (T?)Encoder.Decode(pkM, typeof(T));
+                else if (arr[i] is String strM)
+                    member = (T?)Convert.ChangeType(strM, typeof(T));
+                else
+                {
+                    WriteLog("ZMPop[{0}] member类型未知: {1}", i, arr[i]?.GetType().Name);
+                    continue;
+                }
+
+                Double score;
+                if (arr[i + 1] is IPacket pkS)
+                    score = pkS.ToStr().ToDouble();
+                else if (arr[i + 1] is String strS)
+                    score = strS.ToDouble();
+                else
+                {
+                    WriteLog("ZMPop[{0}] score类型未知: {1}", i + 1, arr[i + 1]?.GetType().Name);
+                    score = 0;
+                }
+
                 if (member != null) dic[member] = score;
             }
+        }
+        else if (rs[1] != null)
+        {
+            WriteLog("ZMPop rs[1]类型非数组: {0}", rs[1].GetType().Name);
         }
 
         return new Tuple<String, IDictionary<T, Double>?>(keyName, dic);
@@ -1538,6 +1601,8 @@ public class FullRedis : Redis
     /// <returns>交集元素数量</returns>
     public virtual Int32 SInterCard(String[] keys, Int32 limit = 0)
     {
+        RequireVersion("7.0", "SINTERCARD");
+
         var args = new List<Object> { keys.Length };
         foreach (var key in keys)
         {
@@ -1706,6 +1771,8 @@ public class FullRedis : Redis
     /// <returns>函数库名称</returns>
     public virtual String? FunctionLoad(String libraryCode, Boolean replace = false)
     {
+        RequireVersion("7.0", "FUNCTION LOAD");
+
         if (replace)
             return Execute(rds => rds.Execute<String>("FUNCTION", "LOAD", "REPLACE", libraryCode));
         else
@@ -1717,6 +1784,8 @@ public class FullRedis : Redis
     /// <returns>函数库信息</returns>
     public virtual Object[]? FunctionList(String? libraryName = null)
     {
+        RequireVersion("7.0", "FUNCTION LIST");
+
         if (libraryName != null)
             return Execute(rds => rds.Execute<Object[]>("FUNCTION", "LIST", "LIBRARYNAME", libraryName));
         else
@@ -1726,7 +1795,11 @@ public class FullRedis : Redis
     /// <summary>删除函数库（Redis 7.0+ FUNCTION DELETE）</summary>
     /// <param name="libraryName">函数库名称</param>
     /// <returns>成功返回OK</returns>
-    public virtual String FunctionDelete(String libraryName) => Execute(rds => rds.Execute<String>("FUNCTION", "DELETE", libraryName));
+    public virtual String FunctionDelete(String libraryName)
+    {
+        RequireVersion("7.0", "FUNCTION DELETE");
+        return Execute(rds => rds.Execute<String>("FUNCTION", "DELETE", libraryName));
+    }
 
     /// <summary>导出Prometheus格式的Redis指标</summary>
     /// <remarks>

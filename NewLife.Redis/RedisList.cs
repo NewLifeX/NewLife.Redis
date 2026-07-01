@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using NewLife.Data;
 
 namespace NewLife.Caching;
 
@@ -202,8 +203,15 @@ public class RedisList<T> : RedisBase, IList<T>
     /// <returns></returns>
     public Int32 LRem(Int32 count, T value) => Execute((r, k) => r.Execute<Int32>("LREM", Key, count, value), true);
 
-    /// <summary>获取元素位置</summary>
+    /// <summary>获取元素位置。未找到返回-1，找到返回0-based位置</summary>
     /// <returns></returns>
-    public Int32 LPOS(T item) => Execute((rc, k) => rc.Execute<Int32>("LPOS", Key, item), false);
+    public Int32 LPOS(T item)
+    {
+        var obj = Execute((rc, k) => rc.Execute<Object>("LPOS", Key, item), false);
+        if (obj == null) return -1;
+
+        var pos = (obj is IPacket pk) ? pk.ToStr().ToInt() : obj.ToInt();
+        return pos;
+    }
     #endregion
 }
