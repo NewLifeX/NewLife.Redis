@@ -12,6 +12,7 @@ using NewLife.Net;
 using NewLife.Reflection;
 using NewLife.Security;
 using NewLife.Serialization;
+using NewLife.Threading;
 
 namespace NewLife.Caching;
 
@@ -123,53 +124,48 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             {
                 var inf = Info;
                 if (inf != null)
-                {
-                    // Garnet 在 redis_version 或 server 字段中包含 "Garnet" 字符串
-                    if (inf.TryGetValue("redis_version", out var ver) && ver?.Contains("Garnet") == true)
-                        _ServerType = Caching.ServerType.Garnet;
-                    else if (inf.TryGetValue("server", out var server) && server?.Contains("Garnet") == true)
-                        _ServerType = Caching.ServerType.Garnet;
-                    // Pika 在 redis_version 中包含 "pika" 或 server 字段中包含 "Pika"
-                    else if (inf.TryGetValue("redis_version", out var ver2) && ver2?.Contains("pika", StringComparison.OrdinalIgnoreCase) == true)
-                        _ServerType = Caching.ServerType.Pika;
-                    else if (inf.TryGetValue("server", out var server2) && server2?.Contains("Pika") == true)
-                        _ServerType = Caching.ServerType.Pika;
-                    // DragonflyDB 在 server 字段中包含 "dragonfly"
-                    else if (inf.TryGetValue("server", out var server3) && server3?.Contains("dragonfly", StringComparison.OrdinalIgnoreCase) == true)
-                        _ServerType = Caching.ServerType.DragonflyDB;
-                    else if (inf.TryGetValue("os", out var os) && os?.Contains("Huawei") == true)
-                        _ServerType = Caching.ServerType.HuaweiCloud;
-                    else if (inf.TryGetValue("server", out var server4) && (server4?.Contains("Tair") == true || server4?.Contains("Alibaba") == true))
-                        _ServerType = Caching.ServerType.AlibabaCloud;
-                    else if (inf.TryGetValue("server", out var server5) && server5?.Contains("Tencent") == true)
-                        _ServerType = Caching.ServerType.TencentCloud;
-                    else
-                        _ServerType = Caching.ServerType.Redis;
-                }
-                _ServerType ??= Caching.ServerType.Unknown;
+                    _ServerType = DetectServerType(inf);
+                _ServerType ??= ServerType.Unknown;
             }
 
             return _ServerType.Value;
         }
     }
 
-    /// <summary>是否为 Garnet 服务器</summary>
-    public Boolean IsGarnet => ServerType == Caching.ServerType.Garnet;
+    /// <summary>从 INFO 结果中检测服务器类型</summary>
+    /// <param name="inf">服务器信息字典</param>
+    /// <returns>检测到的服务器类型</returns>
+    private static ServerType DetectServerType(IDictionary<String, String> inf)
+    {
+        // Garnet 在 redis_version 或 server 字段中包含 "Garnet" 字符串
+        if (inf.TryGetValue("redis_version", out var ver) && ver?.Contains("Garnet") == true)
+            return ServerType.Garnet;
+        if (inf.TryGetValue("server", out var server) && server?.Contains("Garnet") == true)
+            return ServerType.Garnet;
 
-    /// <summary>是否为 Pika 服务器</summary>
-    public Boolean IsPika => ServerType == Caching.ServerType.Pika;
+        // Pika 在 redis_version 中包含 "pika" 或 server 字段中包含 "Pika"
+        if (inf.TryGetValue("redis_version", out var ver2) && ver2?.Contains("pika", StringComparison.OrdinalIgnoreCase) == true)
+            return ServerType.Pika;
+        if (inf.TryGetValue("server", out var server2) && server2?.Contains("Pika") == true)
+            return ServerType.Pika;
 
-    /// <summary>是否为 DragonflyDB 服务器</summary>
-    public Boolean IsDragonflyDB => ServerType == Caching.ServerType.DragonflyDB;
+        // DragonflyDB 在 server 字段中包含 "dragonfly"
+        if (inf.TryGetValue("server", out var server3) && server3?.Contains("dragonfly", StringComparison.OrdinalIgnoreCase) == true)
+            return ServerType.DragonflyDB;
 
-    /// <summary>是否为华为云 DCS</summary>
-    public Boolean IsHuaweiCloud => ServerType == Caching.ServerType.HuaweiCloud;
+        // 华为云、阿里云、腾讯云
+        if (inf.TryGetValue("os", out var os) && os?.Contains("Huawei") == true)
+            return ServerType.HuaweiCloud;
+        if (inf.TryGetValue("server", out var server4) && (server4?.Contains("Tair") == true || server4?.Contains("Alibaba") == true))
+            return ServerType.AlibabaCloud;
+        if (inf.TryGetValue("server", out var server5) && server5?.Contains("Tencent") == true)
+            return ServerType.TencentCloud;
 
-    /// <summary>是否为阿里云 KVStore（Tair）</summary>
-    public Boolean IsAlibabaCloud => ServerType == Caching.ServerType.AlibabaCloud;
+        return ServerType.Redis;
+    }
 
-    /// <summary>是否为腾讯云 Redis</summary>
-    public Boolean IsTencentCloud => ServerType == Caching.ServerType.TencentCloud;
+    /// <summary>连接池配置</summary>
+    public RedisPoolConfig PoolConfig { get; set; } = new();
     #endregion
 
     #region 构造
@@ -318,6 +314,8 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
             if (dic.TryGetValue("Expire", out str) && str.ToInt(-1) >= 0)
                 Expire = str.ToInt();
+
+            PoolConfig.Load(dic);
         }
 
         // 更换Redis连接字符串时，清空原连接池
@@ -369,6 +367,22 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         {
             // 借出时清空残留
             value.Reset();
+
+            // 连接空闲超过 IdleTime 时，主动 PING 验证连接存活
+            var idleTime = Instance.PoolConfig.IdleTime;
+            if (idleTime > 0 && value.LastPing.AddSeconds(idleTime) < TimerX.Now)
+            {
+                try
+                {
+                    if (!value.Ping()) return false;
+                }
+                catch
+                {
+                    return false;
+                }
+
+                value.LastPing = TimerX.Now;
+            }
 
             return base.OnGet(value);
         }
@@ -476,15 +490,16 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <returns></returns>
     protected virtual IPool<RedisClient> CreatePool(Func<RedisClient> onCreate)
     {
+        var cfg = PoolConfig;
         var pool = new MyPool
         {
             Name = Name + "Pool",
             Instance = this,
-            Min = 10,
-            Max = 100000,
-            IdleTime = 30,
-            AllIdleTime = 300,
-            Log = ClientLog,
+            Min = cfg.Min,
+            Max = cfg.Max,
+            IdleTime = cfg.IdleTime,
+            MaxLifetime = cfg.MaxLifetime,
+            WaitTimeout = TimeSpan.FromSeconds(cfg.WaitTimeout),
 
             Callback = onCreate,
         };
@@ -537,7 +552,6 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             var client = Pool.Get();
             try
             {
-                client.Reset();
                 return func(client, key);
             }
             catch (RedisException) { throw; }
@@ -590,7 +604,6 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             var client = pool.Get();
             try
             {
-                client.Reset();
                 return func(client);
             }
             catch (RedisException) { throw; }
@@ -660,10 +673,9 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         do
         {
             // 每次重试都需要重新从池里借出连接
-            var client = Pool.Get();
+            var client = await Pool.GetAsync().ConfigureAwait(false);
             try
             {
-                client.Reset();
                 return await func(client, key).ConfigureAwait(false);
             }
             catch (RedisException) { throw; }

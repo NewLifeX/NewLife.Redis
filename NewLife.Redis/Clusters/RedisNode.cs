@@ -1,5 +1,6 @@
 ﻿using NewLife.Collections;
 using NewLife.Net;
+using NewLife.Threading;
 
 namespace NewLife.Caching.Clusters;
 
@@ -58,6 +59,23 @@ public class RedisNode : IRedisNode
         {
             // 借出时清空残留
             value.Reset();
+
+            // 连接空闲超过 IdleTime 时，主动 PING 验证连接存活
+            var owner = Node.Owner;
+            var idleTime = owner.PoolConfig.IdleTime;
+            if (idleTime > 0 && value.LastPing.AddSeconds(idleTime) < TimerX.Now)
+            {
+                try
+                {
+                    if (!value.Ping()) return false;
+                }
+                catch
+                {
+                    return false;
+                }
+
+                value.LastPing = TimerX.Now;
+            }
 
             return base.OnGet(value);
         }

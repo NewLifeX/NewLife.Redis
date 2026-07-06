@@ -35,7 +35,7 @@ public class GarnetCompatibilityTests
         // 输出服务器信息
         XTrace.WriteLine($"服务器类型：{serverType}");
         XTrace.WriteLine($"服务器版本：{_redis.Version}");
-        XTrace.WriteLine($"是否为 Garnet：{_redis.IsGarnet}");
+        XTrace.WriteLine($"是否为 Garnet：{_redis.ServerType == ServerType.Garnet}");
 
         // 验证 Info 包含必要字段
         var info = _redis.Info;
@@ -124,7 +124,7 @@ public class GarnetCompatibilityTests
         // 检查是否支持 Stream
         XTrace.WriteLine($"Stream 功能支持：{stream.IsSupported}");
 
-        if (_redis.IsGarnet)
+        if (_redis.ServerType == ServerType.Garnet)
         {
             // Garnet 不支持 Stream
             Assert.False(stream.IsSupported);
@@ -152,7 +152,7 @@ public class GarnetCompatibilityTests
         _redis.Remove(key);
 
         // 根据服务器类型选择合适的队列实现
-        if (_redis.IsGarnet || _redis.Version < new Version(5, 0))
+        if (_redis.ServerType == ServerType.Garnet || _redis.Version < new Version(5, 0))
         {
             // 使用 RedisQueue 作为替代
             var queue = _redis.GetQueue<TestMessage>(key);

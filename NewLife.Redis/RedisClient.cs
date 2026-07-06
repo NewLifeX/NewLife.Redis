@@ -13,6 +13,7 @@ using NewLife.Log;
 using NewLife.Net;
 using NewLife.Reflection;
 using NewLife.Serialization;
+using NewLife.Threading;
 
 namespace NewLife.Caching;
 
@@ -43,6 +44,9 @@ public class RedisClient : DisposeBase
 
     /// <summary>登录时间</summary>
     public DateTime LoginTime { get; private set; }
+
+    /// <summary>最后一次PING时间。用于连接池健康检查</summary>
+    public DateTime LastPing { get; set; } = TimerX.Now;
 
     const Int32 MAX_POOL_SIZE = 1024 * 1024;
     #endregion
