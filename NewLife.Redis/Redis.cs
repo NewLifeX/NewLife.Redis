@@ -1097,7 +1097,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <param name="key">键</param>
     /// <param name="value">变化量</param>
     /// <returns>元组，Item1为累加后的值，Item2为剩余过期时间（秒），-1表示永不过期，-2表示键不存在</returns>
-    public virtual (Int64 Value, Int32 Ttl) IncrementWithTtl(String key, Int64 value = 1)
+    public override (Int64 Value, Int32 Ttl) IncrementWithTtl(String key, Int64 value = 1)
     {
         // 使用 Execute 直接在 RedisClient 上执行 Pipeline，确保单次往返
         return Execute(key, (rds, k) =>
@@ -1128,7 +1128,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <param name="key">键</param>
     /// <param name="value">变化量</param>
     /// <returns>元组，Item1为累加后的值，Item2为剩余过期时间（秒），-1表示永不过期，-2表示键不存在</returns>
-    public virtual (Double Value, Int32 Ttl) IncrementWithTtl(String key, Double value)
+    public override (Double Value, Int32 Ttl) IncrementWithTtl(String key, Double value)
     {
         // 使用 Execute 直接在 RedisClient 上执行 Pipeline，确保单次往返
         return Execute(key, (rds, k) =>
@@ -1174,7 +1174,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <param name="key">键</param>
     /// <param name="value">变化量</param>
     /// <returns>元组，Item1为递减后的值，Item2为剩余过期时间（秒），-1表示永不过期，-2表示键不存在</returns>
-    public virtual (Int64 Value, Int32 Ttl) DecrementWithTtl(String key, Int64 value = 1)
+    public override (Int64 Value, Int32 Ttl) DecrementWithTtl(String key, Int64 value = 1)
     {
         // 使用 Execute 直接在 RedisClient 上执行 Pipeline，确保单次往返
         return Execute(key, (rds, k) =>
@@ -1205,7 +1205,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <param name="key">键</param>
     /// <param name="value">变化量</param>
     /// <returns>元组，Item1为递减后的值，Item2为剩余过期时间（秒），-1表示永不过期，-2表示键不存在</returns>
-    public virtual (Double Value, Int32 Ttl) DecrementWithTtl(String key, Double value) => IncrementWithTtl(key, -value);
+    public override (Double Value, Int32 Ttl) DecrementWithTtl(String key, Double value) => IncrementWithTtl(key, -value);
     #endregion
 
     #region 性能测试
