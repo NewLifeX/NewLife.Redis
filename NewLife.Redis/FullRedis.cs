@@ -661,9 +661,6 @@ public class FullRedis : Redis
     /// <returns></returns>
     public virtual RedisSortedSet<T> GetSortedSet<T>(String key) => new(this, key);
 
-    /// <summary>获取事件总线</summary>
-    public override IEventBus<T> GetEventBus<T>(String topic, String clientId = "") => new RedisEventBus<T>(this, topic, clientId);
-
     /// <summary>创建事件总线，可发布消息或订阅消息</summary>
     /// <typeparam name="TEvent">事件类型</typeparam>
     /// <param name="topic">事件主题</param>
