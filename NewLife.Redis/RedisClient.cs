@@ -1010,7 +1010,11 @@ public class RedisClient : DisposeBase
             var rs = ExecuteCommand(cmd, args);
             if (rs == null) return default;
             if (span != null && rs is Array ars) span.Value = ars.Length;
-            if (rs is TResult rs2) return rs2;
+            if (rs is TResult rs2)
+            {
+                if (span != null && type.IsBaseType()) span.AppendTag(rs2);
+                return rs2;
+            }
 
             if (TryChangeType(rs, type, out var target))
             {
@@ -1030,6 +1034,8 @@ public class RedisClient : DisposeBase
                 //!!! 外部调用者可能需要直接使用内部申请的OwnerPacket，所以这里不释放
                 // 释放内部申请的OwnerPacket
                 if (type != typeof(IPacket) && type != typeof(IPacket[])) rs.TryDispose();
+
+                if (span != null && target != null && type.IsBaseType()) span.AppendTag(target);
                 return (TResult?)target;
             }
 
@@ -1090,6 +1096,7 @@ public class RedisClient : DisposeBase
             if (span != null && rs is Array ars) span.Value = ars.Length;
             if (rs is TResult rs2)
             {
+                if (span != null && typeof(TResult).IsBaseType()) span.AppendTag(rs2);
                 value = rs2;
                 return true;
             }
@@ -1116,6 +1123,8 @@ public class RedisClient : DisposeBase
                 //!!! 外部调用者可能需要直接使用内部申请的OwnerPacket，所以这里不释放
                 // 释放内部申请的OwnerPacket
                 if (type != typeof(IPacket) && type != typeof(IPacket[])) rs.TryDispose();
+
+                if (span != null && target != null && type.IsBaseType()) span.AppendTag(target);
                 value = (TResult?)target;
                 return true;
             }
@@ -1179,7 +1188,11 @@ public class RedisClient : DisposeBase
             var rs = await ExecuteCommandAsync(cmd, args, cancellationToken).ConfigureAwait(false);
             if (rs == null) return default;
             if (span != null && rs is Array ars) span.Value = ars.Length;
-            if (rs is TResult rs2) return rs2;
+            if (rs is TResult rs2)
+            {
+                if (span != null && type.IsBaseType()) span.AppendTag(rs2);
+                return rs2;
+            }
 
             if (TryChangeType(rs, type, out var target))
             {
@@ -1199,6 +1212,8 @@ public class RedisClient : DisposeBase
                 //!!! 外部调用者可能需要直接使用内部申请的OwnerPacket，所以这里不释放
                 // 释放内部申请的OwnerPacket
                 if (type != typeof(IPacket) && type != typeof(IPacket[])) rs.TryDispose();
+
+                if (span != null && target != null && type.IsBaseType()) span.AppendTag(target);
                 return (TResult?)target;
             }
 
