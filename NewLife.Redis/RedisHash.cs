@@ -206,11 +206,13 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
     /// <returns></returns>
     public virtual IEnumerable<KeyValuePair<TKey, TValue>> Search(SearchModel model)
     {
+        // count<=0 表示全部
+        var all = model.Count <= 0;
         var count = model.Count;
-        while (count > 0)
+        while (all || count > 0)
         {
             var p = model.Position;
-            var rs = Execute((r, k) => r.Execute<Object[]>("HSCAN", Key, p, "MATCH", model.Pattern + "", "COUNT", count));
+            var rs = Execute((r, k) => r.Execute<Object[]>("HSCAN", Key, p, "MATCH", model.Pattern + "", "COUNT", all ? 1000 : count));
             if (rs == null || rs.Length != 2) break;
 
             model.Position = (rs[0] as IPacket)!.ToStr().ToInt();
@@ -219,7 +221,9 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
 
             for (var i = 0; i < ps.Length - 1; i += 2)
             {
-                if (count-- > 0)
+                if (!all && count <= 0) break;
+
+                if (all || count-- > 0)
                 {
                     var key = (ps[i] as IPacket)!.ToStr().ChangeType<TKey>();
                     var val = (ps[i + 1] as IPacket)!.ToStr().ChangeType<TValue>();

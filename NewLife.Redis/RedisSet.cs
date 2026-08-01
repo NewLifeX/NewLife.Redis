@@ -95,11 +95,13 @@ public class RedisSet<T> : RedisBase, ICollection<T>
     /// <returns></returns>
     public virtual IEnumerable<String> Search(SearchModel model)
     {
+        // count<=0 表示全部
+        var all = model.Count <= 0;
         var count = model.Count;
-        while (count > 0)
+        while (all || count > 0)
         {
             var p = model.Position;
-            var rs = Execute((r, k) => r.Execute<Object[]>("SSCAN", Key, p, "MATCH", model.Pattern + "", "COUNT", count));
+            var rs = Execute((r, k) => r.Execute<Object[]>("SSCAN", Key, p, "MATCH", model.Pattern + "", "COUNT", all ? 1000 : count));
             if (rs == null || rs.Length != 2) break;
 
             model.Position = (rs[0] as IPacket)!.ToStr().ToInt();
@@ -107,7 +109,9 @@ public class RedisSet<T> : RedisBase, ICollection<T>
             var ps = rs[1] as Object[];
             foreach (IPacket item in ps!)
             {
-                if (count-- > 0) yield return item.ToStr();
+                if (!all && count <= 0) break;
+
+                if (all || count-- > 0) yield return item.ToStr();
             }
 
             if (model.Position == 0) break;

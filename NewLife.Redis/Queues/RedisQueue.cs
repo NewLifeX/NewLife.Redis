@@ -109,9 +109,13 @@ public class RedisQueue<T> : QueueBase, IProducerConsumer<T>
     {
         if (timeout < 0) return Execute((rc, k) => rc.Execute<T>("RPOP", Key), true);
 
-        if (timeout > 0 && Redis.Timeout < (timeout + 1) * 1000) Redis.Timeout = (timeout + 1) * 1000;
+        var rs = Execute((rc, k) =>
+        {
+            // 阻塞读超时必须大于BRPOP阻塞时间，设置客户端级超时而非修改全局Redis.Timeout
+            if (timeout > 0 && rc.Timeout < (timeout + 1) * 1000) rc.Timeout = (timeout + 1) * 1000;
 
-        var rs = Execute((rc, k) => rc.Execute<IPacket[]>("BRPOP", Key, timeout), true);
+            return rc.Execute<IPacket[]>("BRPOP", Key, timeout);
+        }, true);
         if (rs == null || rs.Length < 2) return default;
 
         var msg = (T?)Redis.Encoder.Decode(rs[1], typeof(T));
@@ -129,9 +133,13 @@ public class RedisQueue<T> : QueueBase, IProducerConsumer<T>
     {
         if (timeout < 0) return await ExecuteAsync((rc, k) => rc.ExecuteAsync<T>("RPOP", Key), true).ConfigureAwait(false);
 
-        if (timeout > 0 && Redis.Timeout < (timeout + 1) * 1000) Redis.Timeout = (timeout + 1) * 1000;
+        var rs = await ExecuteAsync((rc, k) =>
+        {
+            // 阻塞读超时必须大于BRPOP阻塞时间，设置客户端级超时而非修改全局Redis.Timeout
+            if (timeout > 0 && rc.Timeout < (timeout + 1) * 1000) rc.Timeout = (timeout + 1) * 1000;
 
-        var rs = await ExecuteAsync((rc, k) => rc.ExecuteAsync<IPacket[]>("BRPOP", [Key, timeout], cancellationToken), true).ConfigureAwait(false);
+            return rc.ExecuteAsync<IPacket[]>("BRPOP", [Key, timeout], cancellationToken);
+        }, true).ConfigureAwait(false);
         if (rs == null || rs.Length < 2) return default;
 
         var msg = (T?)Redis.Encoder.Decode(rs[1], typeof(T));

@@ -20,23 +20,29 @@ public class PubSub : RedisBase
         if (onMessage == null) throw new ArgumentNullException(nameof(onMessage));
 
         var client = Redis.Pool.Get();
-        client.Reset();
-
-        var channels = Key.Split(",", ";").Cast<Object>().ToArray();
-        await client.ExecuteAsync<String[]>("SUBSCRIBE", channels, cancellationToken).ConfigureAwait(false);
-
-        while (!cancellationToken.IsCancellationRequested)
+        try
         {
-            var source = new CancellationTokenSource(Redis.Timeout);
-            var source2 = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, source.Token);
+            client.Reset();
 
-            var rs = await client.ReadMoreAsync<String[]>(source2.Token).ConfigureAwait(false);
-            if (rs != null && rs.Length == 3 && rs[0] == "message") onMessage(rs[1], rs[2]);
+            var channels = Key.Split(",", ";").Cast<Object>().ToArray();
+            await client.ExecuteAsync<String[]>("SUBSCRIBE", channels, cancellationToken).ConfigureAwait(false);
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var source = new CancellationTokenSource(Redis.Timeout);
+                var source2 = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, source.Token);
+
+                var rs = await client.ReadMoreAsync<String[]>(source2.Token).ConfigureAwait(false);
+                if (rs != null && rs.Length == 3 && rs[0] == "message") onMessage(rs[1], rs[2]);
+            }
+
+            await client.ExecuteAsync<String[]>("UNSUBSCRIBE", channels, cancellationToken).ConfigureAwait(false);
         }
-
-        await client.ExecuteAsync<String[]>("UNSUBSCRIBE", channels, cancellationToken).ConfigureAwait(false);
-
-        Redis.Pool.Return(client);
+        finally
+        {
+            // 异常时也要归还连接，避免连接池泄漏
+            Redis.Pool.Return(client);
+        }
     }
 
     /// <summary>模式订阅大循环</summary>
@@ -55,23 +61,29 @@ public class PubSub : RedisBase
         if (onMessage == null) throw new ArgumentNullException(nameof(onMessage));
 
         var client = Redis.Pool.Get();
-        client.Reset();
-
-        var patterns = Key.Split(",", ";").Cast<Object>().ToArray();
-        await client.ExecuteAsync<String[]>("PSUBSCRIBE", patterns, cancellationToken).ConfigureAwait(false);
-
-        while (!cancellationToken.IsCancellationRequested)
+        try
         {
-            var source = new CancellationTokenSource(Redis.Timeout);
-            var source2 = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, source.Token);
+            client.Reset();
 
-            var rs = await client.ReadMoreAsync<String[]>(source2.Token).ConfigureAwait(false);
-            if (rs != null && rs.Length == 4 && rs[0] == "pmessage") onMessage(rs[1], rs[2], rs[3]);
+            var patterns = Key.Split(",", ";").Cast<Object>().ToArray();
+            await client.ExecuteAsync<String[]>("PSUBSCRIBE", patterns, cancellationToken).ConfigureAwait(false);
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var source = new CancellationTokenSource(Redis.Timeout);
+                var source2 = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, source.Token);
+
+                var rs = await client.ReadMoreAsync<String[]>(source2.Token).ConfigureAwait(false);
+                if (rs != null && rs.Length == 4 && rs[0] == "pmessage") onMessage(rs[1], rs[2], rs[3]);
+            }
+
+            await client.ExecuteAsync<String[]>("PUNSUBSCRIBE", patterns, cancellationToken).ConfigureAwait(false);
         }
-
-        await client.ExecuteAsync<String[]>("PUNSUBSCRIBE", patterns, cancellationToken).ConfigureAwait(false);
-
-        Redis.Pool.Return(client);
+        finally
+        {
+            // 异常时也要归还连接，避免连接池泄漏
+            Redis.Pool.Return(client);
+        }
     }
     #endregion
 

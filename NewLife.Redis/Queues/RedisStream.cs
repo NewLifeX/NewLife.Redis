@@ -399,9 +399,8 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
             }
         }
 
-        // 准备阻塞操作，提前设置超时时间
+        // 阻塞超时由ReadAsync/ReadGroupAsync内部的链接令牌控制，不再修改全局Redis.Timeout
         var t = timeout * 1000;
-        if (timeout > 0 && Redis.Timeout < t) Redis.Timeout = t + 1000;
 
         //var id = FromLastOffset ? "$" : ">";
 
@@ -738,6 +737,15 @@ XREAD count 3 streams stream_key 0-0
     {
         if (startId.IsNullOrEmpty()) startId = "$";
 
+        // 阻塞读超时必须大于服务端block时间，用链接令牌实现，避免修改全局Redis.Timeout
+        var token = cancellationToken;
+        if (block > 0)
+        {
+            var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            source.CancelAfter(block + 1000);
+            token = source.Token;
+        }
+
         var args = new List<Object>();
         if (block > 0)
         {
@@ -753,7 +761,7 @@ XREAD count 3 streams stream_key 0-0
         args.Add(Key);
         args.Add(startId);
 
-        var rs = await ExecuteAsync((rc, k) => rc.ExecuteAsync<Object[]>("XREAD", args.ToArray(), cancellationToken), true).ConfigureAwait(false);
+        var rs = await ExecuteAsync((rc, k) => rc.ExecuteAsync<Object[]>("XREAD", args.ToArray(), token), true).ConfigureAwait(false);
         if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
         {
             if (vs[1] is Object[] vs2) return Parse(vs2);
@@ -920,9 +928,18 @@ XREAD count 3 streams stream_key 0-0
         // id为0时，消费当前消费者的历史待处理消息，包括自己未ACK和从其它消费者抢来的消息
         if (id.IsNullOrEmpty()) id = ">";
 
+        // 阻塞读超时必须大于服务端block时间，用链接令牌实现，避免修改全局Redis.Timeout
+        var token = cancellationToken;
+        if (block > 0)
+        {
+            var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            source.CancelAfter(block + 1000);
+            token = source.Token;
+        }
+
         var rs = count > 0 ?
-            await ExecuteAsync((rc, k) => rc.ExecuteAsync<Object[]>("XREADGROUP", ["GROUP", group, consumer, "BLOCK", block, "COUNT", count, "STREAMS", Key, id], cancellationToken), true).ConfigureAwait(false) :
-            await ExecuteAsync((rc, k) => rc.ExecuteAsync<Object[]>("XREADGROUP", ["GROUP", group, consumer, "BLOCK", block, "STREAMS", Key, id], cancellationToken), true).ConfigureAwait(false);
+            await ExecuteAsync((rc, k) => rc.ExecuteAsync<Object[]>("XREADGROUP", ["GROUP", group, consumer, "BLOCK", block, "COUNT", count, "STREAMS", Key, id], token), true).ConfigureAwait(false) :
+            await ExecuteAsync((rc, k) => rc.ExecuteAsync<Object[]>("XREADGROUP", ["GROUP", group, consumer, "BLOCK", block, "STREAMS", Key, id], token), true).ConfigureAwait(false);
         if (rs != null && rs.Length == 1 && rs[0] is Object[] vs && vs.Length == 2)
         {
             if (vs[1] is Object[] vs2) return Parse(vs2);
