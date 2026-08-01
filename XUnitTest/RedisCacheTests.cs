@@ -20,8 +20,7 @@ namespace XUnitTest
             var services = new ServiceCollection();
             services.AddDistributedRedisCache(options =>
             {
-                options.Server = "127.0.0.1";
-                options.Db = 9;
+                options.Configuration = BasicTest.GetConfig();
                 options.Prefix = prefix;
             });
             provider = services.BuildServiceProvider();

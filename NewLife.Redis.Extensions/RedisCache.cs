@@ -42,7 +42,8 @@ public class RedisCache : FullRedis, IDistributedCache, IDisposable
     /// <param name="key"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public Task<Byte[]?> GetAsync(String key, CancellationToken token = default) => Task.Run(() => base.Get<Byte[]>(key), token);
+    public Task<Byte[]?> GetAsync(String key, CancellationToken token = default)
+        => ExecuteAsync<Byte[]?>(key, (rds, k) => rds.ExecuteAsync<Byte[]?>("GET", [k], token));
 
     /// <summary>
     /// 设置
@@ -77,7 +78,34 @@ public class RedisCache : FullRedis, IDistributedCache, IDisposable
     /// <param name="options"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public Task SetAsync(String key, Byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default) => Task.Run(() => Set(key, value, options), token);
+    public Task SetAsync(String key, Byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default)
+    {
+        if (key == null) throw new ArgumentNullException(nameof(key));
+        if (value == null) throw new ArgumentNullException(nameof(value));
+
+        // 解析过期时间，与同步Set保持一致
+        var expire = -1;
+        if (options != null)
+        {
+            if (options.AbsoluteExpiration != null)
+                expire = (Int32)(options.AbsoluteExpiration.Value - DateTime.Now).TotalSeconds;
+            else if (options.AbsoluteExpirationRelativeToNow != null)
+                expire = (Int32)options.AbsoluteExpirationRelativeToNow.Value.TotalSeconds;
+            else if (options.SlidingExpiration != null)
+                expire = (Int32)options.SlidingExpiration.Value.TotalSeconds;
+        }
+        if (expire < 0) expire = (Int32)Expire.TotalSeconds;
+
+        // 真异步，避免 Task.Run 假异步占用线程池
+        return ExecuteAsync<String>(key, async (rds, k) =>
+        {
+            var rs = expire <= 0 ?
+                await rds.ExecuteAsync<String>("SET", [k, value], token).ConfigureAwait(false) :
+                await rds.ExecuteAsync<String>("SETEX", [k, expire, value], token).ConfigureAwait(false);
+
+            return rs ?? "";
+        }, true);
+    }
 
     /// <summary>
     /// 刷新
@@ -92,8 +120,18 @@ public class RedisCache : FullRedis, IDistributedCache, IDisposable
     /// <param name="key"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    /// <exception cref="ArgumentNullException"></exception>
-    public Task RefreshAsync(String key, CancellationToken token = default) => Task.Run(() => Refresh(key), token);
+    public Task RefreshAsync(String key, CancellationToken token = default)
+    {
+        if (key == null) throw new ArgumentNullException(nameof(key));
+
+        // 真异步，避免 Task.Run 假异步占用线程池
+        return ExecuteAsync<String>(key, async (rds, k) =>
+        {
+            var rs = await rds.ExecuteAsync<String>("EXPIRE", [k, (Int32)Expire.TotalSeconds], token).ConfigureAwait(false);
+
+            return rs ?? "";
+        }, true);
+    }
 
     /// <summary>
     /// 删除
@@ -107,5 +145,17 @@ public class RedisCache : FullRedis, IDistributedCache, IDisposable
     /// <param name="key"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public Task RemoveAsync(String key, CancellationToken token = default) => Task.Run(() => base.Remove(key), token);
+    public Task RemoveAsync(String key, CancellationToken token = default)
+    {
+        if (key == null) throw new ArgumentNullException(nameof(key));
+
+        // 真异步，避免 Task.Run 假异步占用线程池
+        return ExecuteAsync<Int32>(key, async (rds, k) =>
+        {
+            var task = rds.ExecuteAsync<Int32>("DEL", [k], token);
+            Int32? rs = await task.ConfigureAwait(false);
+
+            return rs ?? 0;
+        }, true);
+    }
 }

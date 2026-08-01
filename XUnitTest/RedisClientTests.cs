@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using NewLife.Caching;
+using NewLife.Data;
 using NewLife.Net;
 using Xunit;
 
@@ -88,6 +90,31 @@ public class RedisClientTests
         Assert.Equal(SocketError.AddressNotAvailable, ex.SocketErrorCode);
     }
 
+    [Theory(DisplayName = "值类型参数估算充足不溢出")]
+    [MemberData(nameof(ValueTypeArgs))]
+    public void ValueTypeArgNoOverflow(Object value)
+    {
+        var redis = new Redis();
+        var client = new TestRedisClient(redis);
+
+        // DateTime/大Decimal序列化后约30-40字符，旧版固定估算20字节会缓冲区溢出
+        var args = new Object[] { "key", value };
+        var size = client.CommandSize("SET", args);
+        var buf = new Byte[size];
+        var n = client.Write(buf, "SET", args);
+
+        Assert.True(n > 0);
+        Assert.True(n <= buf.Length, $"写入{n}字节超过估算{size}字节，缓冲区将溢出");
+    }
+
+    public static IEnumerable<Object[]> ValueTypeArgs()
+    {
+        yield return [new DateTime(2026, 8, 1, 8, 30, 15, 123).AddTicks(4567)];
+        yield return [Decimal.MaxValue];
+        yield return [Int64.MinValue];
+        yield return [Double.MaxValue];
+    }
+
     private class TestRedisClient : RedisClient
     {
         public TestRedisClient(Redis redis) : base(redis, new NetUri("tcp://test.invalid:6379")) { }
@@ -95,5 +122,15 @@ public class RedisClientTests
         public IPAddress[] Filter(IPAddress[] addrs) => base.FilterAddresses(addrs);
 
         public TcpClient Create(Int32 timeout) => base.CreateClient(timeout);
+
+        /// <summary>估算命令数据包大小</summary>
+        public Int32 CommandSize(String cmd, Object[] args)
+        {
+            IPacket?[]? encoded = null;
+            return base.GetCommandSize(cmd, args, ref encoded);
+        }
+
+        /// <summary>把命令写入缓冲区，返回实际写入字节数</summary>
+        public Int32 Write(Byte[] buffer, String cmd, Object[] args) => base.GetRequest(buffer.AsMemory(), cmd, args);
     }
 }
