@@ -253,7 +253,15 @@ public class RedisClient : DisposeBase
     /// <param name="cmd"></param>
     /// <param name="args"></param>
     /// <returns></returns>
-    protected virtual Int32 GetRequest(Memory<Byte> memory, String cmd, Object?[]? args)
+    protected virtual Int32 GetRequest(Memory<Byte> memory, String cmd, Object?[]? args) => GetRequest(memory, cmd, args, null);
+
+    /// <summary>发出请求</summary>
+    /// <param name="memory"></param>
+    /// <param name="cmd"></param>
+    /// <param name="args"></param>
+    /// <param name="encoded">GetCommandSize预编码的复杂对象缓存，避免重复序列化</param>
+    /// <returns></returns>
+    private Int32 GetRequest(Memory<Byte> memory, String cmd, Object?[]? args, IPacket?[]? encoded)
     {
         // *<number of arguments>\r\n$<number of bytes of argument 1>\r\n<argument data>\r\n
         // *1\r\n$4\r\nINFO\r\n
@@ -299,8 +307,9 @@ public class RedisClient : DisposeBase
                     var arg = args[i];
                     if (arg != null)
                     {
-                        pk = Host.Encoder.Encode(arg);
-                        size = pk.Length;
+                        // 优先复用GetCommandSize预编码结果，避免复杂对象重复序列化
+                        pk = encoded != null && encoded[i] != null ? encoded[i]! : Host.Encoder.Encode(arg);
+                        if (pk != null) size = pk.Length;
                     }
                 }
 
@@ -602,22 +611,28 @@ public class RedisClient : DisposeBase
             CheckLogin(cmd);
             CheckSelect(cmd);
 
-            // 估算数据包大小，从内存池借出
-            var total = GetCommandSize(cmd, args);
+            // 估算数据包大小，从内存池借出。复杂对象预编码一次，供GetRequest复用
+            IPacket?[]? encoded = null;
+            var total = GetCommandSize(cmd, args, ref encoded);
             var buffer = total < MAX_POOL_SIZE ? Pool.Shared.Rent(total) : new Byte[total];
-            var memory = buffer.AsMemory();
+            try
+            {
+                var memory = buffer.AsMemory();
 
-            var p = GetRequest(memory, cmd, args);
-            memory = memory[..p];
+                var p = GetRequest(memory, cmd, args, encoded);
+                memory = memory[..p];
 
-            var max = Host.MaxMessageSize;
-            if (max > 0 && memory.Length >= max) throw new InvalidOperationException($"命令[{cmd}]的数据包大小[{memory.Length}]超过最大限制[{max}]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。");
+                var max = Host.MaxMessageSize;
+                if (max > 0 && memory.Length >= max) throw new InvalidOperationException($"命令[{cmd}]的数据包大小[{memory.Length}]超过最大限制[{max}]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。");
 
-            if (memory.Length > 0) ns.Write(memory);
+                if (memory.Length > 0) ns.Write(memory);
 
-            if (total < MAX_POOL_SIZE) Pool.Shared.Return(buffer);
-
-            ns.Flush();
+                ns.Flush();
+            }
+            finally
+            {
+                if (total < MAX_POOL_SIZE) Pool.Shared.Return(buffer);
+            }
         }
 
         var rs = GetSingleResponse(ns);
@@ -645,22 +660,28 @@ public class RedisClient : DisposeBase
             CheckLogin(cmd);
             CheckSelect(cmd);
 
-            // 估算数据包大小，从内存池借出
-            var total = GetCommandSize(cmd, args);
+            // 估算数据包大小，从内存池借出。复杂对象预编码一次，供GetRequest复用
+            IPacket?[]? encoded = null;
+            var total = GetCommandSize(cmd, args, ref encoded);
             var buffer = total < MAX_POOL_SIZE ? Pool.Shared.Rent(total) : new Byte[total];
-            var memory = buffer.AsMemory();
+            try
+            {
+                var memory = buffer.AsMemory();
 
-            var p = GetRequest(memory, cmd, args);
-            memory = memory[..p];
+                var p = GetRequest(memory, cmd, args, encoded);
+                memory = memory[..p];
 
-            var max = Host.MaxMessageSize;
-            if (max > 0 && memory.Length >= max) throw new InvalidOperationException($"命令[{cmd}]的数据包大小[{memory.Length}]超过最大限制[{max}]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。");
+                var max = Host.MaxMessageSize;
+                if (max > 0 && memory.Length >= max) throw new InvalidOperationException($"命令[{cmd}]的数据包大小[{memory.Length}]超过最大限制[{max}]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。");
 
-            if (memory.Length > 0) await ns.WriteAsync(memory, cancellationToken).ConfigureAwait(false);
+                if (memory.Length > 0) await ns.WriteAsync(memory, cancellationToken).ConfigureAwait(false);
 
-            if (total < MAX_POOL_SIZE) Pool.Shared.Return(buffer);
-
-            await ns.FlushAsync(cancellationToken).ConfigureAwait(false);
+                await ns.FlushAsync(cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                if (total < MAX_POOL_SIZE) Pool.Shared.Return(buffer);
+            }
         }
 
         var rs = await GetSingleResponseAsync(ns, cancellationToken).ConfigureAwait(false);
@@ -897,9 +918,10 @@ public class RedisClient : DisposeBase
 
     private static String ReadLine(ref SpanReader reader)
     {
-        // 使用stackalloc避免StringBuilder分配，Redis响应行通常很短
+        // 使用stackalloc避免StringBuilder分配，Redis响应行通常很短；超长时降级StringBuilder避免静默截断
         Span<Char> span = stackalloc Char[256];
         var k = 0;
+        StringBuilder? sb = null;
         while (true)
         {
             var b = (Char)reader.ReadByte();
@@ -908,14 +930,36 @@ public class RedisClient : DisposeBase
                 var b2 = (Char)reader.ReadByte();
                 if (b2 == '\n') break;
 
-                if (k < span.Length) span[k++] = b;
-                if (k < span.Length) span[k++] = b2;
+                if (sb != null)
+                    sb.Append(b).Append(b2);
+                else if (k + 1 < span.Length)
+                {
+                    span[k++] = b;
+                    span[k++] = b2;
+                }
+                else
+                {
+                    sb = Pool.StringBuilder.Get();
+                    for (var i = 0; i < k; i++) sb.Append(span[i]);
+                    sb.Append(b).Append(b2);
+                }
             }
             else
             {
-                if (k < span.Length) span[k++] = b;
+                if (sb != null)
+                    sb.Append(b);
+                else if (k < span.Length)
+                    span[k++] = b;
+                else
+                {
+                    sb = Pool.StringBuilder.Get();
+                    for (var i = 0; i < k; i++) sb.Append(span[i]);
+                    sb.Append(b);
+                }
             }
         }
+
+        if (sb != null) return sb.Return(true);
 
 #if NETFRAMEWORK || NETSTANDARD2_0
         return span[..k].ToString();
@@ -955,13 +999,19 @@ public class RedisClient : DisposeBase
 #endif
     }
 
-    private Int32 GetCommandSize(String cmd, Object?[]? args)
+    /// <summary>估算命令数据包大小，并预编码复杂对象供GetRequest复用</summary>
+    /// <param name="cmd">命令</param>
+    /// <param name="args">参数数组</param>
+    /// <param name="encoded">复杂对象预编码缓存，避免重复序列化</param>
+    /// <returns>估算的数据包大小</returns>
+    protected Int32 GetCommandSize(String cmd, Object?[]? args, ref IPacket?[]? encoded)
     {
         var total = 16 + cmd.Length;
         if (args != null)
         {
-            foreach (var item in args)
+            for (var i = 0; i < args.Length; i++)
             {
+                var item = args[i];
                 if (item == null)
                     total += 4;
                 else if (item is String str)
@@ -971,9 +1021,16 @@ public class RedisClient : DisposeBase
                 else if (item is IPacket pk)
                     total += 16 + pk.Length;
                 else if (item.GetType().GetTypeCode() != TypeCode.Object)
-                    total += 16 + 20;
+                    // 值类型经编码器序列化，DateTime/Decimal等最长约40字符，固定20会低估导致缓冲区溢出
+                    total += 16 + 64;
                 else
-                    total += 16 + Host.Encoder.Encode(item)?.Length ?? 0;
+                {
+                    // 复杂对象只编码一次，供GetRequest复用，避免重复序列化
+                    encoded ??= new IPacket?[args.Length];
+                    var pk2 = Host.Encoder.Encode(item);
+                    encoded[i] = pk2;
+                    total += 16 + (pk2?.Length ?? 0);
+                }
             }
         }
 
@@ -1367,9 +1424,12 @@ public class RedisClient : DisposeBase
 
             // 估算数据包大小，从内存池借出
             var total = 0;
-            foreach (var item in ps)
+            var encodeds = new List<IPacket?[]?>(ps.Count);
+            for (var i = 0; i < ps.Count; i++)
             {
-                total += GetCommandSize(item.Name, item.Args);
+                IPacket?[]? encoded = null;
+                total += GetCommandSize(ps[i].Name, ps[i].Args, ref encoded);
+                encodeds.Add(encoded);
             }
 
             var buffer = total < MAX_POOL_SIZE ? Pool.Shared.Rent(total) : new Byte[total];
@@ -1377,11 +1437,12 @@ public class RedisClient : DisposeBase
             var p = 0;
 
             // 整体打包所有命令
-            List<String>? cmds = span != null ? new List<String>(ps.Count) : null;
-            foreach (var item in ps)
+            var cmds = span != null ? new List<String>(ps.Count) : null;
+            for (var i = 0; i < ps.Count; i++)
             {
+                var item = ps[i];
                 cmds?.Add(item.Name);
-                p += GetRequest(memory[p..], item.Name, item.Args);
+                p += GetRequest(memory[p..], item.Name, item.Args, encodeds[i]);
             }
             memory = memory[..p];
 
