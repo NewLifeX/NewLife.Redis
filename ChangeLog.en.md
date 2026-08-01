@@ -1,5 +1,39 @@
 # NewLife.Redis ChangeLog
 
+## v6.6.2026.0802 (2026-08-02)
+
+### New Features
+- **Connection Pool Configuration & Health Checks**: Added `RedisPoolConfig` class to configure min idle / max capacity / idle cleanup / max lifetime / borrow wait timeout; proactively PING-verify connections idle beyond the threshold when leased, improving long-connection reliability
+- **Command Packet Pre-Encoding**: `GetCommandSize` pre-encodes complex objects and caches them for reuse; batch commands pre-encoded as a whole, avoiding repeated serialization and improving command throughput
+
+### Bug Fixes
+- **[fix]** Fixed `Search` returning empty when `count=-1` (default all), wildcard delete `Remove("key*")` restored
+- **[fix]** Fixed RedLock millisecond locks never expiring: integer division yields 0 when `msExpire < 1000`, switched to `SET PX NX`
+- **[fix]** Fixed `GetCommandSize` under-estimating value-type parameters causing buffer overflow
+- **[fix]** Fixed cluster `Execute(String[])` mutating caller's array in place, result ordering, and `List.Contains` O(n²) dedup
+- **[fix]** Fixed cluster `Search` sharing SCAN cursor across nodes causing duplicate/missing keys
+- **[fix]** Fixed extension package fake async: `Task.Run` wrapping sync implementation replaced with true async `ExecuteAsync`, supporting cancellation without tying up thread pool
+- **[fix]** Fixed `ExecuteAsync` retry blocking thread pool threads with `Thread.Sleep`, switched to `Task.Delay`
+- **[fix]** Fixed thread-unsafe mutation of global `Redis.Timeout` during queue blocking consumption, switched to client-level timeout/linked token
+- **[fix]** Fixed silent truncation of overlong `ReadLine` responses (256 chars), falls back to StringBuilder
+- **[fix]** Fixed `ExecuteCommand` memory-pool buffer not returned on exception and PubSub connection not returned to pool on error
+- **[fix]** Fixed returning already-disposed client to pool in connection pool catch
+
+### Architecture
+- **RedLock Unified Implementation**: `FullRedis.AcquireRedLock` delegates to `RedisRedLock`, eliminating logic drift between two implementations
+- **Removed Deprecated PrefixedRedis**: Superseded by `FullRedis.Prefix`, breaking change
+- **Removed `IncrementWithTtl`/`DecrementWithTtl`**: Removed increment/decrement-with-TTL APIs to align with the base class (breaking change)
+- **Marked `AddPrefixedRedis` Obsolete**: `[Obsolete]`, use `AddRedis` (FullRedis supports Prefix)
+
+### Improvements
+- **RedisHash/RedisSet Full Traversal**: Support `count<=0` full scan, batch fetch raised to 1000, improving large-data traversal efficiency
+
+### Testing & Quality
+- Added regression tests for Search/wildcard delete/immutable batch input/RedLock millisecond lock/value-type size estimation
+- Fixed `RedisCacheTests`/`DependencyInjectionTest` hardcoded `127.0.0.1` preventing use of configured Redis
+
+---
+
 ## v6.5.2026.0702 (2026-07-02)
 
 ### New Features

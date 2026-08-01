@@ -1,5 +1,39 @@
 # NewLife.Redis 变更日志
 
+## v6.6.2026.0802 (2026-08-02)
+
+### 新特性
+- **连接池配置与健康检查**：新增 `RedisPoolConfig` 配置类，支持最小空闲数/最大容量/空闲清理时间/最大生命周期/借出等待超时等参数；借出连接时对空闲超时的连接主动 PING 验证存活，提升长连接可靠性
+- **命令组包预编码优化**：`GetCommandSize` 对复杂对象预编码并缓存复用，批量命令整体预编码，避免重复序列化，提升命令发送性能
+
+### Bug 修复
+- **[fix]** 修复 `Search` 系列 `count=-1`（默认全部）返回空的问题，通配符删除 `Remove("key*")` 恢复可用
+- **[fix]** 修复 RedLock 毫秒级锁永不过期：`msExpire < 1000` 时整数除法为 0 导致无过期时间，改用 `SET PX NX`
+- **[fix]** 修复 `GetCommandSize` 值类型参数估算不足导致缓冲区溢出（DateTime/大Decimal 参数序列化超过固定 20 字节估算）
+- **[fix]** 修复集群 `Execute(String[])` 原地修改调用方数组、结果乱序、`List.Contains` O(n²) 去重问题
+- **[fix]** 修复集群 `Search` 跨节点共享 SCAN 游标导致重复/漏键
+- **[fix]** 修复扩展包 Async 假异步：`Task.Run` 包装同步实现改为真异步 `ExecuteAsync`，支持取消且不占线程池
+- **[fix]** 修复 `ExecuteAsync` 重试使用 `Thread.Sleep` 阻塞线程池线程，改为 `Task.Delay`
+- **[fix]** 修复队列阻塞消费运行时修改全局 `Redis.Timeout` 的线程安全问题，改为客户端级超时/链接令牌
+- **[fix]** 修复 `ReadLine` 超长响应行静默截断（256 字符），超长降级 StringBuilder
+- **[fix]** 修复 `ExecuteCommand` 内存池 buffer 异常时未归还、PubSub 连接异常时未归还连接池
+- **[fix]** 修复连接池 catch 中销毁 client 后仍归还已销毁对象的问题
+
+### 架构优化
+- **RedLock 合并单实现**：`FullRedis.AcquireRedLock` 委托 `RedisRedLock`，消除双实现逻辑漂移
+- **删除 PrefixedRedis 废弃类**：功能已被 `FullRedis.Prefix` 取代，破坏性变更
+- **移除 `IncrementWithTtl`/`DecrementWithTtl` 方法**：删除累加/递减并获取 TTL 的 API，与基类保持一致（破坏性变更）
+- **标记 `AddPrefixedRedis` 过时**：`[Obsolete]` 标注，改用支持 Prefix 的 `AddRedis` 注册
+
+### 优化改进
+- **RedisHash/RedisSet 全量遍历**：支持 `count<=0` 全量扫描，批量拉取数提升至 1000，提升大数据量遍历效率
+
+### 测试与质量
+- 新增 Search/通配符删除/批量入参不修改/RedLock 毫秒锁/值类型参数估算等回归测试
+- 修复 `RedisCacheTests`/`DependencyInjectionTest` 硬编码 `127.0.0.1` 导致无法使用配置 Redis 的问题
+
+---
+
 ## v6.5.2026.0702 (2026-07-02)
 
 ### 新特性

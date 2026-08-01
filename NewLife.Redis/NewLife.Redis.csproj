@@ -7,7 +7,7 @@
     <Description>高性能Redis客户端，支持RESP2/RESP3协议，覆盖Redis 2.8～7.x全部数据结构与命令，内置消息队列（简单/可靠/延迟/Stream），支持集群/哨兵/云厂商适配，经日均80+亿次调用验证</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2026 新生命开发团队</Copyright>
-    <VersionPrefix>6.5</VersionPrefix>
+    <VersionPrefix>6.6</VersionPrefix>
     <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
     <Version>$(VersionPrefix).$(VersionSuffix)</Version>
     <FileVersion>$(Version)</FileVersion>
@@ -32,7 +32,7 @@
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Redis</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>启用NuGet安全审计，扫描依赖包已知漏洞；补全Redis 6.2~7.4+新命令与API；支持阿里云Tair扩展（TairString/TairHash）；引入RedisFact特性自动跳过不可用集成测试；增强Redis版本与ACL兼容性；优化Stream/EventBus埋点与消费逻辑</PackageReleaseNotes>
+    <PackageReleaseNotes>新增RedisPoolConfig连接池配置与健康检查机制；优化RedisClient命令组包预编码与内存池管理；修复集群Execute/Search跨节点与扩展包假异步问题；修复队列阻塞消费超时与连接池泄漏；移除TTL相关API并标记AddPrefixedRedis过时</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -55,14 +55,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.300">
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.301">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="11.17.2026.707-beta1051" />
+    <PackageReference Include="NewLife.Core" Version="11.18.2026.801" />
   </ItemGroup>
 
   <ItemGroup>

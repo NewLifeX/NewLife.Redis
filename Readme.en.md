@@ -138,7 +138,7 @@
 ┌──────────────────────────────▼──────────────────────────────────┐
 │                 Advanced Features (FullRedis)                    │
 │  RedisList<T> · RedisHash<T> · RedisSet<T> · RedisSortedSet<T>  │
-│  RedisStack<T> · RedisGeo · HyperLogLog · PrefixedRedis          │
+│  RedisStack<T> · RedisGeo · HyperLogLog · RedisRedLock         │
 │  RedisQueue<T> · RedisReliableQueue<T> · RedisDelayQueue<T>      │
 │  RedisStream<T> · PubSub · RedisEventBus                         │
 │  RedisCluster · RedisSentinel · RedisReplication                 │
@@ -240,7 +240,7 @@ var ttl = rds.GetExpire("k1");
 rds.SetAll(new Dictionary<String, Object> { ["a"] = 1, ["b"] = 2 }, expire: 300);
 var dict = rds.GetAll<Int32>(["a", "b"]);
 
-// Key prefix (PrefixedRedis)
+// Key prefix (FullRedis.Prefix)
 var scoped = rds.GetPrefixed("myapp:");
 scoped.Set("user", "Alice");  // Actual key is myapp:user
 ```
@@ -712,7 +712,7 @@ A: NewLife.Redis uses a connection-pool model (vs. StackExchange's multiplexing)
 A: Split data structures (e.g., Hash per-field) + batch reads/writes + binary encoder + control `MaxMessageSize` (default 1MB limit).
 
 **Q: What if the connection pool runs out?**
-A: The default max is 100,000 connections; normal workloads won't exhaust it. If you see wait timeouts, check for connection leaks (missing `Dispose`) or operations that hold connections for excessively long periods.
+A: The default max is 100,000 connections; normal workloads won't exhaust it. The pool is configurable via `Redis.PoolConfig` (`RedisPoolConfig`): min idle / max capacity / idle cleanup time / max lifetime / borrow wait timeout. Connections idle beyond `IdleTime` are proactively PING-checked when leased; for master-slave switch or rolling proxy update scenarios, lower `MaxLifetime` to recycle connections faster. If you see wait timeouts, check for connection leaks (missing `Dispose`) or operations that hold connections for excessively long periods.
 
 **Q: Why do connections fail on Alibaba Cloud / Tencent Cloud?**
 A: Check: ① Is `AutoDetect` set to `false` (correct default)? ② Is the auth format correct (Tencent Cloud requires `username=instanceId`)? ③ Are the network security group / whitelist allowing the client IP? ④ Does the cluster edition prohibit using SELECT to switch databases?

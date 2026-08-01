@@ -133,7 +133,7 @@
 ┌──────────────────────────────▼──────────────────────────────────┐
 │                   高级功能层 (FullRedis)                          │
 │  RedisList<T> · RedisHash<T> · RedisSet<T> · RedisSortedSet<T>  │
-│  RedisStack<T> · RedisGeo · HyperLogLog · PrefixedRedis          │
+│  RedisStack<T> · RedisGeo · HyperLogLog · RedisRedLock         │
 │  RedisQueue<T> · RedisReliableQueue<T> · RedisDelayQueue<T>      │
 │  RedisStream<T> · PubSub · RedisEventBus                         │
 │  RedisCluster · RedisSentinel · RedisReplication                 │
@@ -233,7 +233,7 @@ var ttl = rds.GetExpire("k1");
 rds.SetAll(new Dictionary<String, Object> { ["a"] = 1, ["b"] = 2 }, expire: 300);
 var dict = rds.GetAll<Int32>(["a", "b"]);
 
-// 键前缀（PrefixedRedis）
+// 键前缀（FullRedis.Prefix）
 var scoped = rds.GetPrefixed("myapp:");
 scoped.Set("user", "Alice");  // 实际 key 为 myapp:user
 ```
@@ -688,7 +688,7 @@ A: NewLife.Redis 采用连接池模型（对比 StackExchange 的多路复用）
 A: 拆分数据结构（如 Hash 分字段）+ 批量读写 + 二进制编码器 + 控制 `MaxMessageSize`（默认 1MB 上限）。
 
 **Q: 连接池用完了怎么办？**  
-A: 默认最大 100,000 连接，正常业务不会耗尽。若出现等待超时，检查是否有连接泄漏（未 `Dispose`）或某些操作持续长时间占用。
+A: 默认最大 100,000 连接，正常业务不会耗尽。连接池可通过 `Redis.PoolConfig`（`RedisPoolConfig`）配置最小空闲数/最大容量/空闲清理时间/最大生命周期/借出等待超时，借出连接时会对空闲超时的连接主动 PING 健康检查，主从切换/代理滚动更新场景可调小 `MaxLifetime` 加快连接回收。若出现等待超时，检查是否有连接泄漏（未 `Dispose`）或某些操作持续长时间占用。
 
 **Q: 使用阿里云 / 腾讯云为什么连接失败？**  
 A: 检查：① `AutoDetect` 是否为 false（默认正确）；② 认证格式是否正确（腾讯云需要 `username=instanceId`）；③ 网络安全组 / 白名单是否放开客户端 IP；④ 集群版是否禁止使用 SELECT 切库。
