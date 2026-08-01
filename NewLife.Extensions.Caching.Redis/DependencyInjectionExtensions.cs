@@ -143,6 +143,7 @@ public static class DependencyInjectionExtensions
     /// <param name="setupAction"></param>
     /// <returns></returns>
     /// <exception cref="ArgumentNullException"></exception>
+    [Obsolete("=>AddRedis")]
     public static IServiceCollection AddPrefixedRedis(this IServiceCollection services, Action<RedisOptions> setupAction)
     {
         if (services == null)
@@ -150,9 +151,10 @@ public static class DependencyInjectionExtensions
         if (setupAction == null)
             throw new ArgumentNullException(nameof(setupAction));
 
+        // PrefixedRedis已废弃删除，改用支持Prefix的FullRedis
         services.AddOptions();
         services.Configure(setupAction);
-        services.AddSingleton(sp => new PrefixedRedis(sp, sp.GetRequiredService<IOptions<RedisOptions>>().Value));
+        services.AddSingleton(sp => new FullRedis(sp, sp.GetRequiredService<IOptions<RedisOptions>>().Value));
 
         return services;
     }

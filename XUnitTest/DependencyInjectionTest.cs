@@ -13,7 +13,7 @@ namespace XUnitTest
         public DependencyInjectionTest()
         {
             var services = new ServiceCollection();
-            services.AddRedis("server=127.0.0.1;passowrd=;db=9");
+            services.AddRedis(BasicTest.GetConfig());
             provider = services.BuildServiceProvider();
         }
 
