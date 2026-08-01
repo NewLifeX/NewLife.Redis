@@ -550,6 +550,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         {
             // 每次重试都需要重新从池里借出连接
             var client = Pool.Get();
+            var disposed = false;
             try
             {
                 return func(client, key);
@@ -559,8 +560,9 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             {
                 if (++i >= Retry) throw;
 
-                // 销毁连接
+                // 销毁连接，不再归还池
                 client.TryDispose();
+                disposed = true;
 
                 // 网络异常时，自动切换到其它节点
                 if (ex is AggregateException ae) ex = ae.InnerException;
@@ -574,7 +576,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             }
             finally
             {
-                Pool.Return(client);
+                if (!disposed) Pool.Return(client);
 
                 Counter?.StopCount(sw);
             }
@@ -602,6 +604,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             // 每次重试都需要重新从池里借出连接
             var pool = Pool;
             var client = pool.Get();
+            var disposed = false;
             try
             {
                 return func(client);
@@ -611,8 +614,9 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             {
                 if (++i >= Retry) throw;
 
-                // 销毁连接
+                // 销毁连接，不再归还池
                 client.TryDispose();
+                disposed = true;
 
                 // 网络异常时，自动切换到其它节点
                 if (ex is AggregateException ae) ex = ae.InnerException;
@@ -626,7 +630,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             }
             finally
             {
-                pool.Return(client);
+                if (!disposed) pool.Return(client);
 
                 Counter?.StopCount(sw);
             }
@@ -674,6 +678,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         {
             // 每次重试都需要重新从池里借出连接
             var client = await Pool.GetAsync().ConfigureAwait(false);
+            var disposed = false;
             try
             {
                 return await func(client, key).ConfigureAwait(false);
@@ -683,8 +688,9 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             {
                 if (++i >= Retry) throw;
 
-                // 销毁连接
+                // 销毁连接，不再归还池
                 client.TryDispose();
+                disposed = true;
 
                 // 网络异常时，自动切换到其它节点
                 if (ex is AggregateException ae) ex = ae.InnerException;
@@ -694,11 +700,12 @@ public class Redis : Cache, IConfigMapping, ILogFeature
                     _idxServer++;
                 }
                 else
-                    Thread.Sleep(delay *= 2);
+                    // 异步方法内使用Task.Delay，避免阻塞线程池线程
+                    await Task.Delay(delay *= 2).ConfigureAwait(false);
             }
             finally
             {
-                Pool.Return(client);
+                if (!disposed) Pool.Return(client);
 
                 Counter?.StopCount(sw);
             }
@@ -740,9 +747,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         }
         finally
         {
-            // 如果不需要结果，则暂停一会，有效清理残留
-            if (!requireResult) Thread.Sleep(10);
-
+            // Reset会清理连接上的残留数据，无需Sleep等待
             rds.Reset();
             Pool.Return(rds);
 
@@ -909,7 +914,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     public override IDictionary<String, T> GetAll<T>(IEnumerable<String> keys)
     {
         var ks = keys as String[] ?? keys.ToArray();
-        if (ks.Length == 0) return new Dictionary<String, T>();
+        if (ks.Length == 0) return new Dictionary<String, T?>();
 
         return Execute(ks[0], (rds, k) => rds.GetAll<T>(ks));
     }

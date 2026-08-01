@@ -288,6 +288,7 @@ public class FullRedis : Redis
 
             // 每次重试都需要重新从池里借出连接
             var client = pool.Get();
+            var disposed = false;
             try
             {
                 client.Reset();
@@ -302,8 +303,9 @@ public class FullRedis : Redis
             {
                 if (++i >= Retry) throw;
 
-                // 销毁连接
+                // 销毁连接，不再归还池
                 client.TryDispose();
+                disposed = true;
 
                 // 使用新的节点
                 var k = key is IList<String> ks ? ks[0] : key + "";
@@ -315,7 +317,7 @@ public class FullRedis : Redis
             }
             finally
             {
-                pool.Return(client);
+                if (!disposed) pool.Return(client);
 
                 Counter?.StopCount(sw);
             }
@@ -334,19 +336,21 @@ public class FullRedis : Redis
 
         InitCluster();
 
-        //keys = keys.Select(GetKey).ToArray();
+        // 不修改调用方传入的数组，复制后加前缀
+        var ks = new String[keys.Length];
         for (var i = 0; i < keys.Length; i++)
         {
-            keys[i] = GetKey(keys[i]);
+            ks[i] = GetKey(keys[i]);
         }
 
         // 如果不支持集群，或者只有一个key，直接执行
-        if (Cluster == null || keys.Length == 1) return [Execute(keys[0], (rds, k) => func(rds, keys), write)];
+        if (Cluster == null || ks.Length == 1) return [Execute(ks[0], (rds, k) => func(rds, ks), write)];
 
-        // 计算每个key所在的节点
+        // 计算每个key所在的节点，字典保持输入首次出现顺序
         var dic = new Dictionary<String, List<String>>();
         var nodes = new Dictionary<String, IRedisNode>();
-        foreach (var key in keys)
+        var sets = new Dictionary<String, HashSet<String>>();
+        foreach (var key in ks)
         {
             var node = Cluster.SelectNode(key, true);
             if (node != null)
@@ -356,13 +360,15 @@ public class FullRedis : Redis
                 {
                     dic[k] = list = [];
                     nodes[k] = node;
+                    sets[k] = [];
                 }
 
-                if (!list.Contains(key)) list.Add(key);
+                // HashSet去重，避免List.Contains的O(n²)开销
+                if (sets[k].Add(key)) list.Add(key);
             }
         }
 
-        // 分组批量执行
+        // 分组批量执行，按节点首次出现顺序返回
         var rs = new List<T>();
         foreach (var item in dic)
         {
@@ -385,6 +391,7 @@ public class FullRedis : Redis
         // 每次重试都需要重新从池里借出连接
         var pool = node != null ? GetPool(node) : Pool;
         var client = pool.Get();
+        var disposed = false;
         try
         {
             client.Reset();
@@ -394,15 +401,16 @@ public class FullRedis : Redis
         {
             if (ex is SocketException or IOException)
             {
-                // 销毁连接
+                // 销毁连接，不再归还池
                 client.TryDispose();
+                disposed = true;
             }
 
             throw;
         }
         finally
         {
-            pool.Return(client);
+            if (!disposed) pool.Return(client);
         }
     }
 
@@ -436,6 +444,7 @@ public class FullRedis : Redis
 
             // 每次重试都需要重新从池里借出连接
             var client = pool.Get();
+            var disposed = false;
             try
             {
                 client.Reset();
@@ -448,19 +457,21 @@ public class FullRedis : Redis
             {
                 if (++i >= Retry) throw;
 
-                // 销毁连接
+                // 销毁连接，不再归还池
                 client.TryDispose();
+                disposed = true;
 
                 // 使用新的节点
                 var node2 = Cluster.ReselectNode(key, write, node, ex);
                 if (node2 != null)
                     node = node2;
                 else
-                    Thread.Sleep(delay *= 2);
+                    // 异步方法内使用Task.Delay，避免阻塞线程池线程
+                    await Task.Delay(delay *= 2).ConfigureAwait(false);
             }
             finally
             {
-                pool.Return(client);
+                if (!disposed) pool.Return(client);
 
                 Counter?.StopCount(sw);
             }
@@ -494,11 +505,13 @@ public class FullRedis : Redis
         InitCluster();
         if (Cluster != null) return Execute(keys, (rds, ks) => rds.Execute<Int32>("DEL", ks), true).Sum();
 
+        // 不修改调用方传入的数组，复制后加前缀
+        var ks = new String[keys.Length];
         for (var i = 0; i < keys.Length; i++)
         {
-            keys[i] = GetKey(keys[i]);
+            ks[i] = GetKey(keys[i]);
         }
-        return Execute(keys[0], (rds, k) => rds.Execute<Int32>("DEL", keys), true);
+        return Execute(ks[0], (rds, k) => rds.Execute<Int32>("DEL", ks), true);
     }
     #endregion
 
@@ -509,12 +522,14 @@ public class FullRedis : Redis
     /// <returns></returns>
     public override IDictionary<String, T> GetAll<T>(IEnumerable<String> keys)
     {
-        if (keys == null || !keys.Any()) return new Dictionary<String, T>();
+        if (keys == null || !keys.Any()) return new Dictionary<String, T?>();
 
-        var keys2 = keys as String[] ?? keys.ToArray();
-        for (var i = 0; i < keys2.Length; i++)
+        // 不修改调用方传入的数组，复制后加前缀
+        var arr = keys as String[] ?? keys.ToArray();
+        var keys2 = new String[arr.Length];
+        for (var i = 0; i < arr.Length; i++)
         {
-            keys2[i] = GetKey(keys2[i]);
+            keys2[i] = GetKey(arr[i]);
         }
         if (keys2.Length == 1) return new Dictionary<String, T> { [keys2[0]] = Get<T>(keys2[0])! };
 
@@ -935,28 +950,37 @@ public class FullRedis : Redis
 
         IEnumerable<String> Scan(IRedisNode? node = null)
         {
+            // count<=0 表示全部。SCAN游标是节点级的，集群模式每个节点独立从0开始扫描，不能共享model.Position
+            var all = model.Count <= 0;
             var count = model.Count;
-            while (count > 0)
+            var position = node == null ? model.Position : 0;
+            while (all || count > 0)
             {
-                var p = model.Position;
-                var rs = Execute(r => r.Execute<Object[]>("SCAN", p, "MATCH", GetKey(model.Pattern + ""), "COUNT", count), node);
+                // SCAN的COUNT参数必须为正数，全部扫描时按1000一批
+                var cnt = all ? 1000 : count;
+                var rs = Execute(r => r.Execute<Object[]>("SCAN", position, "MATCH", GetKey(model.Pattern + ""), "COUNT", cnt), node);
                 if (rs == null || rs.Length != 2) break;
 
                 var pos = (rs[0] as IPacket)?.ToStr().ToInt();
-                if (pos != null) model.Position = pos.Value;
+                if (pos != null) position = pos.Value;
 
                 if (rs[1] is Object[] ps)
                 {
                     foreach (var item in ps)
                     {
-                        if (item == null && count-- > 0) yield return String.Empty;
-                        if (item is String str && count-- > 0) yield return str;
-                        if (item is IPacket pk && count-- > 0) yield return pk.ToStr();
+                        if (!all && count <= 0) break;
+
+                        if (item == null && (all || count-- > 0)) yield return String.Empty;
+                        if (item is String str && (all || count-- > 0)) yield return str;
+                        if (item is IPacket pk && (all || count-- > 0)) yield return pk.ToStr();
                     }
                 }
 
                 if (pos == null || pos == 0) break;
             }
+
+            // 单节点（非集群）时回写游标，供调用方分页使用；集群模式游标无全局意义，不回写
+            if (node == null) model.Position = position;
         }
     }
 
@@ -1019,101 +1043,8 @@ public class FullRedis : Redis
         var instances = new List<Redis> { this };
         if (otherInstances != null) instances.AddRange(otherInstances);
 
-        return AcquireRedLockCore(instances.ToArray(), key, msTimeout, msExpire);
-    }
-
-    private static IDisposable? AcquireRedLockCore(Redis[] instances, String key, Int32 msTimeout, Int32 msExpire)
-    {
-        if (instances == null || instances.Length == 0) throw new ArgumentNullException(nameof(instances));
-        if (key.IsNullOrEmpty()) throw new ArgumentNullException(nameof(key));
-        if (msTimeout <= 0) throw new ArgumentOutOfRangeException(nameof(msTimeout));
-        if (msExpire <= 0) throw new ArgumentOutOfRangeException(nameof(msExpire));
-
-        var token = Rand.NextString(22);
-        var quorum = instances.Length / 2 + 1;
-        var startTime = DateTime.UtcNow;
-
-        // 循环重试，直到超时
-        while (true)
-        {
-            var lockStart = DateTime.UtcNow;
-            var successCount = 0;
-            var lockedList = new List<Redis>();
-
-            // 尝试在每个实例上加锁
-            foreach (var rds in instances)
-            {
-                try
-                {
-                    if (rds.Set(key, token, msExpire / 1000))
-                    {
-                        lockedList.Add(rds);
-                        successCount++;
-                    }
-                }
-                catch
-                {
-                    // 单实例失败不中断
-                }
-            }
-
-            // 计算已用时间
-            var lockElapsed = (Int32)(DateTime.UtcNow - lockStart).TotalMilliseconds;
-
-            // 判断：多数节点成功 且 总耗时小于锁有效期
-            var validityTime = msExpire - lockElapsed - (Int32)(msExpire * 0.01);
-            if (successCount >= quorum && validityTime > 0)
-            {
-                return new RedLockHolder(key, token, lockedList);
-            }
-
-            // 释放已获得的锁
-            foreach (var rds in lockedList)
-            {
-                try
-                {
-                    var lua = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
-                    rds.Execute(key, (rc, k) => rc.Execute<Int32>("EVAL", lua, 1, k, token), true);
-                }
-                catch { }
-            }
-
-            // 检查是否超时
-            var elapsed = (Int32)(DateTime.UtcNow - startTime).TotalMilliseconds;
-            if (elapsed >= msTimeout) return null;
-
-            // 等待后重试
-            var delay = Math.Min(200 + Rand.Next(50), msTimeout - elapsed);
-            Thread.Sleep(delay);
-        }
-    }
-
-    private class RedLockHolder : IDisposable
-    {
-        private readonly String _key;
-        private readonly String _token;
-        private readonly List<Redis> _instances;
-
-        public RedLockHolder(String key, String token, List<Redis> instances)
-        {
-            _key = key;
-            _token = token;
-            _instances = instances;
-        }
-
-        public void Dispose()
-        {
-            foreach (var rds in _instances)
-            {
-                try
-                {
-                    var lua = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
-                    rds.Execute(_key, (rc, k) => rc.Execute<Int32>("EVAL", lua, 1, k, _token), true);
-                }
-                catch { }
-            }
-            _instances.Clear();
-        }
+        // 统一委托RedisRedLock实现，避免两套RedLock逻辑漂移
+        return RedisRedLock.Acquire(instances.ToArray(), key, msTimeout, msExpire);
     }
     #endregion
 

@@ -79,12 +79,14 @@ public class RedisRedLock : IDisposable
             var lockStart = DateTime.UtcNow;
             var successCount = 0;
 
-            // 尝试在每个实例上加锁
+            // 尝试在每个实例上加锁，使用 SET PX NX 支持毫秒级过期
+            // 曾经用 Set(key, token, msExpire / 1000)，毫秒不足1秒时整除为0，导致锁永不过期
             foreach (var rds in instances)
             {
                 try
                 {
-                    if (rds.Set(key, token, msExpire / 1000))
+                    var rs = rds.Execute(key, (rc, k) => rc.Execute<String>("SET", k, token, "PX", msExpire, "NX"), true);
+                    if (rs == "OK")
                     {
                         rl._lockedInstances.Add(rds);
                         successCount++;
