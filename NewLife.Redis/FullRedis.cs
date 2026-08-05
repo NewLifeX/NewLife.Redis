@@ -1632,21 +1632,22 @@ public class FullRedis : Redis
         // EVAL script numkeys [key [key ...]] [arg [arg ...]]
         keys ??= [];
         args ??= [];
-        var ps = new List<Object>
+        var ps = new List<Object>(2 + keys.Length + args.Length)
         {
             script,
-            keys.Length + ""
+            keys.Length
         };
-        for (var i = 0; i < keys.Length && i < args.Length; i++)
+        foreach (var key in keys)
         {
-            ps.Add(keys[i]);
+            ps.Add(GetKey(key));
         }
-        for (var i = 0; i < keys.Length && i < args.Length; i++)
+        foreach (var arg in args)
         {
-            ps.Add(args[i]);
+            ps.Add(arg);
         }
 
-        return Execute("", (rc, k) => rc.Execute<T>("EVAL", ps), true);
+        // 必须展开为数组，否则 List 会被整体序列化为单个参数，导致参数数量错误
+        return Execute(keys.Length > 0 ? keys[0] : "", (rc, k) => rc.Execute<T>("EVAL", ps.ToArray()), true);
     }
 
     /// <summary>调用已加载的Redis函数（Redis 7.0+）</summary>
@@ -1659,7 +1660,7 @@ public class FullRedis : Redis
     {
         keys ??= [];
         args ??= [];
-        var ps = new List<Object> { function, keys.Length };
+        var ps = new List<Object>(2 + keys.Length + args.Length) { function, keys.Length };
         foreach (var k in keys)
         {
             ps.Add(GetKey(k));
@@ -1668,7 +1669,8 @@ public class FullRedis : Redis
         {
             ps.Add(a);
         }
-        return Execute("", (rc, k) => rc.Execute<T>("FCALL", ps), true);
+        // 必须展开为数组，否则 List 会被整体序列化为单个参数，导致参数数量错误
+        return Execute(keys.Length > 0 ? keys[0] : "", (rc, k) => rc.Execute<T>("FCALL", ps.ToArray()), true);
     }
 
     /// <summary>以只读模式调用Redis函数（Redis 7.0+）</summary>
@@ -1681,7 +1683,7 @@ public class FullRedis : Redis
     {
         keys ??= [];
         args ??= [];
-        var ps = new List<Object> { function, keys.Length };
+        var ps = new List<Object>(2 + keys.Length + args.Length) { function, keys.Length };
         foreach (var k in keys)
         {
             ps.Add(GetKey(k));
@@ -1690,7 +1692,8 @@ public class FullRedis : Redis
         {
             ps.Add(a);
         }
-        return Execute("", (rc, k) => rc.Execute<T>("FCALL_RO", ps));
+        // 必须展开为数组，否则 List 会被整体序列化为单个参数，导致参数数量错误
+        return Execute(keys.Length > 0 ? keys[0] : "", (rc, k) => rc.Execute<T>("FCALL_RO", ps.ToArray()));
     }
 
     /// <summary>加载函数库到Redis（Redis 7.0+ FUNCTION LOAD）</summary>

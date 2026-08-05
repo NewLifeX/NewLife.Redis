@@ -785,6 +785,74 @@ public class BasicTest
         }
     }
 
+    [RedisFact(DisplayName = "FCALL_RO只读函数调用测试")]
+    public void FCallROTest()
+    {
+        var ic = _redis;
+
+        try
+        {
+            // 先加载一个简单只读函数
+            var lib = "#!lua name=mylib2\nredis.register_function('myecho2', function(k, a) return a[1] end)";
+            ic.FunctionLoad(lib, replace: true);
+
+            var result = ic.FCallRO<String>("myecho2", [], ["hello"]);
+            Assert.Equal("hello", result);
+        }
+        catch (RedisException ex) when (ex.Message.Contains("NOPERM"))
+        {
+            XTrace.WriteLine("Redis ACL限制：无FUNCTION权限，跳过测试。{0}", ex.Message);
+        }
+        catch (RedisException ex) when (ex.Message.Contains("unknown command") || ex.Message.Contains("需要 Redis"))
+        {
+            XTrace.WriteLine("FUNCTION需要Redis 7.0+，当前版本: {0}，跳过测试。{1}", ic.Version, ex.Message);
+        }
+    }
+
+    [RedisFact(DisplayName = "Eval Lua脚本基础调用测试")]
+    public void EvalBasicTest()
+    {
+        var ic = _redis;
+
+        var script = "return ARGV[1]";
+        var rs = ic.Eval<String>(script, ["EvalTest:k1"], ["hello"]);
+        Assert.Equal("hello", rs);
+    }
+
+    [RedisFact(DisplayName = "Eval Lua脚本参数展开不截断测试")]
+    public void EvalArgsExpandTest()
+    {
+        var ic = _redis;
+
+        // KEYS 与 ARGV 数量不等（2 keys + 3 args），验证不截断且全部展开
+        var script = "return {KEYS[1], KEYS[2], ARGV[1], ARGV[2], ARGV[3]}";
+        var keys = new[] { "EvalTest:k2", "EvalTest:k3" };
+        var args = new Object[] { "a1", "a2", "a3" };
+
+        var rs = ic.Eval<String[]>(script, keys, args);
+        Assert.NotNull(rs);
+        Assert.Equal(5, rs.Length);
+        Assert.Equal(ic.GetKey("EvalTest:k2"), rs[0]);
+        Assert.Equal(ic.GetKey("EvalTest:k3"), rs[1]);
+        Assert.Equal("a1", rs[2]);
+        Assert.Equal("a2", rs[3]);
+        Assert.Equal("a3", rs[4]);
+    }
+
+    [RedisFact(DisplayName = "Eval Lua脚本空参数测试")]
+    public void EvalEmptyArgsTest()
+    {
+        var ic = _redis;
+
+        // 只有 keys，无 args
+        var rs = ic.Eval<String>("return KEYS[1]", ["EvalTest:k4"], null);
+        Assert.Equal(ic.GetKey("EvalTest:k4"), rs);
+
+        // 只有 args，无 keys
+        rs = ic.Eval<String>("return ARGV[1]", null, ["world"]);
+        Assert.Equal("world", rs);
+    }
+
     [RedisFact(DisplayName = "TairString ExSet/ExGet测试")]
     public void TairStringTest()
     {
