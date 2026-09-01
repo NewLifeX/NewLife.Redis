@@ -32,7 +32,7 @@
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Redis</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>新增RedisPoolConfig连接池配置与健康检查机制；优化RedisClient命令组包预编码与内存池管理；修复集群Execute/Search跨节点与扩展包假异步问题；修复队列阻塞消费超时与连接池泄漏；移除TTL相关API并标记AddPrefixedRedis过时</PackageReleaseNotes>
+    <PackageReleaseNotes>修复FullRedis Eval/FCall/FCallRO参数组装与主key路由，提升分布式准确性；升级Microsoft.Extensions系列依赖并修复DataProtection传递漏洞，消除System.Security.Cryptography.Xml高危漏洞</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>

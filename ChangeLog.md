@@ -1,5 +1,15 @@
 # NewLife.Redis 变更日志
 
+## v6.6.2026.0901 (2026-09-01)
+
+### Bug 修复
+- **[fix]** 修复 `FullRedis` `Eval`/`FCall`/`FCallRO` 参数组装为数组，避免参数数量错误，提升分布式主 key 路由准确性；补充只读函数、Lua 脚本参数展开、空参数等边界场景单元测试
+
+### 安全与依赖
+- **依赖包升级**：`Microsoft.Extensions` 系列按各目标框架主版本升级至最新补丁，`net10.0` DataProtection 由 10.0.9 升至 10.0.11，消除 `System.Security.Cryptography.Xml` 高危漏洞；`NewLife.Core`/SourceLink/测试组件等同步升级
+
+---
+
 ## v6.6.2026.0802 (2026-08-02)
 
 ### 新特性

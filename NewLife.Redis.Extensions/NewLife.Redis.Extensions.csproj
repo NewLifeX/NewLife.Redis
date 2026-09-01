@@ -32,7 +32,7 @@
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Redis</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>优化RedisCache异步实现，真异步支持取消；新增RedLock/Search等回归测试；修复测试硬编码Redis地址问题；升级Microsoft.Extensions依赖</PackageReleaseNotes>
+    <PackageReleaseNotes>升级Microsoft.Extensions系列依赖至各目标框架最新补丁，修复net10.0 DataProtection传递漏洞；同步升级NewLife.Core/SourceLink等依赖</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
