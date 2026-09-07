@@ -1,4 +1,4 @@
-using System.Buffers;
+﻿using System.Buffers;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Security;
@@ -1100,7 +1100,7 @@ public class RedisClient : DisposeBase
         }
         catch (Exception ex)
         {
-            span?.SetError(ex, null);
+            span?.SetError(ex, args);
             throw;
         }
     }
@@ -1190,7 +1190,7 @@ public class RedisClient : DisposeBase
         }
         catch (Exception ex)
         {
-            span?.SetError(ex, null);
+            span?.SetError(ex, args);
             throw;
         }
     }
@@ -1211,7 +1211,7 @@ public class RedisClient : DisposeBase
     //    }
     //    catch (Exception ex)
     //    {
-    //        span?.SetError(ex, null);
+    //        span?.SetError(ex, args);
     //        throw;
     //    }
     //}
@@ -1278,7 +1278,7 @@ public class RedisClient : DisposeBase
         }
         catch (Exception ex)
         {
-            span?.SetError(ex, null);
+            span?.SetError(ex, args);
             throw;
         }
     }
