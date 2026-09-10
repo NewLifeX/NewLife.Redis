@@ -77,6 +77,13 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
     /// </remarks>
     public Boolean FromLastOffset { get; set; }
 
+    /// <summary>附加字段。消息入库前把字典中的键值对附加到消息字段末尾，如事件总线的发布者标识</summary>
+    /// <remarks>
+    /// 附加字段统一放在数据字段之后，普通类型、数组和复杂类型三大分支均会注入。
+    /// 消费端用<see cref="Message.GetValue"/>读取附加字段，<see cref="Message.GetBody{T}"/>解码数据不受影响。
+    /// </remarks>
+    public IDictionary<String, String>? FieldEnricher { get; set; }
+
     private Int32 _count;
     private Int32 _setGroupId;
     private Int32 _claims;
@@ -198,15 +205,18 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
             // *号表示服务器自动生成ID
             args.Add(msgId.IsNullOrEmpty() ? "*" : msgId);
 
-            // 数组和复杂对象字典，分开处理
+            // 数据字段在前，元数据在后。普通类型、数组、复杂类型三大分支分开处理
             if (Type.GetTypeCode(value.GetType()) != TypeCode.Object)
             {
                 //throw new ArgumentOutOfRangeException(nameof(value), "消息体必须是复杂对象！");
+
+                // 普通类型以__data作为数据字段，保持原始值不改写
                 args.Add(PrimitiveKey);
                 args.Add(value);
             }
             else if (value is Array array)
             {
+                // 数组展平各个元素作为数据字段
                 foreach (var item in array)
                 {
                     args.Add(item);
@@ -214,12 +224,28 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
             }
             else
             {
-                // 在消息体内注入TraceId，用于构建调用链
-                var val = AttachTraceId ? Redis.AttachTraceId(value) : value;
-                foreach (var item in val.ToDictionary())
+                // 复杂对象字典化为字段，保持数据部分干净。TraceId等元数据由后面统一注入
+                foreach (var item in value.ToDictionary())
                 {
                     args.Add(item.Key);
                     args.Add(item.Value ?? "");
+                }
+            }
+
+            // 元数据统一放在数据字段之后：先TraceId，再附加字段（如事件总线的发布者标识）
+            if (AttachTraceId && Redis.TryGetTraceField(out var traceName, out var traceValue))
+            {
+                args.Add(traceName);
+                args.Add(traceValue);
+            }
+
+            var extras = FieldEnricher;
+            if (extras != null && extras.Count > 0)
+            {
+                foreach (var item in extras)
+                {
+                    args.Add(item.Key);
+                    args.Add(item.Value);
                 }
             }
 
@@ -310,7 +336,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
 
                     foreach (var item in rs2)
                     {
-                        var value = item.GetBody<T>();
+                        var value = item.GetBody<T>(PrimitiveKey);
                         if (value != null) yield return value;
                     }
                 }
@@ -327,7 +353,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
         {
             if (group.IsNullOrEmpty() && !item.Id.IsNullOrEmpty()) SetNextId(item.Id);
 
-            var value = item.GetBody<T>();
+            var value = item.GetBody<T>(PrimitiveKey);
             if (value != null) yield return value;
         }
     }
@@ -350,7 +376,7 @@ public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
         var msg = await TakeMessageAsync(timeout, cancellationToken).ConfigureAwait(false);
         if (msg == null) return default;
 
-        return msg.GetBody<T>();
+        return msg.GetBody<T>(PrimitiveKey);
     }
 
     /// <summary>异步消费获取</summary>
@@ -1107,7 +1133,7 @@ XREAD count 3 streams stream_key 0-0
                     }
 
                     // 解码
-                    var msg = mqMsg.GetBody<T>();
+                    var msg = mqMsg.GetBody<T>(PrimitiveKey);
                     if (span != null && msg is ITraceMessage tm) span.Detach(tm.TraceId);
 
                     // 处理消息
@@ -1225,7 +1251,7 @@ XREAD count 3 streams stream_key 0-0
                     }
 
                     // 解码
-                    var msgs = mqMsgs.Select(e => e.GetBody<T>()!).ToArray();
+                    var msgs = mqMsgs.Select(e => e.GetBody<T>(PrimitiveKey)!).ToArray();
 
                     // 处理消息
                     await onMessage(msgs, mqMsgs.ToArray(), cancellationToken).ConfigureAwait(false);

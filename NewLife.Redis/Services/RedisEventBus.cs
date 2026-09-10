@@ -7,13 +7,19 @@ using Message = NewLife.Caching.Queues.Message;
 namespace NewLife.Caching.Services;
 
 /// <summary>Redis事件上下文</summary>
-public class RedisEventContext(IEventBus eventBus, Message message) : IEventContext
+public class RedisEventContext : EventContext
 {
-    /// <summary>事件总线</summary>
-    public IEventBus EventBus { get; set; } = eventBus;
-
     /// <summary>原始消息</summary>
-    public Message Message { get; set; } = message;
+    public Message Message { get; set; }
+
+    /// <summary>实例化Redis事件上下文</summary>
+    /// <param name="eventBus">事件总线</param>
+    /// <param name="message">原始消息</param>
+    public RedisEventContext(IEventBus eventBus, Message message)
+    {
+        EventBus = eventBus;
+        Message = message;
+    }
 }
 
 /// <summary>Redis事件总线</summary>
@@ -21,6 +27,12 @@ public class RedisEventContext(IEventBus eventBus, Message message) : IEventCont
 /// <remarks>实例化消息队列事件总线</remarks>
 public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) : EventBus<TEvent>, ITracerFeature
 {
+    /// <summary>发布者标识字段名。消息体中该字段存放发布者ClientId</summary>
+    public const String ClientIdKey = "__clientId";
+
+    /// <summary>是否在消息中附加发布者标识，便于订阅方识别消息来源，默认true</summary>
+    public Boolean AttachClientId { get; set; } = true;
+
     private RedisStream<TEvent>? _queue;
     /// <summary>队列。默认RedisStream实现，借助队列重试机制来确保业务成功</summary>
     public IProducerConsumer<TEvent> Queue => _queue!;
@@ -61,6 +73,9 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
         stream.Group = group;
         stream.FromLastOffset = true;
         stream.Expire = TimeSpan.FromDays(3);
+
+        // 发布消息时附加发布者标识，便于订阅方识别来源
+        stream.FieldEnricher = AttachClientId ? new Dictionary<String, String> { [ClientIdKey] = Runtime.ClientId } : null;
 
         _queue = stream;
     }
@@ -121,9 +136,11 @@ public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) 
     /// <returns></returns>
     protected virtual async Task OnMessage(TEvent @event, Message message, CancellationToken cancellationToken)
     {
-        // 发布到事件总线
+        // 发布到事件总线。携带原始消息与发布者标识，便于订阅方识别来源
         _context ??= new RedisEventContext(this, null!);
         _context.Message = message;
+        _context.Topic = topic;
+        _context.ClientId = message.GetValue(ClientIdKey);
         await base.PublishAsync(@event, _context, cancellationToken).ConfigureAwait(false);
         _context.Message = null!;
     }

@@ -29,40 +29,54 @@ public static class RedisHelper
         var code = Type.GetTypeCode(msg.GetType());
         if (code != TypeCode.String && code != TypeCode.Object) return msg;
 
-        // 注入参数名
-        var name = redis?.Tracer?.AttachParameter;
-        if (name.IsNullOrEmpty()) return msg;
-
-        // 当前埋点追踪片段，正在准备采样
-        var span = DefaultSpan.Current as DefaultSpan;
-        if (span == null || span.TraceFlag == 0) return msg;
+        // 注入参数名与当前埋点追踪片段，未启用追踪或未采样时不注入
+        if (!redis.TryGetTraceField(out var name, out var value)) return msg;
 
         // 注入Json尾部
         if (msg is String str)
         {
             if (str[0] == '{' && str[str.Length - 1] == '}')
                 if (str.IndexOf($"\"{name}\":", StringComparison.OrdinalIgnoreCase) < 0)
-                    return str.Substring(0, str.Length - 1) + $",\"{name}\":\"{span}\"}}";
+                    return str.Substring(0, str.Length - 1) + $",\"{name}\":\"{value}\"}}";
                 else if (str.EndsWithIgnoreCase($",\"{name}\":null}}"))
-                    return str.Substring(0, str.Length - $",\"{name}\":null}}".Length) + $",\"{name}\":\"{span}\"}}";
+                    return str.Substring(0, str.Length - $",\"{name}\":null}}".Length) + $",\"{name}\":\"{value}\"}}";
 
             return msg;
         }
         // 注入字典
-        else if (msg is IDictionary<String, Object> dic)
+        else if (msg is IDictionary<String, Object?> dic)
         {
-            if (!dic.TryGetValue(name, out var val) || val == null) dic[name] = span.ToString();
+            if (!dic.TryGetValue(name, out var val) || val == null) dic[name] = value;
             return dic;
         }
         // 注入复合对象
         else if (code == TypeCode.Object)
         {
             dic = msg.ToDictionary();
-            if (!dic.TryGetValue(name, out var val) || val == null) dic[name] = span.ToString();
+            if (!dic.TryGetValue(name, out var val) || val == null) dic[name] = value;
             return dic;
         }
 
         return msg;
+    }
+
+    /// <summary>获取当前埋点的追踪字段名值。仅当追踪器启用且当前片段正在采样时返回true</summary>
+    /// <param name="redis"></param>
+    /// <param name="name">字段名，来自追踪器的AttachParameter</param>
+    /// <param name="value">字段值，当前追踪片段</param>
+    /// <returns></returns>
+    internal static Boolean TryGetTraceField(this Redis redis, out String name, out String value)
+    {
+        name = redis?.Tracer?.AttachParameter ?? "";
+        value = "";
+        if (name.IsNullOrEmpty()) return false;
+
+        // 当前埋点追踪片段，正在准备采样
+        var span = DefaultSpan.Current as DefaultSpan;
+        if (span == null || span.TraceFlag == 0) return false;
+
+        value = span.ToString();
+        return true;
     }
     #endregion
 

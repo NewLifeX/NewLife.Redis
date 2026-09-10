@@ -92,6 +92,71 @@ public class StreamTests
         Assert.Equal(count + 1, s.Count + 1);
     }
 
+    [RedisFact]
+    public void Stream_Primitive_FieldEnricher()
+    {
+        var key = "stream_Primitive_enricher";
+
+        // 删除已有
+        _redis.Remove(key);
+        var s = _redis.GetStream<Int32>(key);
+        _redis.SetExpire(key, TimeSpan.FromMinutes(60));
+
+        // 附加字段注入，模拟事件总线的发布者标识
+        s.FieldEnricher = new Dictionary<String, String> { ["__clientId"] = "tester" };
+
+        // 添加基础类型
+        var id = s.Add(1234);
+        Assert.False(id.IsNullOrEmpty());
+
+        // 原始读取：数据字段在前，附加字段在后
+        var vs = s.Read("0-0", 3);
+        var message = Assert.Single(vs);
+        var body = message.Body;
+        Assert.NotNull(body);
+        Assert.Equal(s.PrimitiveKey, body[0]);
+        Assert.Equal(1234, message.GetValue(s.PrimitiveKey)!.ToInt());
+        Assert.Equal("tester", message.GetValue("__clientId"));
+
+        // 智能读取：基元类型仍能正确解码
+        var vs2 = s.Take(5).ToList();
+        Assert.Single(vs2);
+        Assert.Equal(1234, vs2[0]);
+    }
+
+    [RedisFact]
+    public void Stream_Array_FieldEnricher()
+    {
+        var key = "stream_Array_enricher";
+
+        // 删除已有
+        _redis.Remove(key);
+        var s = _redis.GetStream<String[]>(key);
+        _redis.SetExpire(key, TimeSpan.FromMinutes(60));
+
+        // 附加字段注入，模拟事件总线的发布者标识
+        s.FieldEnricher = new Dictionary<String, String> { ["__clientId"] = "tester" };
+
+        // 添加数组
+        var id = s.Add(["a", "b"]);
+        Assert.False(id.IsNullOrEmpty());
+
+        // 原始读取：数组数据在前，附加字段在后
+        var vs = s.Read("0-0", 3);
+        var message = Assert.Single(vs);
+        var body = message.Body;
+        Assert.NotNull(body);
+        Assert.Equal("a", body[0]);
+        Assert.Equal("b", body[1]);
+        Assert.Equal("tester", message.GetValue("__clientId"));
+
+        // 智能读取：返回完整字段列表，数据在头部
+        var vs2 = s.Take(5).ToList();
+        Assert.Single(vs2);
+        Assert.Equal("a", vs2[0][0]);
+        Assert.Equal("b", vs2[0][1]);
+    }
+
     class UserInfo
     {
         public String Name { get; set; }
