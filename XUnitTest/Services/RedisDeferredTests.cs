@@ -38,21 +38,29 @@ public class RedisDeferredTests
         var olds = _redis.Search("SiteDayStat:*", 0, 100).ToArray();
         if (olds != null && olds.Length > 0) _redis.Remove(olds);
 
+        // 清理延迟队列集合，避免上次异常中断残留的成员污染本轮状态
+        _redis.Remove("SiteDayStat");
+
         var vv = new[] { Rand.Next(10000), Rand.Next(10000), Rand.Next(10, 1000) };
 
         using var st = new RedisDeferred(_redis, "SiteDayStat");
         st.Period = 2000;
         st.Process += (s, e) =>
         {
-            keys = e.Keys;
-            for (var i = 0; i < keys.Length; i++)
+            var ks = e.Keys;
+            IDictionary<String, Int32>? last = null;
+            for (var i = 0; i < ks.Length; i++)
             {
                 // 模拟业务操作，取回数据，然后删除
-                var ks = new[] { $"{keys[i]}:Total", $"{keys[i]}:Error", $"{keys[i]}:Cost" };
-                vs = _redis.GetAll<Int32>(ks);
-                var rs = _redis.Remove(ks);
+                var arr = new[] { $"{ks[i]}:Total", $"{ks[i]}:Error", $"{ks[i]}:Cost" };
+                last = _redis.GetAll<Int32>(arr);
+                var rs = _redis.Remove(arr);
                 Assert.Equal(3, rs);
             }
+
+            // 全部处理完成后一次性发布，避免测试线程读到循环中间态（远端高延迟叠加时曾高频偶发）
+            vs = last;
+            keys = ks;
         };
 
         // 计算key
