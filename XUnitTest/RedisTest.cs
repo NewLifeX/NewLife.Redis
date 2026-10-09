@@ -298,6 +298,9 @@ public class RedisTest
         var pk2 = ic.Get<IPacket>(key);
 
         Assert.Equal(pk.ToHex(), pk2.ToHex());
+
+        // v12 起 IPacket 为引用计数共享句柄，用后释放
+        pk2.TryDispose();
     }
 
     /// <summary>超大数据包</summary>
@@ -316,6 +319,9 @@ public class RedisTest
         var pk2 = ic.Get<IPacket>(key);
 
         Assert.Equal(pk.ToHex(), pk2.ToHex());
+
+        // v12 起 IPacket 为引用计数共享句柄，用后释放
+        pk2.TryDispose();
     }
 
     [TestOrder(40)]

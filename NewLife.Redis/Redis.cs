@@ -854,6 +854,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
     /// <summary>获取单体</summary>
     /// <param name="key">键</param>
+    /// <remarks>当 <typeparamref name="T"/> 为 <see cref="IPacket"/> 时，返回的是引用计数的共享数据包，调用方使用完毕后应调用 Dispose() 释放。</remarks>
     [return: MaybeNull]
     public override T Get<T>(String key) => Execute(key, (rds, k) => rds.Execute<T>("GET", k));
 

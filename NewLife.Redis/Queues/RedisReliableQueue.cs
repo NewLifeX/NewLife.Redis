@@ -417,7 +417,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
         var acks = new List<String>();
         foreach (var key in rds.Search($"{_Key}:Status:*", 0, 1000))
         {
-            var ackKey = $"{_Key}:Ack:{key.TrimStart($"{_Key}:Status:")}";
+            var ackKey = $"{_Key}:Ack:{key.TrimPrefix($"{_Key}:Status:")}";
             acks.Add(ackKey);
 
             var st = rds.Get<RedisQueueStatus>(key);

@@ -10,7 +10,7 @@
 
 `NewLife.Redis` is a **high-performance / high-throughput / easy-to-integrate** .NET Redis client component built by the NewLife team. Since 2017, it has been running stably on multiple production platforms handling billions of records and high concurrency, processing **80+ billion** command calls daily.
 
-> 📖 Full Documentation: [Requirements (中文)](Doc/需求文档.md) | [Architecture (中文)](Doc/架构文档.md) | [Competitive Analysis (中文)](Doc/竞品分析.md) | [Garnet Compatibility (中文)](Doc/Garnet兼容性.md)
+> 📖 Full Documentation: [Requirements (中文)](Doc/需求文档.md) | [Architecture (中文)](Doc/架构文档.md) | [Competitive Analysis (中文)](Doc/竞品分析.md) | [Garnet Compatibility (中文)](Doc/Garnet兼容性.md) | [AOT Compatibility (中文)](Doc/AOT兼容性分析.md)
 
 ---
 

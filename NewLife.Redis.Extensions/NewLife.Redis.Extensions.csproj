@@ -42,22 +42,28 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.400">
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.401">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
+  <!-- 各目标框架对齐原生主版本最新补丁：禁止统一拍平到 10.x（旧框架消费方会被拽到不支持的 ME 版本）；DataProtection 传递漏洞下限见 GHSA-8q5v-6pqq-x66h -->
   <ItemGroup Condition="'$(TargetFramework)'=='netcoreapp3.1'">
     <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="3.1.32" />
     <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="3.1.32" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="3.1.32" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="3.1.32" />
+    <!-- 传递依赖安全下限：DataProtection→SS.Xml→Permissions→WinExtensions→Drawing（GHSA-rxg9-xrhp-64gj） -->
+    <PackageReference Include="System.Drawing.Common" Version="4.7.3" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='net5.0'">
     <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="5.0.17" />
     <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="5.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="5.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="5.0.0" />
+    <!-- 传递依赖安全下限：SS.Xml 5.x 线无修复版，对齐 6.0.1（GHSA-2m65-m22p-9wjw）；Pkcs 取 6.0.5（修复线 ≥6.0.3，GHSA-555c-2p6r-68mm） -->
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="6.0.1" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="6.0.5" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='net6.0' Or '$(TargetFramework)'=='netstandard2.0' Or '$(TargetFramework)'=='netstandard2.1'">
     <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="6.0.36" />
@@ -70,24 +76,26 @@
     <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="7.0.1" />
+    <!-- 传递依赖安全下限：DataProtection→SS.Xml→Pkcs（GHSA-555c-2p6r-68mm） -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="7.0.3" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='net8.0'">
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="8.0.30" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="8.0.32" />
     <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='net9.0'">
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="9.0.19" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="9.0.19" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.19" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.19" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="9.0.21" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="9.0.21" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.21" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.21" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='net10.0'">
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="10.0.11" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.11" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.11" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.13" />
   </ItemGroup>
 
   <ItemGroup>

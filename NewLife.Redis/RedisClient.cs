@@ -364,9 +364,17 @@ public class RedisClient : DisposeBase
 
         pk.Resize(n);
 
+        // 流式扩容借出的池缓冲需随读取器释放；扩容替换缓冲时初始包已由读取器释放（Dispose 幂等）。
+        // reader 以 ref 传入解析方法，不能用 using 变量，故用 try/finally 释放
         var reader = new SpanReader(ms, pk, 8192);
-
-        return ParseResponse(ms, count, ref reader);
+        try
+        {
+            return ParseResponse(ms, count, ref reader);
+        }
+        finally
+        {
+            reader.Dispose();
+        }
     }
 
     /// <summary>接收单条响应。避免创建List，减少分配</summary>
@@ -384,8 +392,14 @@ public class RedisClient : DisposeBase
         pk.Resize(n);
 
         var reader = new SpanReader(ms, pk, 8192);
-
-        return ParseSingleResponse(ms, ref reader);
+        try
+        {
+            return ParseSingleResponse(ms, ref reader);
+        }
+        finally
+        {
+            reader.Dispose();
+        }
     }
 
     /// <summary>异步接收响应</summary>
@@ -407,8 +421,14 @@ public class RedisClient : DisposeBase
         pk.Resize(n);
 
         var reader = new SpanReader(ms, pk, 8192);
-
-        return ParseResponse(ms, count, ref reader);
+        try
+        {
+            return ParseResponse(ms, count, ref reader);
+        }
+        finally
+        {
+            reader.Dispose();
+        }
     }
 
     /// <summary>异步接收单条响应。避免创建List，减少分配</summary>
@@ -428,8 +448,14 @@ public class RedisClient : DisposeBase
         pk.Resize(n);
 
         var reader = new SpanReader(ms, pk, 8192);
-
-        return ParseSingleResponse(ms, ref reader);
+        try
+        {
+            return ParseSingleResponse(ms, ref reader);
+        }
+        finally
+        {
+            reader.Dispose();
+        }
     }
 
     /// <summary>解析单条响应。避免创建List，减少GC分配</summary>
@@ -1049,6 +1075,7 @@ public class RedisClient : DisposeBase
     /// <param name="cmd"></param>
     /// <param name="args"></param>
     /// <returns></returns>
+    /// <remarks>当 <typeparamref name="TResult"/> 为 <see cref="IPacket"/> 或 <see cref="IPacket"/>[] 时，返回的是引用计数的共享数据包，调用方使用完毕后应调用 Dispose() 释放，否则池化缓冲无法及时归还。</remarks>
     public virtual TResult? Execute<TResult>(String cmd, params Object?[] args)
     {
         // 埋点名称，支持二级命令
@@ -1142,6 +1169,7 @@ public class RedisClient : DisposeBase
     /// <param name="args"></param>
     /// <param name="value"></param>
     /// <returns></returns>
+    /// <remarks>当 <typeparamref name="TResult"/> 为 <see cref="IPacket"/> 或 <see cref="IPacket"/>[] 时，返回的是引用计数的共享数据包，调用方使用完毕后应调用 Dispose() 释放，否则池化缓冲无法及时归还。</remarks>
     public virtual Boolean TryExecute<TResult>(String cmd, Object?[] args, out TResult? value)
     {
         // 埋点名称，支持二级命令

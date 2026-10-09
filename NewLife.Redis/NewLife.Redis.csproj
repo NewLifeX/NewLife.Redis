@@ -49,20 +49,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Common\IPacket.cs" />
-    <Compile Remove="Common\MemorySegment.cs" />
-    <Compile Remove="SpanWriter.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.400">
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.401">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="11.19.2026.901" />
+    <PackageReference Include="NewLife.Core" Version="12.0.2026.1009-beta0916" />
   </ItemGroup>
 
   <ItemGroup>
