@@ -54,7 +54,23 @@ public class RedisSentinel : RedisBase, IRedisCluster, IDisposable
         var showLog = Nodes == null;
         if (showLog) WriteLog("分析[{0}]哨兵节点：", Redis.Name);
 
-        var rs = Redis.Execute(r => r.Execute<String>("INFO", "Sentinel"));
+        // 哨兵节点查询始终显式走原始哨兵地址，避免主节点切换（SetHostServer）后误查数据节点
+        var rs = "";
+        foreach (var item in (Redis.Server ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var server = item.Trim();
+            if (server.IsNullOrEmpty()) continue;
+
+            try
+            {
+                using var client = new RedisClient(Redis, new NetUri(server)) { Log = Redis.ClientLog };
+                rs = client.Execute<String>("INFO", "Sentinel");
+                if (!rs.IsNullOrEmpty()) break;
+            }
+            // 单个哨兵地址不可用时跳过，继续尝试其余地址
+            catch { }
+        }
+
         if (rs.IsNullOrEmpty()) return null;
 
         var rds = Redis as FullRedis;

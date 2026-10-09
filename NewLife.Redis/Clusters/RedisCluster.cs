@@ -196,9 +196,10 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
         var msg = exception.Message;
         if (msg.StartsWithIgnoreCase("MOVED", "ASK"))
         {
-            // 取出地址，找到新的节点
-            var endpoint = msg.Substring(" ");
-            if (!endpoint.IsNullOrEmpty())
+            // 取出地址，找到新的节点。标准格式：MOVED <slot> <host:port>，地址为最后一段
+            var ss = msg.Split(' ');
+            var endpoint = ss.Length > 1 ? ss[^1] : null;
+            if (!endpoint.IsNullOrEmpty() && endpoint.Contains(':'))
             {
                 span?.AppendTag(endpoint);
 

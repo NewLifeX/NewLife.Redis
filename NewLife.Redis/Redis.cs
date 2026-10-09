@@ -420,8 +420,27 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     }
 
     /// <summary>设置服务端地址列表</summary>
+    /// <remarks>哨兵与主从复制在切换主节点时调用。地址变化时清空原连接池，使新地址即时生效（与 Init 更换连接字符串的约定一致）</remarks>
     /// <param name="services"></param>
-    public void SetSevices(NetUri[] services) => _servers = services;
+    public void SetSevices(NetUri[] services)
+    {
+        var changed = _servers == null || services == null || _servers.Length != services.Length;
+        if (!changed)
+        {
+            for (var i = 0; i < _servers!.Length; i++)
+            {
+                if (_servers[i].ToString() != services![i].ToString())
+                {
+                    changed = true;
+                    break;
+                }
+            }
+        }
+
+        _servers = services;
+
+        if (changed) _Pool = null;
+    }
 
     /// <summary>创建连接客户端</summary>
     /// <returns></returns>

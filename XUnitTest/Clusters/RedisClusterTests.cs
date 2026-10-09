@@ -104,4 +104,28 @@ public class RedisClusterTests
                 Assert.Equal(last, node);
         }
     }
+
+    [Fact(DisplayName = "MOVED 重定向解析端点")]
+    public void ReselectNodeMoved()
+    {
+        var cluster = new FakeCluster(new Redis());
+        var node = new ClusterNode { EndPoint = "127.0.0.1:6001", LinkState = 1 };
+
+        // 标准 MOVED 格式携带槽位：MOVED <slot> <host:port>，应取最后一段作为新节点地址
+        var node2 = cluster.ReselectNode("kkk", true, node, new RedisException("MOVED 8338 127.0.0.1:7001"));
+
+        Assert.Equal("127.0.0.1:7001", cluster.LastEndpoint);
+        Assert.Null(node2);
+    }
+
+    private class FakeCluster(Redis redis) : RedisCluster(redis)
+    {
+        public String? LastEndpoint { get; private set; }
+
+        public override ClusterNode? Map(String endpoint, String key)
+        {
+            LastEndpoint = endpoint;
+            return null;
+        }
+    }
 }
