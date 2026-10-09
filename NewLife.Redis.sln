@@ -30,6 +30,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebDemo", "Samples\WebDemo\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RedisSwitch", "Samples\RedisSwitch\RedisSwitch.csproj", "{8A0E07D1-2277-4013-8B20-E8707AB7220C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AotSmoke", "AotSmoke\AotSmoke.csproj", "{78EDB612-1BC5-4D4D-AE27-57F27E228BD8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -136,6 +138,18 @@ Global
 		{8A0E07D1-2277-4013-8B20-E8707AB7220C}.Release|x64.Build.0 = Release|Any CPU
 		{8A0E07D1-2277-4013-8B20-E8707AB7220C}.Release|x86.ActiveCfg = Release|Any CPU
 		{8A0E07D1-2277-4013-8B20-E8707AB7220C}.Release|x86.Build.0 = Release|Any CPU
+		{78EDB612-1BC5-4D4D-AE27-57F27E228BD8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{78EDB612-1BC5-4D4D-AE27-57F27E228BD8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{78EDB612-1BC5-4D4D-AE27-57F27E228BD8}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{78EDB612-1BC5-4D4D-AE27-57F27E228BD8}.Debug|x64.Build.0 = Debug|Any CPU
+		{78EDB612-1BC5-4D4D-AE27-57F27E228BD8}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{78EDB612-1BC5-4D4D-AE27-57F27E228BD8}.Debug|x86.Build.0 = Debug|Any CPU
+		{78EDB612-1BC5-4D4D-AE27-57F27E228BD8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{78EDB612-1BC5-4D4D-AE27-57F27E228BD8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{78EDB612-1BC5-4D4D-AE27-57F27E228BD8}.Release|x64.ActiveCfg = Release|Any CPU
+		{78EDB612-1BC5-4D4D-AE27-57F27E228BD8}.Release|x64.Build.0 = Release|Any CPU
+		{78EDB612-1BC5-4D4D-AE27-57F27E228BD8}.Release|x86.ActiveCfg = Release|Any CPU
+		{78EDB612-1BC5-4D4D-AE27-57F27E228BD8}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,0 +1,54 @@
+name: aot
+
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+  workflow_dispatch:
+
+jobs:
+  analyzer:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup dotNET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: |
+          10.x
+    - name: 库侧 AOT 分析器（net8.0 IsAotCompatible，要求 0 告警）
+      run: |
+        set -o pipefail
+        dotnet build NewLife.Redis/NewLife.Redis.csproj -f net8.0 -c Release 2>&1 | tee analyzer-core.log
+        dotnet build NewLife.Redis.Extensions/NewLife.Redis.Extensions.csproj -f net8.0 -c Release 2>&1 | tee analyzer-ext.log
+        if grep -E "warning IL[0-9]+" analyzer-core.log analyzer-ext.log; then
+          echo "::error::存在 AOT/裁剪分析器告警，必须清零"
+          exit 1
+        fi
+
+  smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup dotNET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: |
+          10.x
+    - name: Redis Server
+      uses: nnhy/redis-github-action@v1.0
+    - name: JIT 基线冒烟
+      run: dotnet run -c Release --project AotSmoke/AotSmoke.csproj
+    - name: NativeAOT 发布（linux-x64，要求 0 条 IL 告警）
+      run: |
+        set -o pipefail
+        dotnet publish AotSmoke/AotSmoke.csproj -c Release -r linux-x64 -o out 2>&1 | tee publish.log
+        if grep -E "warning IL[0-9]+" publish.log; then
+          echo "::error::ILC 发布存在告警，必须清零"
+          exit 1
+        fi
+    - name: NativeAOT 运行冒烟
+      run: ./out/AotSmoke
