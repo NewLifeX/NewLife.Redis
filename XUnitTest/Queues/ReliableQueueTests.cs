@@ -634,8 +634,8 @@ public class ReliableQueueTests
         var v2 = await queue.TakeOneAsync(5);
         sw.Stop();
         Assert.Equal("1234", v2);
-        // 延迟队列没有阻塞方法，需要等1秒
-        Assert.True(sw.ElapsedMilliseconds >= 2000);
+        // 延迟队列没有阻塞方法，需要等1秒。延迟集合 score 为秒级时间戳，最多提前1秒到期，故仅校验未立即投递
+        Assert.True(sw.ElapsedMilliseconds >= 1000);
         queue.Acknowledge(v2);
     }
 
