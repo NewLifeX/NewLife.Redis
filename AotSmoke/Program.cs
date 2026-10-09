@@ -2,7 +2,10 @@ using System.Runtime.CompilerServices;
 using NewLife;
 using NewLife.Caching;
 using NewLife.Caching.Queues;
+using NewLife.Caching.Services;
+using NewLife.Messaging;
 using NewLife.Serialization;
+using QueueMessage = NewLife.Caching.Queues.Message;
 
 var fail = 0;
 
@@ -11,6 +14,20 @@ void Check(String name, Action action)
     try
     {
         action();
+        Console.WriteLine($"[PASS] {name}");
+    }
+    catch (Exception ex)
+    {
+        fail++;
+        Console.WriteLine($"[FAIL] {name}: {ex.GetType().Name} - {ex.Message}");
+    }
+}
+
+async Task CheckAsync(String name, Func<Task> action)
+{
+    try
+    {
+        await action();
         Console.WriteLine($"[PASS] {name}");
     }
     catch (Exception ex)
@@ -83,6 +100,30 @@ Check("可靠队列 生产/消费", () =>
     if (item != "job-r1") throw new InvalidOperationException($"取出：{item ?? "<null>"}");
 });
 
+Check("泛型弹列 BLPOP/BRPOP（JSON 解码）", () =>
+{
+    redis.Remove("aot:blpop");
+    var list1 = redis.GetList<Order>("aot:blpop");
+    list1.Add(new Order { Id = 71, Name = "头" });
+    var v1 = redis.BLPOP<Order>("aot:blpop", 2);
+    if (v1?.Id != 71) throw new InvalidOperationException($"BLPOP：{v1?.Id}");
+
+    redis.Remove("aot:brpop");
+    var list2 = redis.GetList<Order>("aot:brpop");
+    list2.Add(new Order { Id = 72, Name = "尾" });
+    var v2 = redis.BRPOP<Order>("aot:brpop", 2);
+    if (v2?.Id != 72) throw new InvalidOperationException($"BRPOP：{v2?.Id}");
+});
+
+Check("延迟队列 延迟投递", () =>
+{
+    redis.Remove("aot:dq*");
+    var queue = redis.GetDelayQueue<Order>("aot:dq");
+    queue.Add(new Order { Id = 51, Name = "延迟" }, 1);
+    var item = queue.TakeOne(8);
+    if (item?.Id != 51) throw new InvalidOperationException($"取出：{item?.Id}");
+});
+
 Check("JsonHelper 泛型往返", () =>
 {
     var order = new Order { Id = 7, Name = "序列化", Time = new DateTime(2026, 10, 9) };
@@ -148,9 +189,33 @@ Check("Message 字段解码（GetBody 反射路径）", () =>
     var detail = new Detail { Sku = 9 };
     // 泛型入口保根：AOT 下反射解码嵌套类型要求其成员元数据被保留（等价于静态引用/上下文声明）
     _ = JsonHelper.ToJsonEntity<Detail>(JsonHelper.ToJson(detail));
-    var msg = new Message { Body = ["Id", "42", "Name", "字段", "Detail", JsonHelper.ToJson(detail)] };
+    var msg = new QueueMessage { Body = ["Id", "42", "Name", "字段", "Detail", JsonHelper.ToJson(detail)] };
     var order = msg.GetBody<OrderDetail>();
     if (order?.Id != 42 || order?.Name != "字段" || order?.Detail?.Sku != 9) throw new InvalidOperationException("字段解码失败");
+});
+
+await CheckAsync("事件总线 发布/订阅", async () =>
+{
+    var topic = "aot:bus:" + Guid.NewGuid().ToString("N")[..8];
+    using var bus = new RedisEventBus<Order>(redis, topic, "aot-group");
+
+    var source = new TaskCompletionSource<Order>(TaskCreationOptions.RunContinuationsAsynchronously);
+    bus.Subscribe((evt, ctx, ct) =>
+    {
+        source.TrySetResult(evt);
+        return Task.CompletedTask;
+    });
+
+    // 稍等消费循环就绪后发布，规避“从最后位置消费”的时序竞态
+    await Task.Delay(1_500);
+    await bus.PublishAsync(new Order { Id = 61, Name = "事件" });
+
+    var completed = await Task.WhenAny(source.Task, Task.Delay(15_000));
+    if (completed != source.Task) throw new InvalidOperationException("事件未在 15 秒内送达");
+    var evt = await source.Task;
+    if (evt?.Id != 61) throw new InvalidOperationException($"事件内容不符：{evt?.Id}");
+
+    redis.Remove(topic);
 });
 
 redis.Remove("aot:str");
@@ -159,6 +224,9 @@ redis.Remove("aot:hash");
 redis.Remove("aot:list");
 redis.Remove("aot:queue");
 redis.Remove("aot:rq*");
+redis.Remove("aot:blpop");
+redis.Remove("aot:brpop");
+redis.Remove("aot:dq*");
 redis.Remove("aot:order");
 redis.Remove("aot:dic");
 redis.Remove("aot:objdic");
