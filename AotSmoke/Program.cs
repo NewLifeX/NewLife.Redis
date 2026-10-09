@@ -1,6 +1,8 @@
+using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using NewLife;
 using NewLife.Caching;
+using NewLife.Caching.Clusters;
 using NewLife.Caching.Queues;
 using NewLife.Caching.Services;
 using NewLife.Messaging;
@@ -35,6 +37,28 @@ async Task CheckAsync(String name, Func<Task> action)
         fail++;
         Console.WriteLine($"[FAIL] {name}: {ex.GetType().Name} - {ex.Message}");
     }
+}
+
+void CheckTopo(String name, String endpoint, Action action)
+{
+    var ss = endpoint.Split(':');
+    var host = ss[0];
+    var port = ss.Length > 1 ? ss[1].ToInt() : 0;
+    var ok = false;
+    try
+    {
+        using var client = new TcpClient();
+        ok = client.ConnectAsync(host, port).Wait(1000) && client.Connected;
+    }
+    catch { }
+
+    if (!ok)
+    {
+        Console.WriteLine($"[SKIP] {name}（拓扑 {endpoint} 未提供）");
+        return;
+    }
+
+    Check(name, action);
 }
 
 Console.WriteLine("== NewLife.Redis NativeAOT 冒烟 ==");
@@ -267,6 +291,48 @@ await CheckAsync("PubSub 发布/订阅", async () =>
     if (completed != source.Task) throw new InvalidOperationException("消息未在 10 秒内送达");
     var msg = await source.Task;
     if (msg != "pubsub-hello") throw new InvalidOperationException($"消息内容不符：{msg}");
+});
+
+var clusterEndpoint = Environment.GetEnvironmentVariable("AOT_CLUSTER") ?? "127.0.0.1:7000";
+var sentinelEndpoint = Environment.GetEnvironmentVariable("AOT_SENTINEL") ?? "127.0.0.1:26379";
+
+CheckTopo("集群模式 路由存取", clusterEndpoint, () =>
+{
+    using var cluster = new FullRedis(clusterEndpoint, null!, 0) { Timeout = 3000, AutoDetect = true };
+    cluster.InitCluster();
+    if (!"cluster".EqualIgnoreCase(cluster.Mode)) throw new InvalidOperationException($"未识别为集群模式：{cluster.Mode}");
+
+    var keys = new[] { "aot:c1", "{tag}a", "{tag}b", "aot:c2" };
+    foreach (var k in keys) cluster.Set(k, "v-" + k);
+    foreach (var k in keys)
+    {
+        var v = cluster.Get<String>(k);
+        if (v != "v-" + k) throw new InvalidOperationException($"{k} 读回：{v}");
+    }
+
+    // 跨节点批量获取。MGET 要求同槽，这里使用同槽键验证分组后批量执行
+    var dic = cluster.GetAll<String>(["{tag}a", "{tag}b"]);
+    if (dic == null || dic.Count != 2) throw new InvalidOperationException($"批量读取：{dic?.Count}");
+
+    foreach (var k in keys) cluster.Remove(k);
+});
+
+CheckTopo("哨兵 节点发现与主从寻址", sentinelEndpoint, () =>
+{
+    using var sentinel = new RedisSentinel(new FullRedis(sentinelEndpoint, null!, 0) { Timeout = 3000 });
+    var nodes = sentinel.GetNodes();
+    if (nodes == null || nodes.Count == 0) throw new InvalidOperationException("未发现任何节点");
+    var masters = sentinel.Replication?.Masters;
+    if (masters == null || masters.Length == 0) throw new InvalidOperationException("未解析到主节点");
+    Console.WriteLine($"       发现节点 {nodes.Count} 个，主节点 {masters.Length} 个");
+
+    // 经哨兵寻址后数据存取
+    using var sr = new FullRedis(sentinelEndpoint, null!, 0) { Timeout = 3000, AutoDetect = true };
+    sr.InitCluster();
+    sr.Set("aot:sentinel", "v-s");
+    var v = sr.Get<String>("aot:sentinel");
+    if (v != "v-s") throw new InvalidOperationException($"读回：{v}");
+    sr.Remove("aot:sentinel");
 });
 
 redis.Remove("aot:str");

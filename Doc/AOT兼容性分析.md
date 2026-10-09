@@ -6,7 +6,7 @@
 
 ## 1. 现状摘要
 
-- **库侧已达标**：主库与扩展包在 net8.0 目标常驻 `IsAotCompatible`，分析器扫描与 ILC 发布均 **0 条 AOT 告警**；核心链路 **21 场景三形态（JIT/裁剪/AOT）全通**（连接、RESP3、字符串、计数、哈希、列表、队列、可靠队列、泛型弹列、延迟队列、Stream、事件总线、多消费组队列、PubSub、JSON 对象/数组/字典、Message 字段解码）。
+- **库侧已达标**：主库与扩展包在 net8.0 目标常驻 `IsAotCompatible`，分析器扫描与 ILC 发布均 **0 条 AOT 告警**；核心链路 **23 场景三形态（JIT/裁剪/AOT）全通**（连接、RESP3、字符串、计数、哈希、列表、队列、可靠队列、泛型弹列、延迟队列、Stream、事件总线、多消费组队列、PubSub、JSON 对象/数组/字典、Message 字段解码、集群路由、哨兵主从寻址）。
 - **工程化配套就绪**：`AotSmoke` 冒烟工程入仓（JIT/AOT 双跑、非 0 退出码即失败），`aot.yml` CI 防回归（分析器告警阻断 + linux-x64 原生发布运行冒烟）。
 - **改造前基线**：主库原目标框架 net45/net461/netstandard2.0/netstandard2.1，不含 net8.0+ 且未启用分析器；net8.0 + IsAotCompatible 实测 **6 条 AOT 告警**（已全部处置，见 §2.2 处置档案）。
 - **已知边界**：AOT 下 JSON 主机按动态代码能力显式选择（JIT=SystemJson / AOT=FastJson，属有意设计，见 §2.4）；运行期类型与嵌套类型的反射解码要求调用方以泛型入口或静态引用保根（§3）。
@@ -15,7 +15,7 @@
 
 ## 2. 实测数据
 
-### 2.1 冒烟矩阵（21 场景，JIT/裁剪/AOT 三形态）
+### 2.1 冒烟矩阵（23 场景，JIT/裁剪/AOT 三形态）
 
 | # | 场景 | # | 场景 |
 |---|------|---|------|
@@ -29,10 +29,12 @@
 | 8 | 可靠队列 生产/消费（`GetReliableQueue<T>`） | 19 | 事件总线 发布/订阅（`RedisEventBus<T>`） |
 | 9 | JsonHelper 泛型往返 | 20 | 多消费组队列 发布/订阅（`MultipleConsumerGroupsQueue<T>`） |
 | 10 | 自定义对象 Redis 存取（编码器链路） | 21 | PubSub 发布/订阅（`PubSub`） |
-| 11 | 复杂类型字典 JSON 存取（`Dictionary<String,Int32>`） | | |
+| 11 | 复杂类型字典 JSON 存取（`Dictionary<String,Int32>`） | 22 | 集群模式 路由存取（`FullRedis` 集群发现 + MOVED 重定向 + 同槽批量） |
+|  |  | 23 | 哨兵 节点发现与主从寻址（`RedisSentinel` 发现/切换/数据面） |
 
 > 冒烟工程：仓库 `AotSmoke/`（`<PublishAot>true</PublishAot>`，JIT/AOT 运行均固定严格 AOT 姿态：`IsDynamicCodeSupported=False`）。
 > 环境：.NET SDK 10.0.401 + win-x64 NativeAOT + 本机 Redis 6.2.5；逐场景 PASS/FAIL，非 0 退出码即失败。
+> 拓扑场景（22/23）自带 `CheckTopo` TCP 探测：本机未运行集群/哨兵时自动 SKIP，不影响无拓扑环境（如 CI）的其余场景判定。
 
 ### 2.2 分析器扫描（库侧，net8.0 + IsAotCompatible）
 
@@ -65,17 +67,27 @@
 | 改造后 AOT / 动态代码不可用 | `FastJson` | `RuntimeFeature.IsDynamicCodeSupported` 显式守卫回退（有意设计） |
 
 - AOT 回退 FastJson 属有意设计：实测 SystemJson 在原生编译下对 `Dictionary<String,Int32>` 等泛型集合缺少转换器原生代码（`DictionaryOfTKeyTValueConverter` 抛 `NotSupportedException`），而 FastJson 对静态保根类型全通。
-- 21 场景在三种发布形态下实测均通过（JIT/裁剪/NativeAOT）；差异影响序列化细节（格式/性能），使用时以实际主机行为为准。
+- 23 场景在三种发布形态下实测均通过（JIT/裁剪/NativeAOT）；差异影响序列化细节（格式/性能），使用时以实际主机行为为准。
 
 ### 2.5 部署形态矩阵（同一冒烟工程）
 
 | 形态 | 发布方式 | 结果 | JSON 主机 | IL 告警 |
 |------|---------|------|-----------|---------|
-| JIT（严格 AOT 姿态） | `dotnet run -c Release` | 21/21 | FastJson | — |
-| 裁剪发布 | `PublishTrimmed`（项目属性内设定） | 21/21 | SystemJson | 0 |
-| NativeAOT | `dotnet publish -r win-x64` | 21/21 | FastJson | 0 |
+| JIT（严格 AOT 姿态） | `dotnet run -c Release` | 23/23 | FastJson | — |
+| 裁剪发布 | `PublishTrimmed`（项目属性内设定） | 23/23 | SystemJson | 0 |
+| NativeAOT | `dotnet publish -r win-x64` | 23/23 | FastJson | 0 |
 
 > 注意：`-p:PublishTrimmed=true` / `-p:PublishAot=true` 等发布属性**不能经命令行全局属性传入**——会波及主库 net45 等目标并报 NETSDK1124/NETSDK1207，必须写在应用工程属性组内（与 NewLife.Core 的口径一致）。
+
+### 2.6 拓扑场景带出的库缺陷修复（随 AOT 冒烟扩展一并落地）
+
+集群/哨兵场景在 AOT 姿态下实测时，暴露出三个与 AOT 无关的存量库缺陷，均已修复并留回归测试：
+
+| # | 缺陷 | 影响 | 修复 |
+|---|------|------|------|
+| 1 | 集群 MOVED/ASK 重定向端点解析错误（`RedisCluster.ReselectNode`） | 分隔符取串语义偏差导致端点串带前导槽号，重定向匹配失败，集群读写随机失败 | 改 `Split(' ')` 取末段并要求含 `:`；新增确定性回归测试 `RedisClusterTests.ReselectNodeMoved` |
+| 2 | 哨兵/集群切换后连接池未失效（`Redis.SetSevices`） | 地址变化后旧连接池仍指向旧节点，数据面持续打向哨兵而非主节点（unknown command SET） | 地址变化时清空连接池（`_Pool = null`，与 `Init` 换连接串约定一致），由下次取用重建 |
+| 3 | 哨兵节点刷新查询错对象（`RedisSentinel.GetNodes`） | 切换后数据连接已指向主节点，再查 `INFO Sentinel` 打在主节点上取不到监控信息，节点刷新返回空 | 改为显式遍历 `Redis.Server` 原始哨兵地址逐地址查询，失败跳过 |
 
 ---
 
@@ -96,7 +108,7 @@
 |---|--------|---------|------|
 | 1 | net8.0 目标框架 | 主库新增 net8.0（同一套源码）；主库与扩展包常驻启用 `IsAotCompatible` | ✅ |
 | 2 | AOT 告警清零 | 6 条告警全部处置（注解传导 + 边界声明 + 静态数组构造），分析器与 ILC 均 0 告警 | ✅ |
-| 3 | 冒烟工程入仓 | `AotSmoke/`（21 场景，含 RESP3、可靠队列、泛型弹列、延迟队列、事件总线、多消费组队列、PubSub 与 Message 字段解码），纳入解决方案 | ✅ |
+| 3 | 冒烟工程入仓 | `AotSmoke/`（23 场景，含 RESP3、可靠队列、泛型弹列、延迟队列、事件总线、多消费组队列、PubSub、Message 字段解码与集群/哨兵拓扑），纳入解决方案 | ✅ |
 | 4 | CI 防回归 | `.github/workflows/aot.yml`：分析器告警阻断 + linux-x64 NativeAOT 发布运行冒烟 | ✅ |
 | 5 | 文档与声明 | 本文档更新；Readme 中英文增补 NativeAOT 支持说明 | ✅ |
 
@@ -111,6 +123,10 @@ dotnet build NewLife.Redis.Extensions\NewLife.Redis.Extensions.csproj -f net8.0 
 
 # 2) 冒烟（JIT 基线；需本机 Redis 127.0.0.1:6379）
 dotnet run -c Release --project AotSmoke\AotSmoke.csproj
+
+# 2.1) 可选：拓扑场景（集群 7000-7002 / 哨兵主 7480 + 哨兵 26379），未运行时自动 SKIP
+#      启动实例：集群节点 conf 需 cluster-enabled yes；哨兵 conf 需 sentinel monitor <主名> 127.0.0.1 7480 1
+redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 --cluster-replicas 0 --cluster-yes
 
 # 3) 冒烟（NativeAOT 真编译；期望 0 条 IL 告警）
 dotnet publish AotSmoke\AotSmoke.csproj -c Release -r win-x64 -o out
