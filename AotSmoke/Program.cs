@@ -50,6 +50,15 @@ Check("连接与服务器信息", () =>
     Console.WriteLine($"       服务器版本：{ver}");
 });
 
+Check("RESP3 协议（HELLO 3 协商）", () =>
+{
+    using var r3 = new FullRedis("127.0.0.1:6379", null!, 14) { ProtocolVersion = 3, Timeout = 3000 };
+    r3.Set("aot:resp3", "hello3");
+    var v = r3.Get<String>("aot:resp3");
+    if (v != "hello3") throw new InvalidOperationException($"读回：{v}");
+    r3.Remove("aot:resp3");
+});
+
 Check("字符串 Set/Get", () =>
 {
     redis.Set("aot:str", "hello-aot");
@@ -218,6 +227,48 @@ await CheckAsync("事件总线 发布/订阅", async () =>
     redis.Remove(topic);
 });
 
+await CheckAsync("多消费组队列 发布/订阅", async () =>
+{
+    redis.Remove("aot:mcq*");
+    // 多消费组队列的 Dispose 会释放传入的 Redis 实例，使用独立连接
+    using var mcqRedis = new FullRedis("127.0.0.1:6379", null!, 14) { Timeout = 3000 };
+    using var mcq = new MultipleConsumerGroupsQueue<Order>();
+    mcq.Connect(mcqRedis, "aot:mcq");
+
+    var source = new TaskCompletionSource<Order>(TaskCreationOptions.RunContinuationsAsynchronously);
+    mcq.Received += (msgId, data) => source.TrySetResult(data);
+
+    mcq.Subscribe("aot-app");
+    // 稍等消费组与消费循环就绪后发布
+    await Task.Delay(1_500);
+    mcq.Publish(new Order { Id = 81, Name = "多组" });
+
+    var completed = await Task.WhenAny(source.Task, Task.Delay(15_000));
+    if (completed != source.Task) throw new InvalidOperationException("消息未在 15 秒内送达");
+    var evt = await source.Task;
+    if (evt?.Id != 81) throw new InvalidOperationException($"消息内容不符：{evt?.Id}");
+
+    mcq.UnSubscribe();
+});
+
+await CheckAsync("PubSub 发布/订阅", async () =>
+{
+    using var cts = new CancellationTokenSource(5_000);
+    var pb = new PubSub(redis, "aot:pb");
+
+    var source = new TaskCompletionSource<String>(TaskCreationOptions.RunContinuationsAsynchronously);
+    _ = Task.Run(() => pb.SubscribeAsync((t, s) => source.TrySetResult(s), cts.Token));
+
+    // 稍等订阅就绪后发布
+    await Task.Delay(500);
+    pb.Publish("pubsub-hello");
+
+    var completed = await Task.WhenAny(source.Task, Task.Delay(10_000));
+    if (completed != source.Task) throw new InvalidOperationException("消息未在 10 秒内送达");
+    var msg = await source.Task;
+    if (msg != "pubsub-hello") throw new InvalidOperationException($"消息内容不符：{msg}");
+});
+
 redis.Remove("aot:str");
 redis.Remove("aot:num");
 redis.Remove("aot:hash");
@@ -227,6 +278,7 @@ redis.Remove("aot:rq*");
 redis.Remove("aot:blpop");
 redis.Remove("aot:brpop");
 redis.Remove("aot:dq*");
+redis.Remove("aot:mcq*");
 redis.Remove("aot:order");
 redis.Remove("aot:dic");
 redis.Remove("aot:objdic");

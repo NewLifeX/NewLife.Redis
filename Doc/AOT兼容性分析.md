@@ -6,7 +6,7 @@
 
 ## 1. 现状摘要
 
-- **库侧已达标**：主库与扩展包在 net8.0 目标常驻 `IsAotCompatible`，分析器扫描与 ILC 发布均 **0 条 AOT 告警**；核心链路 **18 场景 JIT/AOT 双通**（连接、字符串、计数、哈希、列表、队列、可靠队列、泛型弹列、延迟队列、Stream、事件总线、JSON 对象/数组/字典、Message 字段解码）。
+- **库侧已达标**：主库与扩展包在 net8.0 目标常驻 `IsAotCompatible`，分析器扫描与 ILC 发布均 **0 条 AOT 告警**；核心链路 **21 场景三形态（JIT/裁剪/AOT）全通**（连接、RESP3、字符串、计数、哈希、列表、队列、可靠队列、泛型弹列、延迟队列、Stream、事件总线、多消费组队列、PubSub、JSON 对象/数组/字典、Message 字段解码）。
 - **工程化配套就绪**：`AotSmoke` 冒烟工程入仓（JIT/AOT 双跑、非 0 退出码即失败），`aot.yml` CI 防回归（分析器告警阻断 + linux-x64 原生发布运行冒烟）。
 - **改造前基线**：主库原目标框架 net45/net461/netstandard2.0/netstandard2.1，不含 net8.0+ 且未启用分析器；net8.0 + IsAotCompatible 实测 **6 条 AOT 告警**（已全部处置，见 §2.2 处置档案）。
 - **已知边界**：AOT 下 JSON 主机按动态代码能力显式选择（JIT=SystemJson / AOT=FastJson，属有意设计，见 §2.4）；运行期类型与嵌套类型的反射解码要求调用方以泛型入口或静态引用保根（§3）。
@@ -15,19 +15,21 @@
 
 ## 2. 实测数据
 
-### 2.1 冒烟矩阵（18 场景，JIT/AOT 双通）
+### 2.1 冒烟矩阵（21 场景，JIT/裁剪/AOT 三形态）
 
 | # | 场景 | # | 场景 |
 |---|------|---|------|
-| 1 | 连接与服务器信息（INFO/版本） | 10 | 复杂类型字典 JSON 存取（`Dictionary<String,Int32>`） |
-| 2 | 字符串 Set/Get | 11 | Object 值字典 JSON 存取（`Dictionary<String,Object>`） |
-| 3 | 整数 INCR | 12 | Stream 追加/读取（`GetStream<T>`） |
-| 4 | Hash 字典 | 13 | 列表范围读取（LRANGE→`T[]`，Array 转换分支） |
-| 5 | List 列表 | 14 | JSON 数组 存取（`T[]` 经编码器） |
-| 6 | 队列 生产/消费（`GetQueue<T>`） | 15 | 泛型弹列 BLPOP/BRPOP（JSON 解码） |
-| 7 | 可靠队列 生产/消费（`GetReliableQueue<T>`） | 16 | 延迟队列 延迟投递（`GetDelayQueue<T>`） |
-| 8 | JsonHelper 泛型往返 | 17 | Message 字段解码（`GetBody<T>` 反射路径，含嵌套类型） |
-| 9 | 自定义对象 Redis 存取（编码器链路） | 18 | 事件总线 发布/订阅（`RedisEventBus<T>`） |
+| 1 | 连接与服务器信息（INFO/版本） | 12 | Object 值字典 JSON 存取（`Dictionary<String,Object>`） |
+| 2 | RESP3 协议（HELLO 3 协商） | 13 | Stream 追加/读取（`GetStream<T>`） |
+| 3 | 字符串 Set/Get | 14 | 列表范围读取（LRANGE→`T[]`，Array 转换分支） |
+| 4 | 整数 INCR | 15 | JSON 数组 存取（`T[]` 经编码器） |
+| 5 | Hash 字典 | 16 | 泛型弹列 BLPOP/BRPOP（JSON 解码） |
+| 6 | List 列表 | 17 | 延迟队列 延迟投递（`GetDelayQueue<T>`） |
+| 7 | 队列 生产/消费（`GetQueue<T>`） | 18 | Message 字段解码（`GetBody<T>` 反射路径，含嵌套类型） |
+| 8 | 可靠队列 生产/消费（`GetReliableQueue<T>`） | 19 | 事件总线 发布/订阅（`RedisEventBus<T>`） |
+| 9 | JsonHelper 泛型往返 | 20 | 多消费组队列 发布/订阅（`MultipleConsumerGroupsQueue<T>`） |
+| 10 | 自定义对象 Redis 存取（编码器链路） | 21 | PubSub 发布/订阅（`PubSub`） |
+| 11 | 复杂类型字典 JSON 存取（`Dictionary<String,Int32>`） | | |
 
 > 冒烟工程：仓库 `AotSmoke/`（`<PublishAot>true</PublishAot>`，JIT/AOT 运行均固定严格 AOT 姿态：`IsDynamicCodeSupported=False`）。
 > 环境：.NET SDK 10.0.401 + win-x64 NativeAOT + 本机 Redis 6.2.5；逐场景 PASS/FAIL，非 0 退出码即失败。
@@ -63,7 +65,17 @@
 | 改造后 AOT / 动态代码不可用 | `FastJson` | `RuntimeFeature.IsDynamicCodeSupported` 显式守卫回退（有意设计） |
 
 - AOT 回退 FastJson 属有意设计：实测 SystemJson 在原生编译下对 `Dictionary<String,Int32>` 等泛型集合缺少转换器原生代码（`DictionaryOfTKeyTValueConverter` 抛 `NotSupportedException`），而 FastJson 对静态保根类型全通。
-- 18 场景在两种主机下实测均通过；差异影响序列化细节（格式/性能），使用时以实际主机行为为准。
+- 21 场景在三种发布形态下实测均通过（JIT/裁剪/NativeAOT）；差异影响序列化细节（格式/性能），使用时以实际主机行为为准。
+
+### 2.5 部署形态矩阵（同一冒烟工程）
+
+| 形态 | 发布方式 | 结果 | JSON 主机 | IL 告警 |
+|------|---------|------|-----------|---------|
+| JIT（严格 AOT 姿态） | `dotnet run -c Release` | 21/21 | FastJson | — |
+| 裁剪发布 | `PublishTrimmed`（项目属性内设定） | 21/21 | SystemJson | 0 |
+| NativeAOT | `dotnet publish -r win-x64` | 21/21 | FastJson | 0 |
+
+> 注意：`-p:PublishTrimmed=true` / `-p:PublishAot=true` 等发布属性**不能经命令行全局属性传入**——会波及主库 net45 等目标并报 NETSDK1124/NETSDK1207，必须写在应用工程属性组内（与 NewLife.Core 的口径一致）。
 
 ---
 
@@ -84,7 +96,7 @@
 |---|--------|---------|------|
 | 1 | net8.0 目标框架 | 主库新增 net8.0（同一套源码）；主库与扩展包常驻启用 `IsAotCompatible` | ✅ |
 | 2 | AOT 告警清零 | 6 条告警全部处置（注解传导 + 边界声明 + 静态数组构造），分析器与 ILC 均 0 告警 | ✅ |
-| 3 | 冒烟工程入仓 | `AotSmoke/`（18 场景，含可靠队列、泛型弹列、延迟队列、事件总线与 Message 字段解码），纳入解决方案 | ✅ |
+| 3 | 冒烟工程入仓 | `AotSmoke/`（21 场景，含 RESP3、可靠队列、泛型弹列、延迟队列、事件总线、多消费组队列、PubSub 与 Message 字段解码），纳入解决方案 | ✅ |
 | 4 | CI 防回归 | `.github/workflows/aot.yml`：分析器告警阻断 + linux-x64 NativeAOT 发布运行冒烟 | ✅ |
 | 5 | 文档与声明 | 本文档更新；Readme 中英文增补 NativeAOT 支持说明 | ✅ |
 
