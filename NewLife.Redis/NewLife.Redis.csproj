@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net45;net461;netstandard2.0;netstandard2.1</TargetFrameworks>
+    <TargetFrameworks>net45;net461;netstandard2.0;netstandard2.1;net8.0</TargetFrameworks>
     <AssemblyName>NewLife.Redis</AssemblyName>
     <RootNamespace>NewLife.Caching</RootNamespace>
     <AssemblyTitle>新生命Redis客户端</AssemblyTitle>
@@ -22,6 +22,11 @@
     <NoWarn>1701;1702;NU5104;NU1505;NETSDK1138;CS7035</NoWarn>
     <AnalysisLevel>latest</AnalysisLevel>
     <WarningsAsErrors>CA2007</WarningsAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">
+    <!-- net8.0+ 常驻启用裁剪与 AOT 分析器，保证库侧静态校验门禁 -->
+    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
   <PropertyGroup>

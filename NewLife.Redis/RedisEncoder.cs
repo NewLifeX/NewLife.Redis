@@ -1,4 +1,5 @@
-﻿using NewLife.Data;
+using System.Runtime.CompilerServices;
+using NewLife.Data;
 using NewLife.Reflection;
 using NewLife.Serialization;
 
@@ -18,6 +19,11 @@ public class RedisJsonEncoder : DefaultPacketEncoder
 
     internal static IJsonHost GetJsonHost()
     {
+#if NET8_0_OR_GREATER
+        // net8.0 目标编译期直连 SystemJson；NativeAOT 下 STJ 泛型集合等反射路径缺少原生代码，
+        // 按动态代码能力守卫回退默认主机，避免序列化在裁剪环境静默失败
+        return RuntimeFeature.IsDynamicCodeSupported ? new SystemJson() : JsonHelper.Default;
+#else
         // 尝试使用System.Text.Json，不支持时使用FastJson
         var host = JsonHelper.Default;
         if (host == null || host.GetType().Name == "FastJson")
@@ -35,6 +41,7 @@ public class RedisJsonEncoder : DefaultPacketEncoder
         }
 
         return host ?? JsonHelper.Default;
+#endif
     }
 
     /// <summary>字符串解码为对象。复杂类型采用Json反序列化</summary>

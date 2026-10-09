@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Sockets;
 using System.Text;
 using NewLife.Caching.Clusters;
@@ -668,7 +669,7 @@ public class FullRedis : Redis
     /// <typeparam name="T"></typeparam>
     /// <param name="topic">消息队列主题</param>
     /// <returns></returns>
-    public virtual RedisStream<T> GetStream<T>(String topic) => new(this, topic);
+    public virtual RedisStream<T> GetStream<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties)] T>(String topic) => new(this, topic);
 
     /// <summary>获取有序集合</summary>
     /// <typeparam name="T"></typeparam>
@@ -681,6 +682,7 @@ public class FullRedis : Redis
     /// <param name="topic">事件主题</param>
     /// <param name="clientId">客户标识/消息分组</param>
     /// <returns></returns>
+    [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "TEvent 由 Cache 宽面契约进入，重写不可强化保留要求；事件类型通常已由调用方静态引用保根，未保根时由流解码按异常降级")]
     public override IEventBus<TEvent> CreateEventBus<TEvent>(String topic, String clientId = "")
     {
         var bus = new RedisEventBus<TEvent>(this, topic, clientId)
@@ -1194,7 +1196,7 @@ public class FullRedis : Redis
     /// <param name="keys"></param>
     /// <param name="secTimeout"></param>
     /// <returns></returns>
-    public virtual Tuple<String, T?>? BRPOP<T>(String[] keys, Int32 secTimeout = 0)
+    public virtual Tuple<String, T?>? BRPOP<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties)] T>(String[] keys, Int32 secTimeout = 0)
     {
         var sb = new StringBuilder();
         foreach (var item in keys)
@@ -1218,7 +1220,7 @@ public class FullRedis : Redis
     /// <param name="key"></param>
     /// <param name="secTimeout"></param>
     /// <returns></returns>
-    public virtual T? BRPOP<T>(String key, Int32 secTimeout = 0)
+    public virtual T? BRPOP<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties)] T>(String key, Int32 secTimeout = 0)
     {
         var rs = BRPOP<T>([key], secTimeout);
         return rs == null ? default : rs.Item2;
@@ -1233,7 +1235,7 @@ public class FullRedis : Redis
     /// <param name="keys"></param>
     /// <param name="secTimeout"></param>
     /// <returns></returns>
-    public virtual Tuple<String, T?>? BLPOP<T>(String[] keys, Int32 secTimeout = 0)
+    public virtual Tuple<String, T?>? BLPOP<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties)] T>(String[] keys, Int32 secTimeout = 0)
     {
         var sb = new StringBuilder();
         foreach (var item in keys)
@@ -1257,7 +1259,7 @@ public class FullRedis : Redis
     /// <param name="key"></param>
     /// <param name="secTimeout"></param>
     /// <returns></returns>
-    public virtual T? BLPOP<T>(String key, Int32 secTimeout = 0)
+    public virtual T? BLPOP<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties)] T>(String key, Int32 secTimeout = 0)
     {
         var rs = BLPOP<T>([key], secTimeout);
         return rs == null ? default : rs.Item2;

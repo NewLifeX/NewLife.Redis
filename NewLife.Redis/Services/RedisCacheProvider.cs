@@ -1,4 +1,5 @@
-﻿using NewLife.Configuration;
+using System.Diagnostics.CodeAnalysis;
+using NewLife.Configuration;
 using NewLife.Log;
 using NewLife.Model;
 
@@ -104,6 +105,7 @@ public class RedisCacheProvider : CacheProvider
     /// <param name="topic">主题</param>
     /// <param name="group">消费组。未指定消费组时使用简单队列（如RedisQueue），指定消费组时使用完整队列（如RedisStream）</param>
     /// <returns></returns>
+    [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "T 由 ICacheProvider 宽面契约进入，重写不可强化保留要求；类型通常已由调用方静态引用保根，未保根时由流解码按异常降级")]
     public override IProducerConsumer<T> GetQueue<T>(String topic, String? group = null)
     {
         if (_redisQueue != null)

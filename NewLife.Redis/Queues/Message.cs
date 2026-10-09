@@ -1,4 +1,5 @@
-﻿using NewLife.Reflection;
+using System.Diagnostics.CodeAnalysis;
+using NewLife.Reflection;
 using NewLife.Serialization;
 
 namespace NewLife.Caching.Queues;
@@ -32,7 +33,8 @@ public class Message
     /// <typeparam name="T"></typeparam>
     /// <param name="primitiveKey">基元类型的数据字段名。默认__data，对应RedisStream.PrimitiveKey</param>
     /// <returns></returns>
-    public T? GetBody<T>(String? primitiveKey = null)
+    [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "属性类型来自运行期反射，无法静态表达保留要求；主链路已通过泛型T的保留注解保根，未保根时由序列化层抛异常降级")]
+    public T? GetBody<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties)] T>(String? primitiveKey = null)
     {
         var vs = Body;
         if (vs == null || vs.Length == 0) return default;

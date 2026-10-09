@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -1405,7 +1406,7 @@ public class RedisClient : DisposeBase
             var elmType = type.GetElementTypeEx();
             if (elmType == null) return false;
 
-            var arr = Array.CreateInstance(elmType, objs.Length);
+            var arr = CreateArray(elmType, objs.Length);
             for (var i = 0; i < objs.Length; i++)
             {
                 if (objs[i] is IPacket pk4)
@@ -1423,6 +1424,30 @@ public class RedisClient : DisposeBase
 
         return false;
     }
+
+    /// <summary>创建指定元素类型的数组。常见元素类型走静态构造，避免运行期数组类型生成</summary>
+    /// <param name="elmType">元素类型</param>
+    /// <param name="length">长度</param>
+    /// <returns></returns>
+    private static Array CreateArray(Type elmType, Int32 length)
+    {
+        if (elmType == typeof(String)) return new String[length];
+        if (elmType == typeof(Object)) return new Object[length];
+        if (elmType == typeof(Int32)) return new Int32[length];
+        if (elmType == typeof(Int64)) return new Int64[length];
+        if (elmType == typeof(Double)) return new Double[length];
+        if (elmType == typeof(Boolean)) return new Boolean[length];
+        if (elmType == typeof(IPacket)) return new IPacket[length];
+
+        return CreateArrayRuntime(elmType, length);
+    }
+
+    /// <summary>按运行期类型创建数组</summary>
+    /// <param name="elmType">元素类型</param>
+    /// <param name="length">长度</param>
+    /// <returns></returns>
+    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "元素类型来自运行期泛型请求，无法静态表达；常见类型已走静态构造，其余类型在原生编译时由静态引用保根生成")]
+    private static Array CreateArrayRuntime(Type elmType, Int32 length) => Array.CreateInstance(elmType, length);
 
     private IList<Command>? _ps;
     /// <summary>管道命令个数</summary>

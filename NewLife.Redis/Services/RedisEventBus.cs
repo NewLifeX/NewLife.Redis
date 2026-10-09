@@ -25,7 +25,7 @@ public class RedisEventContext : EventContext
 /// <summary>Redis事件总线</summary>
 /// <typeparam name="TEvent"></typeparam>
 /// <remarks>实例化消息队列事件总线</remarks>
-public class RedisEventBus<TEvent>(FullRedis cache, String topic, String group) : EventBus<TEvent>, ITracerFeature
+public class RedisEventBus<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties)] TEvent>(FullRedis cache, String topic, String group) : EventBus<TEvent>, ITracerFeature
 {
     /// <summary>发布者标识字段名。消息体中该字段存放发布者ClientId</summary>
     public const String ClientIdKey = "__clientId";

@@ -1,4 +1,5 @@
-﻿using NewLife.Log;
+using System.Diagnostics.CodeAnalysis;
+using NewLife.Log;
 using NewLife.Serialization;
 
 namespace NewLife.Caching.Queues;
@@ -133,7 +134,7 @@ public static class QueueExtensions
     /// <param name="log">日志对象</param>
     /// <param name="idField">消息标识字段名，用于处理错误重试</param>
     /// <returns></returns>
-    public static async Task ConsumeAsync<T>(this RedisReliableQueue<String> queue, Func<T, String, CancellationToken, Task> onMessage, CancellationToken cancellationToken = default, ILog? log = null, String? idField = null)
+    public static async Task ConsumeAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties)] T>(this RedisReliableQueue<String> queue, Func<T, String, CancellationToken, Task> onMessage, CancellationToken cancellationToken = default, ILog? log = null, String? idField = null)
     {
         await Task.Yield();
 
@@ -253,7 +254,7 @@ public static class QueueExtensions
     /// <param name="log">日志对象</param>
     /// <param name="idField">消息标识字段名，用于处理错误重试</param>
     /// <returns></returns>
-    public static Task ConsumeAsync<T>(this RedisReliableQueue<String> queue, Action<T> onMessage, CancellationToken cancellationToken = default, ILog? log = null, String? idField = null)
+    public static Task ConsumeAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties)] T>(this RedisReliableQueue<String> queue, Action<T> onMessage, CancellationToken cancellationToken = default, ILog? log = null, String? idField = null)
     {
         return queue.ConsumeAsync<T>((m, k, t) => { onMessage(m); return Task.FromResult(0); }, cancellationToken, log, idField);
     }

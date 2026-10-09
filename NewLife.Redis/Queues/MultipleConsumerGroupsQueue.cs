@@ -1,4 +1,5 @@
-﻿using NewLife.Data;
+using System.Diagnostics.CodeAnalysis;
+using NewLife.Data;
 using NewLife.Log;
 
 namespace NewLife.Caching.Queues;
@@ -7,7 +8,7 @@ namespace NewLife.Caching.Queues;
 /// Redis多消费组可重复消费的队列
 /// </summary>
 /// <typeparam name="T">消息类型</typeparam>
-public class MultipleConsumerGroupsQueue<T> : IDisposable
+public class MultipleConsumerGroupsQueue<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties)] T> : IDisposable
 {
     /// <summary>
     /// Redis客户端

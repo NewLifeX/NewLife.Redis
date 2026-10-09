@@ -1,4 +1,5 @@
-﻿using NewLife.Caching.Queues;
+using System.Diagnostics.CodeAnalysis;
+using NewLife.Caching.Queues;
 using NewLife.Caching.Services;
 
 namespace NewLife.Caching;
@@ -12,7 +13,7 @@ public static class CacheExtensions
     /// <param name="topic"></param>
     /// <param name="group"></param>
     /// <returns></returns>
-    public static RedisStream<T>? GetStream<T>(this ICacheProvider cacheProvider, String topic, String group) => cacheProvider.GetQueue<T>(topic, !group.IsNullOrEmpty() ? group : "Group") as RedisStream<T>;
+    public static RedisStream<T>? GetStream<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties)] T>(this ICacheProvider cacheProvider, String topic, String group) => cacheProvider.GetQueue<T>(topic, !group.IsNullOrEmpty() ? group : "Group") as RedisStream<T>;
 
     /// <summary>获取延迟队列</summary>
     /// <typeparam name="T"></typeparam>

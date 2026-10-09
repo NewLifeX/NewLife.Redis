@@ -1,4 +1,5 @@
-﻿using NewLife.Data;
+using System.Diagnostics.CodeAnalysis;
+using NewLife.Data;
 using NewLife.Log;
 using NewLife.Security;
 using NewLife.Serialization;
@@ -16,7 +17,7 @@ namespace NewLife.Caching.Queues;
 /// 特殊的$，表示接收从阻塞那一刻开始添加到流的消息。
 /// </remarks>
 /// <typeparam name="T"></typeparam>
-public class RedisStream<T> : QueueBase, IProducerConsumer<T>, IDisposable
+public class RedisStream<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties)] T> : QueueBase, IProducerConsumer<T>, IDisposable
 {
     #region 属性
     /// <summary>队列消息总数</summary>
