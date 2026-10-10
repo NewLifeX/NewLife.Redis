@@ -504,6 +504,15 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         }
     }
 
+    /// <summary>键映射。默认原样返回，FullRedis 重写以实现前缀映射</summary>
+    /// <param name="key">键</param>
+    /// <returns>实际键</returns>
+    internal virtual String MapKey(String key) => key;
+
+    /// <summary>开启事务。独占一条连接执行 MULTI/EXEC，需及时 Dispose 释放连接</summary>
+    /// <returns>事务对象</returns>
+    public RedisTransaction BeginTransaction() => new(this);
+
     /// <summary>创建连接池</summary>
     /// <param name="onCreate"></param>
     /// <returns></returns>

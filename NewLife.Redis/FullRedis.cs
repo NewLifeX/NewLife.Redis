@@ -245,6 +245,11 @@ public class FullRedis : Redis
     /// <returns></returns>
     public String GetKey(String key) => !Prefix.IsNullOrEmpty() ? key.EnsureStart(Prefix) : key;
 
+    /// <summary>键映射，供事务等组件复用前缀规则</summary>
+    /// <param name="key">键</param>
+    /// <returns>实际键</returns>
+    internal override String MapKey(String key) => GetKey(key);
+
     /// <summary>重载执行，支持集群</summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="key">用于选择集群节点的key</param>
