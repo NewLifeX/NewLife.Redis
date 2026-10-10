@@ -1544,6 +1544,32 @@ public class RedisClient : DisposeBase
     /// <returns></returns>
     public Boolean Ping() => Execute<String>("PING") == "PONG";
 
+    /// <summary>回显指定消息（ECHO）</summary>
+    /// <param name="message">消息内容</param>
+    /// <returns>服务器原样返回的消息</returns>
+    public String? Echo(String message) => Execute<String>("ECHO", message);
+
+    /// <summary>重置当前连接的服务器端状态（RESET，Redis 6.0+），包括事务、订阅、协议版本等</summary>
+    /// <returns>成功返回true</returns>
+    public Boolean ResetConnection() => Execute<String>("RESET") == "RESET";
+
+    /// <summary>获取服务器上所有连接的信息（CLIENT LIST）</summary>
+    /// <returns>连接信息文本，每行一个连接</returns>
+    public String? ClientList() => Execute<String>("CLIENT", "LIST");
+
+    /// <summary>获取当前连接的唯一标识（CLIENT ID）</summary>
+    /// <returns>连接标识</returns>
+    public Int64 ClientId() => Execute<Int64>("CLIENT", "ID");
+
+    /// <summary>设置当前连接的名称（CLIENT SETNAME）</summary>
+    /// <param name="name">连接名称，不允许包含空格</param>
+    /// <returns>成功返回true</returns>
+    public Boolean ClientSetName(String name) => Execute<String>("CLIENT", "SETNAME", name) == "OK";
+
+    /// <summary>获取当前连接的名称（CLIENT GETNAME）</summary>
+    /// <returns>连接名称，未设置时返回null</returns>
+    public String? ClientGetName() => Execute<String>("CLIENT", "GETNAME");
+
     /// <summary>选择Db</summary>
     /// <param name="db"></param>
     /// <returns></returns>

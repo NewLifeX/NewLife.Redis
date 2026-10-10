@@ -1762,6 +1762,111 @@ public class FullRedis : Redis
     /// <returns>Unix时间戳（秒）</returns>
     public virtual Int64 LastSave() => Execute(rds => rds.Execute<Int64>("LASTSAVE"));
 
+    /// <summary>获取配置参数（CONFIG GET）</summary>
+    /// <param name="pattern">参数名或通配模式，如 maxmemory、*max-entries*</param>
+    /// <returns>键值平铺数组 [名称, 值, ...]，与命令行返回一致</returns>
+    public virtual String[]? ConfigGet(String pattern) => Execute(rds => rds.Execute<String[]>("CONFIG", "GET", pattern));
+
+    /// <summary>设置配置参数（CONFIG SET），运行期生效</summary>
+    /// <param name="parameter">参数名</param>
+    /// <param name="value">参数值</param>
+    /// <returns>成功返回true</returns>
+    public virtual Boolean ConfigSet(String parameter, String value) => Execute(rds => rds.Execute<String>("CONFIG", "SET", parameter, value) == "OK");
+
+    /// <summary>将内存中的配置重写到配置文件（CONFIG REWRITE）</summary>
+    /// <returns>成功返回true</returns>
+    public virtual Boolean ConfigRewrite() => Execute(rds => rds.Execute<String>("CONFIG", "REWRITE") == "OK");
+
+    /// <summary>重置服务器运行统计信息（CONFIG RESETSTAT）</summary>
+    /// <returns>成功返回true</returns>
+    public virtual Boolean ConfigResetStat() => Execute(rds => rds.Execute<String>("CONFIG", "RESETSTAT") == "OK");
+
+    /// <summary>将脚本加载到脚本缓存（SCRIPT LOAD）</summary>
+    /// <remarks>服务端仅缓存脚本文本，不执行；返回的SHA1可用于EVALSHA</remarks>
+    /// <param name="script">Lua脚本内容</param>
+    /// <returns>脚本SHA1摘要</returns>
+    public virtual String? ScriptLoad(String script) => Execute(rds => rds.Execute<String>("SCRIPT", "LOAD", script));
+
+    /// <summary>判断脚本是否存在于脚本缓存（SCRIPT EXISTS）</summary>
+    /// <param name="sha1s">脚本SHA1摘要列表</param>
+    /// <returns>与输入等长的存在性数组（1/0）</returns>
+    public virtual Int32[]? ScriptExists(params String[] sha1s)
+    {
+        var ps = new List<Object> { "EXISTS" };
+        ps.AddRange(sha1s.Cast<Object>());
+
+        return Execute(rds => rds.Execute<Int32[]>("SCRIPT", ps.ToArray()));
+    }
+
+    /// <summary>清空脚本缓存（SCRIPT FLUSH）</summary>
+    /// <returns>成功返回true</returns>
+    public virtual Boolean ScriptFlush() => Execute(rds => rds.Execute<String>("SCRIPT", "FLUSH") == "OK");
+
+    /// <summary>获取当前连接的用户名（ACL WHOAMI，Redis 6.0+）</summary>
+    /// <returns>用户名</returns>
+    public virtual String? AclWhoAmI()
+    {
+        RequireVersion("6.0", "ACL WHOAMI");
+        return Execute(rds => rds.Execute<String>("ACL", "WHOAMI"));
+    }
+
+    /// <summary>获取所有用户及其规则（ACL LIST，Redis 6.0+）</summary>
+    /// <returns>用户规则描述列表</returns>
+    public virtual String[]? AclList()
+    {
+        RequireVersion("6.0", "ACL LIST");
+        return Execute(rds => rds.Execute<String[]>("ACL", "LIST"));
+    }
+
+    /// <summary>获取指定用户的规则（ACL GETUSER，Redis 6.0+）</summary>
+    /// <param name="username">用户名</param>
+    /// <returns>用户信息原始回复</returns>
+    public virtual Object[]? AclGetUser(String username)
+    {
+        RequireVersion("6.0", "ACL GETUSER");
+        return Execute(rds => rds.Execute<Object[]>("ACL", "GETUSER", username));
+    }
+
+    /// <summary>设置用户规则（ACL SETUSER，Redis 6.0+）</summary>
+    /// <param name="username">用户名</param>
+    /// <param name="rules">规则列表，如 on、&gt;password、~key:*、+get</param>
+    /// <returns>成功返回true</returns>
+    public virtual Boolean AclSetUser(String username, params String[] rules)
+    {
+        RequireVersion("6.0", "ACL SETUSER");
+
+        var ps = new List<Object> { "SETUSER", username };
+        ps.AddRange(rules.Cast<Object>());
+
+        return Execute(rds => rds.Execute<String>("ACL", ps.ToArray()) == "OK");
+    }
+
+    /// <summary>删除用户（ACL DELUSER，Redis 6.0+）</summary>
+    /// <param name="usernames">用户名列表</param>
+    /// <returns>删除的用户数量</returns>
+    public virtual Int32 AclDelUser(params String[] usernames)
+    {
+        RequireVersion("6.0", "ACL DELUSER");
+
+        var ps = new List<Object> { "DELUSER" };
+        ps.AddRange(usernames.Cast<Object>());
+
+        return Execute(rds => rds.Execute<Int32>("ACL", ps.ToArray()));
+    }
+
+    /// <summary>获取命令分类，或分类下的命令列表（ACL CAT，Redis 6.0+）</summary>
+    /// <param name="category">分类名，null或空表示获取所有分类</param>
+    /// <returns>命令或分类列表</returns>
+    public virtual String[]? AclCat(String? category = null)
+    {
+        RequireVersion("6.0", "ACL CAT");
+
+        if (category.IsNullOrEmpty())
+            return Execute(rds => rds.Execute<String[]>("ACL", "CAT"));
+        else
+            return Execute(rds => rds.Execute<String[]>("ACL", "CAT", category));
+    }
+
     /// <summary>配置主从复制（SLAVEOF/REPLICAOF）</summary>
     /// <param name="host">主节点地址，null或空字符串表示取消复制</param>
     /// <param name="port">主节点端口</param>
@@ -1801,6 +1906,35 @@ public class FullRedis : Redis
 
         // 必须展开为数组，否则 List 会被整体序列化为单个参数，导致参数数量错误
         return Execute(keys.Length > 0 ? keys[0] : "", (rc, k) => rc.Execute<T>("EVAL", ps.ToArray()), true);
+    }
+
+    /// <summary>执行脚本缓存中的脚本（EVALSHA）</summary>
+    /// <typeparam name="T">返回值类型</typeparam>
+    /// <param name="sha1">脚本SHA1摘要，由SCRIPT LOAD或首次EVAL产生</param>
+    /// <param name="keys">键列表</param>
+    /// <param name="args">参数列表</param>
+    /// <returns>脚本执行结果</returns>
+    public virtual T? EvalSha<T>(String sha1, String[]? keys = null, Object[]? args = null)
+    {
+        // EVALSHA sha1 numkeys [key [key ...]] [arg [arg ...]]
+        keys ??= [];
+        args ??= [];
+        var ps = new List<Object>(2 + keys.Length + args.Length)
+        {
+            sha1,
+            keys.Length
+        };
+        foreach (var key in keys)
+        {
+            ps.Add(GetKey(key));
+        }
+        foreach (var arg in args)
+        {
+            ps.Add(arg);
+        }
+
+        // 必须展开为数组，否则 List 会被整体序列化为单个参数，导致参数数量错误
+        return Execute(keys.Length > 0 ? keys[0] : "", (rc, k) => rc.Execute<T>("EVALSHA", ps.ToArray()), true);
     }
 
     /// <summary>调用已加载的Redis函数（Redis 7.0+）</summary>

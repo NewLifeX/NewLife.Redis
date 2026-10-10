@@ -666,6 +666,97 @@ public class BasicTest
         }
     }
 
+    [RedisFact(DisplayName = "ECHO与连接重置测试")]
+    public void EchoResetTest()
+    {
+        var ic = _redis;
+
+        var echo = ic.Execute(r => r.Echo("hello"));
+        Assert.Equal("hello", echo);
+
+        // RESET 重置当前连接的服务器端状态（Redis 6.0+）
+        TryLimited(() =>
+        {
+            var rs = ic.Execute(r => r.ResetConnection());
+            Assert.True(rs);
+        });
+    }
+
+    [RedisFact(DisplayName = "CLIENT连接管理测试")]
+    public void ClientInfoTest()
+    {
+        var ic = _redis;
+
+        TryLimited(() =>
+        {
+            // 同一连接内设置并读取名称
+            var name = ic.Execute(r =>
+            {
+                r.ClientSetName("nlc_test");
+                return r.ClientGetName();
+            });
+            Assert.Equal("nlc_test", name);
+
+            var id = ic.Execute(r => r.ClientId());
+            Assert.True(id > 0);
+
+            var list = ic.Execute(r => r.ClientList());
+            Assert.False(list.IsNullOrEmpty());
+        });
+    }
+
+    [RedisFact(DisplayName = "CONFIG配置查询测试")]
+    public void ConfigGetTest()
+    {
+        TryLimited(() =>
+        {
+            var rs = _redis.ConfigGet("maxmemory");
+            Assert.NotNull(rs);
+            Assert.True(rs.Length >= 2);
+            Assert.Equal("maxmemory", rs[0]);
+        });
+    }
+
+    [RedisFact(DisplayName = "SCRIPT脚本缓存与EVALSHA测试")]
+    public void ScriptCacheTest()
+    {
+        var ic = _redis;
+
+        TryLimited(() =>
+        {
+            const String script = "return ARGV[1]";
+            var sha1 = ic.ScriptLoad(script);
+            Assert.False(sha1.IsNullOrEmpty());
+
+            var exists = ic.ScriptExists(sha1);
+            Assert.NotNull(exists);
+            Assert.Equal(1, exists[0]);
+
+            // 执行缓存中的脚本
+            var rs = ic.EvalSha<String>(sha1, null, ["script-value"]);
+            Assert.Equal("script-value", rs);
+        });
+    }
+
+    [RedisFact(DisplayName = "ACL访问控制查询测试")]
+    public void AclTest()
+    {
+        // 仅做只读查询，避免修改测试服务器的安全配置
+        TryLimited(() =>
+        {
+            var ic = _redis;
+
+            var who = ic.AclWhoAmI();
+            Assert.False(who.IsNullOrEmpty());
+
+            var users = ic.AclList();
+            Assert.NotNull(users);
+
+            var cats = ic.AclCat();
+            Assert.NotNull(cats);
+        });
+    }
+
     [RedisFact(DisplayName = "LPOS查找元素位置测试")]
     public void LPosTest()
     {
