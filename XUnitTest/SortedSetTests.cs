@@ -533,4 +533,108 @@ public class SortedSetTests
         var count = zset1.DiffStore(dest, rkey2);
         Assert.Equal(1, count);
     }
+
+    [RedisFact(DisplayName = "逆序读取与逆序排名测试")]
+    public void RevRangeTest()
+    {
+        var rkey = "zset_rev";
+        _redis.Remove(rkey);
+
+        var zset = new RedisSortedSet<String>(_redis, rkey);
+        zset.Add("a", 10);
+        zset.Add("b", 20);
+        zset.Add("c", 30);
+
+        // 逆序范围
+        var rs = zset.RevRange(0, -1);
+        Assert.Equal(new[] { "c", "b", "a" }, rs);
+
+        // 逆序带分数
+        var dic = zset.RevRangeWithScores(0, 0);
+        Assert.Equal(30, dic["c"]);
+
+        // 逆序分数区间
+        rs = zset.RevRangeByScore(30, 10);
+        Assert.Equal(new[] { "c", "b", "a" }, rs);
+
+        // 逆序排名
+        Assert.Equal(0, zset.RevRank("c"));
+        Assert.Equal(2, zset.RevRank("a"));
+
+        _redis.Remove(rkey);
+    }
+
+    [RedisFact(DisplayName = "字典区间读取与计数测试")]
+    public void LexRangeTest()
+    {
+        var rkey = "zset_lex";
+        _redis.Remove(rkey);
+
+        var zset = new RedisSortedSet<String>(_redis, rkey);
+        // 字典区间要求所有成员分数相同
+        zset.Add("a", 0);
+        zset.Add("b", 0);
+        zset.Add("c", 0);
+
+        var rs = zset.RangeByLex("[a", "[b");
+        Assert.Equal(new[] { "a", "b" }, rs);
+
+        rs = zset.RevRangeByLex("[c", "[b");
+        Assert.Equal(new[] { "c", "b" }, rs);
+
+        Assert.Equal(3, zset.LexCount("-", "+"));
+
+        _redis.Remove(rkey);
+    }
+
+    [RedisFact(DisplayName = "按分数与排名删除成员测试")]
+    public void RemoveRangeTest()
+    {
+        var rkey = "zset_rmrange";
+        _redis.Remove(rkey);
+
+        var zset = new RedisSortedSet<String>(_redis, rkey);
+        zset.Add("a", 10);
+        zset.Add("b", 20);
+        zset.Add("c", 30);
+
+        // 按分数删除20分及以上
+        Assert.Equal(2, zset.RemoveRangeByScore(20, 30));
+        Assert.Equal(1, zset.Count);
+
+        // 按排名删除剩余成员
+        zset.Add("d", 40);
+        zset.Add("e", 50);
+        Assert.Equal(2, zset.RemoveRangeByRank(1, -1));
+        Assert.Equal(1, zset.Count);
+
+        _redis.Remove(rkey);
+    }
+
+    [RedisFact(DisplayName = "ZUNIONSTORE/ZINTERSTORE运算存储测试")]
+    public void UnionInterStoreTest()
+    {
+        var rkey1 = "zset_store1";
+        var rkey2 = "zset_store2";
+        var dest = "zset_store_dest";
+
+        _redis.Remove(rkey1, rkey2, dest);
+
+        var zset1 = new RedisSortedSet<String>(_redis, rkey1);
+        zset1.Add("a", 10);
+        zset1.Add("b", 20);
+
+        var zset2 = new RedisSortedSet<String>(_redis, rkey2);
+        zset2.Add("b", 20);
+        zset2.Add("c", 30);
+
+        // 并集存储：a,b,c
+        Assert.Equal(3, zset1.UnionStore(dest, [rkey2]));
+
+        // 交集存储：b
+        _redis.Remove(dest);
+        Assert.Equal(1, zset1.InterStore(dest, [rkey2]));
+
+        _redis.Remove(rkey1, rkey2, dest);
+    }
 }

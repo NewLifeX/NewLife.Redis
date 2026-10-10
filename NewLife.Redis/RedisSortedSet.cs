@@ -353,5 +353,142 @@ public class RedisSortedSet<T> : RedisBase
 
         return Execute((rc, k) => rc.Execute<T[]>("ZINTER", args.ToArray()));
     }
+
+    /// <summary>计算多个有序集合的并集并存储到目标键（ZUNIONSTORE）</summary>
+    /// <param name="destination">目标键</param>
+    /// <param name="keys">其他有序集合键</param>
+    /// <param name="weights">权重数组，null表示默认权重1</param>
+    /// <param name="aggregate">聚合方式：SUM/MIN/MAX，默认SUM</param>
+    /// <returns>存储的成员数量</returns>
+    public Int32 UnionStore(String destination, String[] keys, Double[]? weights = null, String? aggregate = null)
+    {
+        var args = new List<Object> { GetKey(destination), keys.Length + 1, Key };
+        args.AddRange(keys.Select(k => (Object)GetKey(k)));
+
+        if (weights != null)
+        {
+            args.Add("WEIGHTS");
+            args.AddRange(weights.Cast<Object>());
+        }
+        if (!aggregate.IsNullOrEmpty()) args.AddRange(["AGGREGATE", aggregate]);
+
+        return Execute((rc, k) => rc.Execute<Int32>("ZUNIONSTORE", args.ToArray()), true);
+    }
+
+    /// <summary>计算多个有序集合的交集并存储到目标键（ZINTERSTORE）</summary>
+    /// <param name="destination">目标键</param>
+    /// <param name="keys">其他有序集合键</param>
+    /// <param name="weights">权重数组，null表示默认权重1</param>
+    /// <param name="aggregate">聚合方式：SUM/MIN/MAX，默认SUM</param>
+    /// <returns>存储的成员数量</returns>
+    public Int32 InterStore(String destination, String[] keys, Double[]? weights = null, String? aggregate = null)
+    {
+        var args = new List<Object> { GetKey(destination), keys.Length + 1, Key };
+        args.AddRange(keys.Select(k => (Object)GetKey(k)));
+
+        if (weights != null)
+        {
+            args.Add("WEIGHTS");
+            args.AddRange(weights.Cast<Object>());
+        }
+        if (!aggregate.IsNullOrEmpty()) args.AddRange(["AGGREGATE", aggregate]);
+
+        return Execute((rc, k) => rc.Execute<Int32>("ZINTERSTORE", args.ToArray()), true);
+    }
+    #endregion
+
+    #region 逆序读取与范围扩展
+    /// <summary>按排名逆序返回成员，从高到低（ZREVRANGE）</summary>
+    /// <param name="start">起始排名</param>
+    /// <param name="stop">结束排名</param>
+    /// <returns>成员数组</returns>
+    public T[] RevRange(Int32 start, Int32 stop) => Execute((r, k) => r.Execute<T[]>("ZREVRANGE", Key, start, stop));
+
+    /// <summary>按排名逆序返回成员分数对，从高到低（ZREVRANGE ... WITHSCORES）</summary>
+    /// <param name="start">起始排名</param>
+    /// <param name="stop">结束排名</param>
+    /// <returns>成员与分数的字典</returns>
+    public IDictionary<T, Double> RevRangeWithScores(Int32 start, Int32 stop)
+    {
+        var dic = new Dictionary<T, Double>();
+
+        var rs = Execute((r, k) => r.Execute<String[]>("ZREVRANGE", Key, start, stop, "WITHSCORES"));
+        if (rs != null && rs.Length >= 2)
+        {
+            for (var i = 0; i < rs.Length - 1; i += 2)
+            {
+                var member = rs[i].ChangeType<T>();
+                var score = rs[i + 1].ToDouble();
+                dic[member] = score;
+            }
+        }
+
+        return dic;
+    }
+
+    /// <summary>按分数区间逆序返回成员，从高到低（ZREVRANGEBYSCORE）</summary>
+    /// <param name="max">最高分</param>
+    /// <param name="min">最低分</param>
+    /// <param name="offset">LIMIT偏移</param>
+    /// <param name="count">LIMIT数量，负数表示不限制</param>
+    /// <returns>成员数组</returns>
+    public T[] RevRangeByScore(Double max, Double min, Int32 offset = 0, Int32 count = -1)
+    {
+        if (count >= 0)
+            return Execute((r, k) => r.Execute<T[]>("ZREVRANGEBYSCORE", Key, max, min, "LIMIT", offset, count));
+        else
+            return Execute((r, k) => r.Execute<T[]>("ZREVRANGEBYSCORE", Key, max, min));
+    }
+
+    /// <summary>按字典区间返回成员（ZRANGEBYLEX），要求集合内所有成员分数相同</summary>
+    /// <param name="min">最小元素，如 [a、- 表示最小</param>
+    /// <param name="max">最大元素，如 [c、+ 表示最大</param>
+    /// <param name="offset">LIMIT偏移</param>
+    /// <param name="count">LIMIT数量，负数表示不限制</param>
+    /// <returns>成员数组</returns>
+    public T[] RangeByLex(String min, String max, Int32 offset = 0, Int32 count = -1)
+    {
+        if (count >= 0)
+            return Execute((r, k) => r.Execute<T[]>("ZRANGEBYLEX", Key, min, max, "LIMIT", offset, count));
+        else
+            return Execute((r, k) => r.Execute<T[]>("ZRANGEBYLEX", Key, min, max));
+    }
+
+    /// <summary>按字典区间逆序返回成员（ZREVRANGEBYLEX），要求集合内所有成员分数相同</summary>
+    /// <param name="max">最大元素，如 [c、+ 表示最大</param>
+    /// <param name="min">最小元素，如 [a、- 表示最小</param>
+    /// <param name="offset">LIMIT偏移</param>
+    /// <param name="count">LIMIT数量，负数表示不限制</param>
+    /// <returns>成员数组</returns>
+    public T[] RevRangeByLex(String max, String min, Int32 offset = 0, Int32 count = -1)
+    {
+        if (count >= 0)
+            return Execute((r, k) => r.Execute<T[]>("ZREVRANGEBYLEX", Key, max, min, "LIMIT", offset, count));
+        else
+            return Execute((r, k) => r.Execute<T[]>("ZREVRANGEBYLEX", Key, max, min));
+    }
+
+    /// <summary>字典区间内的成员数量（ZLEXCOUNT）</summary>
+    /// <param name="min">最小元素，如 [a、- 表示最小</param>
+    /// <param name="max">最大元素，如 [c、+ 表示最大</param>
+    /// <returns>成员数量</returns>
+    public Int32 LexCount(String min, String max) => Execute((r, k) => r.Execute<Int32>("ZLEXCOUNT", Key, min, max));
+
+    /// <summary>按分数区间删除成员（ZREMRANGEBYSCORE）</summary>
+    /// <param name="min">最低分</param>
+    /// <param name="max">最高分</param>
+    /// <returns>删除的成员数量</returns>
+    public Int32 RemoveRangeByScore(Double min, Double max) => Execute((r, k) => r.Execute<Int32>("ZREMRANGEBYSCORE", Key, min, max), true);
+
+    /// <summary>按排名区间删除成员（ZREMRANGEBYRANK）</summary>
+    /// <param name="start">起始排名</param>
+    /// <param name="stop">结束排名</param>
+    /// <returns>删除的成员数量</returns>
+    public Int32 RemoveRangeByRank(Int32 start, Int32 stop) => Execute((r, k) => r.Execute<Int32>("ZREMRANGEBYRANK", Key, start, stop), true);
+
+    /// <summary>逆序排名（ZREVRANK），从高到低，0-based</summary>
+    /// <param name="member">成员</param>
+    /// <returns>排名</returns>
+    public Int32 RevRank(T member) => Execute((r, k) => r.Execute<Int32>("ZREVRANK", Key, member));
     #endregion
 }
