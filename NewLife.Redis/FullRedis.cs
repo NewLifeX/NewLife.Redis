@@ -933,6 +933,76 @@ public class FullRedis : Redis
     /// <returns>访问频率计数，键不存在返回null</returns>
     public virtual Int64? ObjectFreq(String key) => Execute(key, (rc, k) => rc.Execute<Int64>("OBJECT", "FREQ", k));
 
+    /// <summary>将当前数据库的键移动到指定数据库（MOVE）</summary>
+    /// <param name="key">键</param>
+    /// <param name="db">目标数据库</param>
+    /// <returns>移动成功返回true；键不存在或目标已存在时返回false</returns>
+    public virtual Boolean Move(String key, Int32 db) => Execute(key, (rc, k) => rc.Execute<Int32>("MOVE", k, db), true) > 0;
+
+    /// <summary>获取键的剩余有效期（PTTL），毫秒</summary>
+    /// <param name="key">键</param>
+    /// <returns>毫秒数；-1表示永不过期，-2表示键不存在</returns>
+    public virtual Int64 PTtl(String key) => Execute(key, (rc, k) => rc.Execute<Int64>("PTTL", k));
+
+    /// <summary>设置键在指定时间点过期（EXPIREAT），秒级Unix时间戳</summary>
+    /// <param name="key">键</param>
+    /// <param name="timestamp">过期时间点，Unix时间戳（秒）</param>
+    /// <returns>设置成功返回true；键不存在返回false</returns>
+    public virtual Boolean ExpireAt(String key, Int64 timestamp) => Execute(key, (rc, k) => rc.Execute<Int32>("EXPIREAT", k, timestamp), true) > 0;
+
+    /// <summary>设置键的过期时间（PEXPIRE），毫秒</summary>
+    /// <param name="key">键</param>
+    /// <param name="milliseconds">过期毫秒数</param>
+    /// <returns>设置成功返回true；键不存在返回false</returns>
+    public virtual Boolean PExpire(String key, Int64 milliseconds) => Execute(key, (rc, k) => rc.Execute<Int32>("PEXPIRE", k, milliseconds), true) > 0;
+
+    /// <summary>设置键在指定时间点过期（PEXPIREAT），毫秒级Unix时间戳</summary>
+    /// <param name="key">键</param>
+    /// <param name="timestamp">过期时间点，Unix时间戳（毫秒）</param>
+    /// <returns>设置成功返回true；键不存在返回false</returns>
+    public virtual Boolean PExpireAt(String key, Int64 timestamp) => Execute(key, (rc, k) => rc.Execute<Int32>("PEXPIREAT", k, timestamp), true) > 0;
+
+    /// <summary>随机返回当前数据库中的一个键（RANDOMKEY）</summary>
+    /// <returns>键名；数据库为空时返回null</returns>
+    public virtual String? RandomKey() => Execute(rds => rds.Execute<String>("RANDOMKEY"));
+
+    /// <summary>对列表、集合或有序集合排序（SORT）</summary>
+    /// <param name="key">键</param>
+    /// <param name="descending">是否降序</param>
+    /// <param name="alpha">是否按字典序排序（默认按数值）</param>
+    /// <param name="by">外部权重键模式（BY），如 weight_*；null表示不指定</param>
+    /// <param name="get">外部取值键模式（GET），可多个；null表示不指定</param>
+    /// <param name="offset">LIMIT偏移</param>
+    /// <param name="count">LIMIT数量，负数表示不限制</param>
+    /// <returns>排序后的元素列表</returns>
+    public virtual String[]? Sort(String key, Boolean descending = false, Boolean alpha = false, String? by = null, String[]? get = null, Int64 offset = 0, Int64 count = -1) => Execute(key, (rc, k) =>
+    {
+        var args = new List<Object> { k };
+        if (!by.IsNullOrEmpty())
+        {
+            args.Add("BY");
+            args.Add(GetKey(by));
+        }
+        if (count >= 0)
+        {
+            args.Add("LIMIT");
+            args.Add(offset);
+            args.Add(count);
+        }
+        if (get != null)
+        {
+            foreach (var item in get)
+            {
+                args.Add("GET");
+                args.Add(GetKey(item));
+            }
+        }
+        if (descending) args.Add("DESC");
+        if (alpha) args.Add("ALPHA");
+
+        return rc.Execute<String[]>("SORT", args.ToArray());
+    });
+
     ///// <summary>模糊搜索，支持?和*</summary>
     ///// <param name="pattern"></param>
     ///// <returns></returns>

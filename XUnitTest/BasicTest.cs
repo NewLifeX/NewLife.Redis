@@ -422,6 +422,120 @@ public class BasicTest
         Assert.Equal("OK", rs);
     }
 
+    [RedisFact(DisplayName = "MOVE移动键到其他数据库测试")]
+    public void MoveTest()
+    {
+        var ic = _redis;
+        var key = "move_test";
+
+        using var db = new FullRedis();
+        db.Init(BasicTest.GetConfig());
+        db.Db = 3;
+        db.Timeout = 2_000;
+
+        try
+        {
+            ic.Remove(key);
+            db.Remove(key);
+
+            ic.Set(key, "move_value");
+
+            // 移动到DB3
+            Assert.True(ic.Move(key, 3));
+            Assert.False(ic.ContainsKey(key));
+            Assert.Equal("move_value", db.Get<String>(key));
+
+            // 移回DB2
+            Assert.True(db.Move(key, 2));
+            Assert.Equal("move_value", ic.Get<String>(key));
+        }
+        finally
+        {
+            ic.Remove(key);
+            db.Remove(key);
+        }
+    }
+
+    [RedisFact(DisplayName = "PTTL/PEXPIRE/PEXPIREAT毫秒过期测试")]
+    public void PExpireTest()
+    {
+        var ic = _redis;
+        var key = "pexpire_test";
+
+        ic.Remove(key);
+        ic.Set(key, "v");
+
+        // PEXPIRE 毫秒
+        Assert.True(ic.PExpire(key, 60_000));
+        var ms = ic.PTtl(key);
+        Assert.InRange(ms, 1, 60_000);
+
+        // PEXPIREAT 毫秒时间戳。以服务器时钟为准，避免与本地时钟偏差
+        var time = ic.Execute(r => r.Execute<String[]>("TIME"))!;
+        var serverNow = time[0].ToLong() * 1000 + time[1].ToLong() / 1000;
+        Assert.True(ic.PExpireAt(key, serverNow + 120_000));
+        ms = ic.PTtl(key);
+        Assert.InRange(ms, 119_000, 121_000);
+
+        ic.Remove(key);
+    }
+
+    [RedisFact(DisplayName = "EXPIREAT秒级过期时间点测试")]
+    public void ExpireAtTest()
+    {
+        var ic = _redis;
+        var key = "expireat_test";
+
+        ic.Remove(key);
+        ic.Set(key, "v");
+
+        // 以服务器时钟为准，避免与本地时钟偏差
+        var time = ic.Execute(r => r.Execute<String[]>("TIME"))!;
+        var expireAt = time[0].ToLong() + 60;
+        Assert.True(ic.ExpireAt(key, expireAt));
+
+        var sec = ic.GetExpire(key).TotalSeconds;
+        Assert.InRange(sec, 55, 61);
+
+        ic.Remove(key);
+    }
+
+    [RedisFact(DisplayName = "RANDOMKEY随机键测试")]
+    public void RandomKeyTest()
+    {
+        var ic = _redis;
+        var key = "randomkey_test";
+
+        ic.Set(key, "v");
+
+        Assert.False(ic.RandomKey().IsNullOrEmpty());
+    }
+
+    [RedisFact(DisplayName = "SORT排序测试")]
+    public void SortTest()
+    {
+        var ic = _redis;
+        var key = "sort_test";
+
+        ic.Remove(key);
+        ic.RPUSH(key, "3", "1", "2");
+
+        var rs = ic.Sort(key);
+        Assert.Equal(new[] { "1", "2", "3" }, rs);
+
+        rs = ic.Sort(key, descending: true);
+        Assert.Equal(new[] { "3", "2", "1" }, rs);
+
+        ic.Remove(key);
+
+        // 字典序
+        ic.RPUSH(key, "banana", "apple", "cherry");
+        rs = ic.Sort(key, alpha: true);
+        Assert.Equal(new[] { "apple", "banana", "cherry" }, rs);
+
+        ic.Remove(key);
+    }
+
     [RedisFact(DisplayName = "LPOS查找元素位置测试")]
     public void LPosTest()
     {
