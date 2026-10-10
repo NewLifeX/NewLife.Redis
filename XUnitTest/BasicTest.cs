@@ -433,6 +433,8 @@ public class BasicTest
         db.Init(BasicTest.GetConfig());
         db.Db = 3;
         db.Timeout = 2_000;
+        // BasicTest2 派生类会加前缀，第二连接必须同步，否则读写不同键
+        db.Prefix = ic.Prefix;
 
         try
         {
