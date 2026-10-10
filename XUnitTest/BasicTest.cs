@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
@@ -532,6 +533,77 @@ public class BasicTest
         ic.RPUSH(key, "banana", "apple", "cherry");
         rs = ic.Sort(key, alpha: true);
         Assert.Equal(new[] { "apple", "banana", "cherry" }, rs);
+
+        ic.Remove(key);
+    }
+
+    [RedisFact(DisplayName = "GETDEL获取并删除测试")]
+    public void GetDelTest()
+    {
+        var ic = _redis;
+        var key = "getdel_test";
+
+        ic.Remove(key);
+        ic.Set(key, "gv");
+
+        Assert.Equal("gv", ic.GetDel<String>(key));
+        Assert.False(ic.ContainsKey(key));
+        Assert.Null(ic.GetDel<String>(key));
+    }
+
+    [RedisFact(DisplayName = "PSETEX毫秒过期设置测试")]
+    public void PSetExTest()
+    {
+        var ic = _redis;
+        var key = "psetex_test";
+
+        ic.Remove(key);
+        Assert.True(ic.PSetEx(key, "pv", 60_000));
+
+        // 毫秒级过期，剩余时间不超过60秒
+        var ms = ic.PTtl(key);
+        Assert.InRange(ms, 1, 60_000);
+        Assert.Equal("pv", ic.Get<String>(key));
+
+        ic.Remove(key);
+    }
+
+    [RedisFact(DisplayName = "MSETNX批量条件设置测试")]
+    public void MSetNxTest()
+    {
+        var ic = _redis;
+        var k1 = "msetnx_1";
+        var k2 = "msetnx_2";
+        var k3 = "msetnx_3";
+
+        ic.Remove(k1, k2, k3);
+
+        var dic = new Dictionary<String, String> { [k1] = "v1", [k2] = "v2" };
+        Assert.True(ic.MSetNx(dic));
+        Assert.Equal("v1", ic.Get<String>(k1));
+        Assert.Equal("v2", ic.Get<String>(k2));
+
+        // 任一键已存在时全部不设置
+        var dic2 = new Dictionary<String, String> { [k1] = "x", [k3] = "v3" };
+        Assert.False(ic.MSetNx(dic2));
+        Assert.Equal("v1", ic.Get<String>(k1));
+        Assert.False(ic.ContainsKey(k3));
+
+        ic.Remove(k1, k2);
+    }
+
+    [RedisFact(DisplayName = "SUBSTR旧版区间读取测试")]
+    public void SubStrTest()
+    {
+        var ic = _redis;
+        var key = "substr_test";
+
+        ic.Remove(key);
+        ic.Set(key, "Hello World");
+
+        Assert.Equal("Hello", ic.SubStr(key, 0, 4));
+        Assert.Equal("World", ic.SubStr(key, -5, -1));
+        Assert.Equal("Hello World", ic.GetRange(key, 0, -1));
 
         ic.Remove(key);
     }

@@ -734,6 +734,47 @@ public class FullRedis : Redis
         else
             return Execute(key, (rc, k) => rc.Execute<T>("SET", k, value, "GET"), true);
     }
+
+    /// <summary>获取并删除键（Redis 6.2+ GETDEL）</summary>
+    /// <typeparam name="T">值类型</typeparam>
+    /// <param name="key">键</param>
+    /// <returns>被删除的值；键不存在返回默认值</returns>
+    public virtual T? GetDel<T>(String key) => Execute(key, (rc, k) => rc.Execute<T>("GETDEL", k), true);
+
+    /// <summary>设置键值并指定毫秒级过期时间（PSETEX）</summary>
+    /// <typeparam name="T">值类型</typeparam>
+    /// <param name="key">键</param>
+    /// <param name="value">值</param>
+    /// <param name="milliseconds">过期毫秒数</param>
+    /// <returns>设置成功返回true</returns>
+    public virtual Boolean PSetEx<T>(String key, T value, Int64 milliseconds) => Execute(key, (rc, k) => rc.Execute<String>("PSETEX", k, milliseconds, value), true) == "OK";
+
+    /// <summary>批量设置键值，仅当所有键都不存在时执行（MSETNX）</summary>
+    /// <typeparam name="T">值类型</typeparam>
+    /// <param name="values">键值对集合</param>
+    /// <returns>全部设置成功返回true；任一键已存在则全部不设置并返回false</returns>
+    public virtual Boolean MSetNx<T>(IDictionary<String, T> values)
+    {
+        if (values == null || values.Count == 0) return false;
+
+        String? first = null;
+        var ps = new List<Object>();
+        foreach (var item in values)
+        {
+            first ??= item.Key;
+            ps.Add(GetKey(item.Key));
+            ps.Add(item.Value);
+        }
+
+        return Execute(first!, (rc, k) => rc.Execute<Int32>("MSETNX", ps.ToArray()), true) > 0;
+    }
+
+    /// <summary>获取字符串区间（SUBSTR），等价于 GETRANGE 的旧版命令</summary>
+    /// <param name="key">键</param>
+    /// <param name="start">起始位置，支持负数表示从末尾计数</param>
+    /// <param name="end">结束位置，支持负数表示从末尾计数</param>
+    /// <returns>区间字符串</returns>
+    public virtual String? SubStr(String key, Int32 start, Int32 end) => Execute(key, (rc, k) => rc.Execute<String>("SUBSTR", k, start, end));
     #endregion
 
     #region 位图操作
