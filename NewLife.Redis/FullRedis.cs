@@ -1191,6 +1191,30 @@ public class FullRedis : Redis
         return Execute(key, (rc, k) => rc.ExecuteByKey<T, Int32>("LPUSH", key, values), true);
     }
 
+    /// <summary>向已存在的列表头部插入，列表不存在时不执行（LPUSHX）</summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="key">键</param>
+    /// <param name="values">元素集合</param>
+    /// <returns>列表元素总数；列表不存在返回0</returns>
+    public virtual Int32 LPUSHX<T>(String key, params T[] values)
+    {
+        // 这里提前打包参数，需要处理key前缀。其它普通情况由Execute处理
+        key = GetKey(key);
+        return Execute(key, (rc, k) => rc.ExecuteByKey<T, Int32>("LPUSHX", key, values), true);
+    }
+
+    /// <summary>向已存在的列表末尾插入，列表不存在时不执行（RPUSHX）</summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="key">键</param>
+    /// <param name="values">元素集合</param>
+    /// <returns>列表元素总数；列表不存在返回0</returns>
+    public virtual Int32 RPUSHX<T>(String key, params T[] values)
+    {
+        // 这里提前打包参数，需要处理key前缀。其它普通情况由Execute处理
+        key = GetKey(key);
+        return Execute(key, (rc, k) => rc.ExecuteByKey<T, Int32>("RPUSHX", key, values), true);
+    }
+
     /// <summary>从列表末尾弹出一个元素</summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="key"></param>

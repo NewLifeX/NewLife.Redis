@@ -141,6 +141,16 @@ public class RedisList<T> : RedisBase, IList<T>
     /// <returns>队列元素总数</returns>
     public Int32 LPUSH(IEnumerable<T> values) => Execute((rc, k) => rc.ExecuteByKey<T, Int32>("LPUSH", Key, values as T[] ?? values.ToArray()), true);
 
+    /// <summary>左边批量添加，仅当列表已存在时（LPUSHX）</summary>
+    /// <param name="values">元素集合</param>
+    /// <returns>队列元素总数；列表不存在返回0</returns>
+    public Int32 LPUSHX(IEnumerable<T> values) => Execute((rc, k) => rc.ExecuteByKey<T, Int32>("LPUSHX", Key, values as T[] ?? values.ToArray()), true);
+
+    /// <summary>右边批量添加，仅当列表已存在时（RPUSHX）</summary>
+    /// <param name="values">元素集合</param>
+    /// <returns>队列元素总数；列表不存在返回0</returns>
+    public Int32 RPUSHX(IEnumerable<T> values) => Execute((rc, k) => rc.ExecuteByKey<T, Int32>("RPUSHX", Key, values as T[] ?? values.ToArray()), true);
+
     /// <summary>移除并返回最右边一个元素</summary>
     /// <returns></returns>
     public T? RPOP() => Execute((rc, k) => rc.Execute<T>("RPOP", Key), true);

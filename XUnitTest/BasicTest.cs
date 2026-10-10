@@ -608,6 +608,32 @@ public class BasicTest
         ic.Remove(key);
     }
 
+    [RedisFact(DisplayName = "LPUSHX/RPUSHX条件推入测试")]
+    public void PushXTest()
+    {
+        var ic = _redis;
+        var key = "pushx_test";
+
+        ic.Remove(key);
+
+        // 键不存在时不推入
+        Assert.Equal(0, ic.LPUSHX(key, "a"));
+        Assert.False(ic.ContainsKey(key));
+
+        ic.RPUSH(key, "b");
+        Assert.Equal(2, ic.RPUSHX(key, "c"));
+        Assert.Equal(3, ic.LPUSHX(key, "a"));
+
+        var list = (RedisList<String>)ic.GetList<String>(key);
+        Assert.Equal(new[] { "a", "b", "c" }, list.GetAll());
+
+        // 结构级 API
+        Assert.Equal(4, list.RPUSHX(["d"]));
+        Assert.Equal(new[] { "a", "b", "c", "d" }, list.GetAll());
+
+        ic.Remove(key);
+    }
+
     [RedisFact(DisplayName = "LPOS查找元素位置测试")]
     public void LPosTest()
     {
