@@ -634,6 +634,38 @@ public class BasicTest
         ic.Remove(key);
     }
 
+    [RedisFact(DisplayName = "持久化命令测试")]
+    public void PersistenceTest()
+    {
+        var ic = _redis;
+
+        // 持久化命令受服务器配置与ACL权限约束，受限环境下跳过断言
+        TryLimited(() =>
+        {
+            // LASTSAVE 只读
+            var ts = ic.LastSave();
+            Assert.True(ts > 0);
+
+            // BGSAVE 触发服务器后台保存
+            var rs = ic.BgSave();
+            Assert.NotNull(rs);
+        });
+    }
+
+    /// <summary>命令受服务器ACL权限或配置限制时跳过断言</summary>
+    /// <param name="action">命令断言动作</param>
+    private static void TryLimited(Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch (RedisException ex) when (ex.Message.Contains("NOPERM") || ex.Message.Contains("no permissions") || ex.Message.Contains("disabled") || ex.Message.Contains("MISCONF"))
+        {
+            XTrace.WriteLine("服务器限制该命令，跳过：{0}", ex.Message);
+        }
+    }
+
     [RedisFact(DisplayName = "LPOS查找元素位置测试")]
     public void LPosTest()
     {

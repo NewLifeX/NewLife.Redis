@@ -1746,6 +1746,22 @@ public class FullRedis : Redis
             return Execute(rds => rds.Execute<Int32>("LATENCY", "RESET"));
     }
 
+    /// <summary>同步保存数据库到磁盘（SAVE）。阻塞服务器直至完成，生产环境慎用</summary>
+    /// <returns>成功返回OK</returns>
+    public virtual String? Save() => Execute(rds => rds.Execute<String>("SAVE"));
+
+    /// <summary>后台异步保存数据库到磁盘（BGSAVE）</summary>
+    /// <returns>状态信息，如“Background saving started”</returns>
+    public virtual String? BgSave() => Execute(rds => rds.Execute<String>("BGSAVE"));
+
+    /// <summary>后台异步重写AOF文件（BGREWRITEAOF）</summary>
+    /// <returns>状态信息</returns>
+    public virtual String? BgRewriteAof() => Execute(rds => rds.Execute<String>("BGREWRITEAOF"));
+
+    /// <summary>最近一次成功保存到磁盘的时间点（LASTSAVE），Unix时间戳（秒）</summary>
+    /// <returns>Unix时间戳（秒）</returns>
+    public virtual Int64 LastSave() => Execute(rds => rds.Execute<Int64>("LASTSAVE"));
+
     /// <summary>配置主从复制（SLAVEOF/REPLICAOF）</summary>
     /// <param name="host">主节点地址，null或空字符串表示取消复制</param>
     /// <param name="port">主节点端口</param>
