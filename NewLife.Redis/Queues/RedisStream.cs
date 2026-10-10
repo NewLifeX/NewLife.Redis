@@ -674,6 +674,22 @@ public class RedisStream<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTy
     /// <returns></returns>
     public Object[]? Claim(String group, String consumer, String id, Int32 msIdle = 3_600_000) => Execute((rc, k) => rc.Execute<Object[]>("XCLAIM", Key, group, consumer, msIdle, id), true);
 
+    /// <summary>自动转移待处理消息的所有权（XAUTOCLAIM，Redis 6.2+），批量扫描并抢夺空闲超时未确认的消息</summary>
+    /// <param name="group">消费组名称</param>
+    /// <param name="consumer">目标消费者</param>
+    /// <param name="minIdleTime">最小空闲毫秒数，空闲超过该时间的消息才会被转移</param>
+    /// <param name="start">起始消息Id，通常为 "0-0" 从头扫描</param>
+    /// <param name="count">最多转移的消息数量</param>
+    /// <returns>被转移的消息列表</returns>
+    public IList<Message> AutoClaim(String group, String consumer, Int32 minIdleTime = 3_600_000, String start = "0-0", Int32 count = 100)
+    {
+        // 返回 [下一个游标, 消息列表, 已删除消息Id列表]
+        var rs = Execute((rc, k) => rc.Execute<Object[]>("XAUTOCLAIM", Key, group, consumer, minIdleTime, start, "COUNT", count), true);
+        if (rs == null || rs.Length < 2) return [];
+
+        return rs[1] is Object[] ms ? Parse(ms) : [];
+    }
+
     /// <summary>获取区间消息</summary>
     /// <param name="startId"></param>
     /// <param name="endId"></param>

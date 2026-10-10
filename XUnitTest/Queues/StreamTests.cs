@@ -453,6 +453,38 @@ public class StreamTests
         pi.Parse(vs);
     }
 
+    [RedisFact(DisplayName = "XAUTOCLAIM自动转移消息测试")]
+    public void AutoClaimTest()
+    {
+        var key = "stream_autoclaim";
+        _redis.Remove(key);
+
+        var queue = _redis.GetStream<String>(key);
+        queue.SetGroup("acgroup");
+        _redis.SetExpire(key, TimeSpan.FromMinutes(10));
+
+        // 添加数据
+        var ids = new List<String>();
+        for (var i = 0; i < 3; i++)
+        {
+            ids.Add(queue.Add(Rand.NextString(8)));
+        }
+
+        // 消费者读取但不确认，形成待处理消息
+        var rs = queue.Take(3).ToList();
+        Assert.Equal(3, rs.Count);
+
+        // 另一个消费者自动转移（最小空闲0毫秒）
+        var queue2 = _redis.GetStream<String>(key);
+        var msgs = queue2.AutoClaim("acgroup", "consumer_auto", 0, "0-0", 10);
+
+        Assert.Equal(3, msgs.Count);
+        Assert.Equal(ids[0], msgs[0].Id);
+
+        // 清理
+        _redis.Remove(key);
+    }
+
     [RedisFact]
     public async Task Claim()
     {
