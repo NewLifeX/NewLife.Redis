@@ -2,7 +2,7 @@
 
 > 基线：v6.6 代码库 + NewLife.Core 12.0.2026.1009-beta0916｜评估与实施：2026-10-09｜方式：**分析器扫描 + NativeAOT 真实编译与运行实测**（win-x64，.NET 10，Redis 6.2.5）
 >
-> 复验：NewLife.Core 12.0.2026.1013-beta0732｜2026-10-15｜分析器与 ILC 均 0 告警，23 场景 JIT/NativeAOT 双形态全通（win-x64，.NET 10，Redis 6.2.5；含 4 节点集群与哨兵拓扑实测），升级未引入新的兼容或 AOT 问题。
+> 复验：NewLife.Core 12.0.2026.1013-beta0732｜2026-10-15｜分析器与 ILC 均 0 告警，23 场景 JIT/NativeAOT 双形态全通（win-x64，.NET 10，Redis 6.2.5；含 4 节点集群与哨兵拓扑实测），升级未引入新的兼容或 AOT 问题；同日清理本地注解垫片与 Core 公开存根的类型重复（旧 TFM 384 条 CS0436 清零）。
 
 ---
 
@@ -52,7 +52,7 @@
 | 6 | `RedisClient.cs:1408`（TryConvert 数组分支） | IL3050 | `Array.CreateInstance(elmType, n)` 属 `RequiresDynamicCode` | 常见元素类型（String/Object/Int32/Int64/Double/Boolean/IPacket）静态数组构造，其余回退 + 边界抑制 |
 
 - 级联传导：`RedisStream<T>`、`MultipleConsumerGroupsQueue<T>`、`FullRedis.GetStream<T>`、`CacheExtensions.GetStream<T>`、`RedisEventBus<TEvent>` 同步补齐保留注解；`RedisCacheProvider.GetQueue<T>` 与 `FullRedis.CreateEventBus<TEvent>` 因 Core 宽面契约（`CacheProvider`/`Cache` 无注解、重写不可强化）改为实现边界显式声明。
-- 低版本目标框架由 `Common/AotAnnotations.cs` 垫片补齐注解特性（net8.0+ 使用内置真实特性），源码可统一标注。
+- 低版本目标框架的注解特性由 NewLife.Core 公开存根提供（net8.0+ 使用内置真实特性），源码可统一标注；本地 `Common/AotAnnotations.cs` 垫片与 Core 公开类型重复（旧 TFM 384 条 CS0436），已删除。
 
 ### 2.3 发布期（ILC）告警
 
@@ -113,6 +113,7 @@
 | 3 | 冒烟工程入仓 | `AotSmoke/`（23 场景，含 RESP3、可靠队列、泛型弹列、延迟队列、事件总线、多消费组队列、PubSub、Message 字段解码与集群/哨兵拓扑），纳入解决方案 | ✅ |
 | 4 | CI 防回归 | `.github/workflows/aot.yml`：分析器告警阻断 + linux-x64 NativeAOT 发布运行冒烟 | ✅ |
 | 5 | 文档与声明 | 本文档更新；Readme 中英文增补 NativeAOT 支持说明 | ✅ |
+| 6 | 注解垫片清理 | 删除本地 `Common/AotAnnotations.cs`，旧 TFM 注解特性统一由 NewLife.Core 公开存根提供，384 条 CS0436 类型重复告警清零 | ✅ |
 
 ---
 
