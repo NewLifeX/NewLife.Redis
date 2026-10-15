@@ -1,6 +1,8 @@
 # NewLife.Redis AOT 兼容性分析
 
 > 基线：v6.6 代码库 + NewLife.Core 12.0.2026.1009-beta0916｜评估与实施：2026-10-09｜方式：**分析器扫描 + NativeAOT 真实编译与运行实测**（win-x64，.NET 10，Redis 6.2.5）
+>
+> 复验：NewLife.Core 12.0.2026.1013-beta0732｜2026-10-15｜分析器与 ILC 均 0 告警，23 场景 JIT/NativeAOT 双形态全通（win-x64，.NET 10，Redis 6.2.5；含 4 节点集群与哨兵拓扑实测），升级未引入新的兼容或 AOT 问题。
 
 ---
 
