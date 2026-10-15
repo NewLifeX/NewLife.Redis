@@ -54,6 +54,14 @@ void CheckTopo(String name, String endpoint, Action action)
 
     if (!ok)
     {
+        // CI 已搭建拓扑时要求实跑，探测失败按场景失败处理，防止静默 SKIP 丢失防回归
+        if (Environment.GetEnvironmentVariable("AOT_REQUIRE_TOPO") == "1")
+        {
+            fail++;
+            Console.WriteLine($"[FAIL] {name}：拓扑 {endpoint} 不可达（AOT_REQUIRE_TOPO=1）");
+            return;
+        }
+
         Console.WriteLine($"[SKIP] {name}（拓扑 {endpoint} 未提供）");
         return;
     }

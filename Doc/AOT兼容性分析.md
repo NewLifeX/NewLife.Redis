@@ -36,7 +36,7 @@
 
 > 冒烟工程：仓库 `AotSmoke/`（`<PublishAot>true</PublishAot>`，JIT/AOT 运行均固定严格 AOT 姿态：`IsDynamicCodeSupported=False`）。
 > 环境：.NET SDK 10.0.401 + win-x64 NativeAOT + 本机 Redis 6.2.5；逐场景 PASS/FAIL，非 0 退出码即失败。
-> 拓扑场景（22/23）自带 `CheckTopo` TCP 探测：本机未运行集群/哨兵时自动 SKIP，不影响无拓扑环境（如 CI）的其余场景判定。
+> 拓扑场景（22/23）自带 `CheckTopo` TCP 探测：无拓扑时自动 SKIP；CI（`aot.yml`）自动搭建集群/哨兵拓扑，并以 `AOT_REQUIRE_TOPO=1` 严格实跑（拓扑缺失按场景失败处理，防静默 SKIP 丢失防回归）。
 
 ### 2.2 分析器扫描（库侧，net8.0 + IsAotCompatible）
 
@@ -114,6 +114,7 @@
 | 4 | CI 防回归 | `.github/workflows/aot.yml`：分析器告警阻断 + linux-x64 NativeAOT 发布运行冒烟 | ✅ |
 | 5 | 文档与声明 | 本文档更新；Readme 中英文增补 NativeAOT 支持说明 | ✅ |
 | 6 | 注解垫片清理 | 删除本地 `Common/AotAnnotations.cs`，旧 TFM 注解特性统一由 NewLife.Core 公开存根提供，384 条 CS0436 类型重复告警清零 | ✅ |
+| 7 | CI 拓扑实跑 | `aot.yml` 冒烟任务自动搭建集群（7000-7002）与哨兵（主 7480 / 哨兵 26379）；`AotSmoke` 支持 `AOT_REQUIRE_TOPO=1` 严格模式（拓扑缺失按场景失败处理），CI 23 场景全实跑不再 SKIP | ✅ |
 
 ---
 
@@ -127,8 +128,8 @@ dotnet build NewLife.Redis.Extensions\NewLife.Redis.Extensions.csproj -f net8.0 
 # 2) 冒烟（JIT 基线；需本机 Redis 127.0.0.1:6379）
 dotnet run -c Release --project AotSmoke\AotSmoke.csproj
 
-# 2.1) 可选：拓扑场景（集群 7000-7002 / 哨兵主 7480 + 哨兵 26379），未运行时自动 SKIP
-#      启动实例：集群节点 conf 需 cluster-enabled yes；哨兵 conf 需 sentinel monitor <主名> 127.0.0.1 7480 1
+# 2.1) 可选：拓扑场景（集群 7000-7002 / 哨兵主 7480 + 哨兵 26379），未运行时自动 SKIP；CI 由 aot.yml 自动搭建并以 AOT_REQUIRE_TOPO=1 严格实跑
+#      启动实例：集群节点 conf 需 cluster-enabled yes；哨兵 conf 需 sentinel monitor <主名> 127.0.0.1 7480 1，经 redis-server <conf> --sentinel 启动（Ubuntu 的 redis-server 包不含独立 redis-sentinel 可执行文件）
 redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 --cluster-replicas 0 --cluster-yes
 
 # 3) 冒烟（NativeAOT 真编译；期望 0 条 IL 告警）
@@ -136,4 +137,4 @@ dotnet publish AotSmoke\AotSmoke.csproj -c Release -r win-x64 -o out
 .\out\AotSmoke.exe    # 逐场景 PASS/FAIL，非 0 退出码即失败
 ```
 
-> CI：`aot.yml` 在 linux-x64 上重复执行上述校验（Redis 由 redis-github-action 提供）。
+> CI：`aot.yml` 在 linux-x64 上重复执行上述校验（Redis 6379 由 redis-github-action 提供，集群/哨兵拓扑由工作流自动搭建并以 `AOT_REQUIRE_TOPO=1` 严格实跑）。
