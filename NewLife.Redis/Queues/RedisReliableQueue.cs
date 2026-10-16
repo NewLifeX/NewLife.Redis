@@ -276,7 +276,10 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
                 if (_delayTask == null || _delayTask.IsCompleted)
                 {
                     _source = new CancellationTokenSource();
-                    _delayTask = Task.Factory.StartNew(() => _delay.TransferAsync(this, null, _source.Token), TaskCreationOptions.LongRunning);
+
+                    // 必须 Unwrap 使 _delayTask 代表转移大循环本体。否则 StartNew 外层任务在内部首个 await 后即完成，
+                    // IsCompleted 判断会随每次 AddDelay 重复启动新循环，多个转移循环争夺同一延迟集合导致乱序
+                    _delayTask = Task.Factory.StartNew(() => _delay.TransferAsync(this, null, _source.Token), TaskCreationOptions.LongRunning).Unwrap();
                 }
             }
         }
