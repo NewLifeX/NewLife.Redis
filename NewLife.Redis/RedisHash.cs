@@ -54,23 +54,42 @@ public class RedisHash<TKey, TValue> : RedisBase, IDictionary<TKey, TValue>
     /// <returns></returns>
     public Boolean Remove(TKey key) => HDel(key) > 0;
 
-    /// <summary>获取字段值并删除该字段（Redis 7.4+）</summary>
+    /// <summary>获取字段值并删除该字段（Redis 8.0+）</summary>
     /// <param name="field">字段名</param>
     /// <returns>字段值，字段不存在返回默认值</returns>
-    public TValue? HGetDel(TKey field) => Execute((r, k) => r.Execute<TValue>("HGETDEL", Key, field), true);
+    public TValue? HGetDel(TKey field)
+    {
+        var rs = Execute((r, k) => r.Execute<Object[]>("HGETDEL", Key, "FIELDS", 1, field), true);
 
-    /// <summary>获取字段值并设置过期时间（Redis 7.4+）</summary>
+        return DecodeField(rs);
+    }
+
+    /// <summary>获取字段值并设置过期时间（Redis 8.0+）</summary>
     /// <param name="field">字段名</param>
     /// <param name="expire">过期时间（秒），正数为EX，负数为PX（毫秒），0为PERSIST</param>
     /// <returns>字段值，字段不存在返回默认值</returns>
     public TValue? HGetEx(TKey field, Int32 expire)
     {
-        if (expire > 0)
-            return Execute((r, k) => r.Execute<TValue>("HGETEX", Key, field, "EX", expire), true);
-        else if (expire < 0)
-            return Execute((r, k) => r.Execute<TValue>("HGETEX", Key, field, "PX", -expire), true);
-        else
-            return Execute((r, k) => r.Execute<TValue>("HGETEX", Key, field, "PERSIST"), true);
+        var rs = expire > 0
+            ? Execute((r, k) => r.Execute<Object[]>("HGETEX", Key, "EX", expire, "FIELDS", 1, field), true)
+            : expire < 0
+                ? Execute((r, k) => r.Execute<Object[]>("HGETEX", Key, "PX", -expire, "FIELDS", 1, field), true)
+                : Execute((r, k) => r.Execute<Object[]>("HGETEX", Key, "PERSIST", "FIELDS", 1, field), true);
+
+        return DecodeField(rs);
+    }
+
+    /// <summary>解码单字段命令的数组响应。HGETEX/HGETDEL 返回字段值数组，解码后释放共享数据包句柄</summary>
+    /// <param name="rs">响应数组</param>
+    /// <returns>字段值，字段不存在返回默认值</returns>
+    private TValue? DecodeField(Object[]? rs)
+    {
+        if (rs == null || rs.Length == 0 || rs[0] is not IPacket pk) return default;
+
+        var value = Redis.Encoder.Decode<TValue>(pk);
+        if (typeof(TValue) != typeof(IPacket)) pk.TryDispose();
+
+        return value;
     }
 
     /// <summary>尝试获取</summary>

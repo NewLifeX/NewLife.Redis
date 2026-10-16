@@ -225,7 +225,7 @@ public class HashTest
         }
         catch (RedisException ex) when (ex.Message.Contains("unknown command"))
         {
-            XTrace.WriteLine("Redis不支持HGETDEL命令（需Redis 6.2+），跳过测试");
+            XTrace.WriteLine("Redis不支持HGETDEL命令（需Redis 8.0+），跳过测试");
         }
     }
 
@@ -251,7 +251,7 @@ public class HashTest
         }
         catch (RedisException ex) when (ex.Message.Contains("unknown command"))
         {
-            XTrace.WriteLine("Redis不支持HGETEX命令（需Redis 6.2+），跳过测试");
+            XTrace.WriteLine("Redis不支持HGETEX命令（需Redis 8.0+），跳过测试");
         }
     }
 
