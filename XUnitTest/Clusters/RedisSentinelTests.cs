@@ -27,7 +27,7 @@ public class RedisSentinelTests
     }
 
 #if DEBUG
-    [RedisFact]
+    [RedisTopologyFact(7002, 7003, 7004)]
 #else
     [Fact(Skip = "No Cluster")]
 #endif

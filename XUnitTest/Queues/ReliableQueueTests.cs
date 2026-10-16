@@ -594,8 +594,9 @@ public class ReliableQueueTests
     {
         var key = "ReliableQueue_addDelay";
 
-        // 删除已有
+        // 删除已有；延迟集合为独立键，上一轮异常中断（如 Ctrl+C 终止测试）可能残留，需一并清理
         _redis.Remove(key);
+        _redis.Remove($"{key}:Delay");
         var queue = _redis.GetReliableQueue<String>(key);
         queue.RetryInterval = 5;
 

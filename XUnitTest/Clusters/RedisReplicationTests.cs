@@ -27,7 +27,7 @@ public class RedisReplicationTests
     }
 
 #if DEBUG
-    [RedisFact]
+    [RedisTopologyFact(6002, 6003, 6004)]
 #else
     [Fact(Skip = "No Cluster")]
 #endif
