@@ -93,7 +93,7 @@
 - Pluggable encoder: Default JSON, extensible to binary serialization
 - APM tracing: Supports `ITracer` distributed tracing + `PerfCounter` performance counters
 - Strong-named + multi-target: net45 / net461 / netstandard2.0 / netstandard2.1 / net8.0 (extensions include netcoreapp3.1 → net10)
-- NativeAOT support: IsAotCompatible checks on net8.0, AotSmoke project + CI regression, core paths verified under native compilation — see [AOT Compatibility (中文)](Doc/AOT兼容性分析.md)
+- NativeAOT support: IsAotCompatible checks on net8.0, AotSmoke project + CI regression; AOT smoke & unit tests cover win-x64 / linux-x64 / linux-arm64 / linux-la64 (LA64 via QEMU emulation), plus win-arm64, macOS and musl RIDs under native compilation (linux-x64 blocking, others in observation) — see [AOT Compatibility (中文)](Doc/AOT兼容性分析.md)
 - Zero heavy external dependencies, fully leverages the NewLife ecosystem (logging, config, serialization, security)
 
 ---

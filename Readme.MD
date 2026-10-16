@@ -90,7 +90,7 @@
 - 可插拔编码器：默认 JSON，可扩展二进制序列化
 - APM 追踪：支持 `ITracer` 链路追踪 + `PerfCounter` 性能计数器
 - 强命名 + 多目标框架：net45 / net461 / netstandard2.0 / netstandard2.1 / net8.0（扩展包含 netcoreapp3.1 → net10）
-- NativeAOT 支持：net8.0 目标常驻 IsAotCompatible 静态校验，AotSmoke 冒烟工程 + CI 防回归，核心链路原生编译实测双通，详见 [AOT 兼容性](Doc/AOT兼容性分析.md)
+- NativeAOT 支持：net8.0 目标常驻 IsAotCompatible 静态校验，AotSmoke 冒烟工程 + CI 防回归；AOT 冒烟与单元测试均覆盖 win-x64/linux-x64/linux-arm64/linux-la64（LA64 经 QEMU 仿真），另含 win-arm64、osx 与 musl 多 RID 原生编译实测（linux-x64 阻断，其余观察期），详见 [AOT 兼容性](Doc/AOT兼容性分析.md)
 - 零外部重量级依赖，充分复用 NewLife 生态（日志、配置、序列化、安全）
 
 ---

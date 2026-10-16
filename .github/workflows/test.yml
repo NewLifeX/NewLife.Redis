@@ -8,6 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
+  # 阻断基线：全量编译 + linux-x64 单元测试（保持既定门禁不变）
   build-publish:
 
     runs-on: ubuntu-latest
@@ -31,3 +32,90 @@ jobs:
     - name: Test
       run: |
         dotnet test -c Release XUnitTest/XUnitTest.csproj
+
+  # 多平台单元测试矩阵：与 build-publish（linux-x64 阻断基线）共同必选覆盖 win-x64 / linux-x64 / linux-arm64 / linux-la64。
+  # 新增平台先观察期（continue-on-error），稳定全绿后逐项转阻断（与 aot.yml 观察期约定一致）；LA64 经 QEMU 仿真（官方无托管 runner）。
+  test:
+    name: test (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            os: windows-latest
+          - rid: linux-arm64
+            os: ubuntu-24.04-arm
+          - rid: linux-la64
+            os: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup dotNET
+      if: matrix.rid != 'linux-la64'
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: |
+          10.x
+    - name: Redis 6379（Windows：Memurai Developer，Redis 7.0 兼容）
+      if: matrix.rid == 'win-x64'
+      shell: pwsh
+      run: |
+        choco install memurai-developer --no-progress -y
+        if ((Get-Service Memurai).Status -ne 'Running') { Start-Service Memurai }
+        for ($i = 0; $i -lt 30; $i++) {
+          if (Test-NetConnection 127.0.0.1 -Port 6379 -InformationLevel Quiet) { break }
+          Start-Sleep 1
+        }
+        if (-not (Test-NetConnection 127.0.0.1 -Port 6379 -InformationLevel Quiet)) { throw 'Redis 6379 未就绪' }
+    - name: Redis 6379（Linux arm64：apt 服务）
+      if: matrix.rid == 'linux-arm64'
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq redis-server redis-tools
+        sudo systemctl is-active redis-server || sudo systemctl start redis-server
+        for i in $(seq 1 30); do redis-cli ping | grep -q PONG && break; sleep 1; done
+        redis-cli ping
+    - name: Redis 6379（容器镜像，宿主 x64）
+      if: matrix.rid == 'linux-la64'
+      uses: nnhy/redis-github-action@v1.0
+    - name: Install QEMU (loong64 binfmt)
+      if: matrix.rid == 'linux-la64'
+      run: |
+        sudo apt-get update && sudo apt-get install -y qemu-user-static binfmt-support
+        sudo update-binfmts --enable qemu-loongarch64 || true
+        ls -l /usr/bin/qemu-loongarch64* || true
+    - name: Download Loongson .NET SDK (linux-loongarch64)
+      if: matrix.rid == 'linux-la64'
+      run: |
+        curl -fL -o "$HOME/la64-sdk.tar.gz" \
+          https://github.com/loongson/dotnet/releases/download/v10.0.112-loongarch64/dotnet-sdk-10.0.112-linux-loongarch64.tar.gz
+        mkdir -p "$HOME/la64" && tar -xzf "$HOME/la64-sdk.tar.gz" -C "$HOME/la64"
+        "$HOME/la64/dotnet" --info
+      env:
+        DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1
+        DOTNET_CLI_TELEMETRY_OPTOUT: 1
+    - name: Test（win-x64 / linux-arm64）
+      if: matrix.rid != 'linux-la64'
+      run: dotnet test -c Release XUnitTest/XUnitTest.csproj
+    - name: Test（linux-la64，QEMU 仿真）
+      if: matrix.rid == 'linux-la64'
+      env:
+        # 宿主 x64 无 LA64 原生 ICU，仿真进程无法加载；以 invariant 模式运行
+        DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1
+        DOTNET_CLI_TELEMETRY_OPTOUT: 1
+        DOTNET_ROOT: /home/runner/la64
+      run: |
+        export PATH="$HOME/la64:$PATH"
+        dotnet nuget add source https://lnuget.loongnix.cn/v3/index.json -n loongnuget || true
+        timeout 150m dotnet test XUnitTest/XUnitTest.csproj -c Release --nologo --logger "trx;LogFileName=linux-la64.trx" --results-directory TestResults \
+          || echo "单测在 QEMU-LA64 下失败或超时（观察期，不阻断；详见日志）"
+    - name: Upload Test Results
+      if: always() && matrix.rid == 'linux-la64'
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-linux-la64
+        path: TestResults/*.trx
+        if-no-files-found: ignore

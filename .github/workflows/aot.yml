@@ -28,11 +28,43 @@ jobs:
           exit 1
         fi
 
+  # NativeAOT 冒烟矩阵：NativeAOT 官方不支持跨 OS 编译，每个 RID 用原生 runner 发布运行。
+  # 必选覆盖 win-x64 / linux-x64 / linux-arm64 / linux-la64（LA64 见下方 la64 job，经 QEMU 仿真）；另含 win-arm64 与 osx 双架构。
+  # linux-x64 为阻断基线（保持既定门禁）；其余平台先观察期（continue-on-error），稳定全绿后逐项转阻断（见 Doc/AOT兼容性分析.md §6）。
   smoke:
-    runs-on: ubuntu-latest
-    env:
-      # 拓扑由下方步骤保证；缺失时冒烟场景判定失败而非静默 SKIP，守住防回归
-      AOT_REQUIRE_TOPO: 1
+    name: smoke (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    continue-on-error: ${{ matrix.experimental == true }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            os: ubuntu-latest
+            bin: AotSmoke
+            topo: 1
+          - rid: win-x64
+            os: windows-latest
+            bin: AotSmoke.exe
+            experimental: true
+          - rid: linux-arm64
+            os: ubuntu-24.04-arm
+            bin: AotSmoke
+            topo: 1
+            experimental: true
+          - rid: win-arm64
+            os: windows-11-arm
+            bin: AotSmoke.exe
+            experimental: true
+          - rid: osx-arm64
+            os: macos-latest
+            bin: AotSmoke
+            experimental: true
+          - rid: osx-x64
+            os: macos-15-intel
+            bin: AotSmoke
+            experimental: true
 
     steps:
     - uses: actions/checkout@v4
@@ -41,70 +73,225 @@ jobs:
       with:
         dotnet-version: |
           10.x
-    - name: Redis Server
+    - name: NativeAOT 编译依赖（Linux）
+      if: runner.os == 'Linux'
+      run: sudo apt-get update -qq && sudo apt-get install -y -qq clang zlib1g-dev
+    - name: Redis 6379（Linux x64：容器镜像）
+      if: matrix.rid == 'linux-x64'
       uses: nnhy/redis-github-action@v1.0
-    - name: Redis 集群与哨兵拓扑（集群 7000-7002 / 哨兵主 7480 / 哨兵 26379）
+    - name: Redis 6379（Linux arm64：apt 服务）
+      if: matrix.rid == 'linux-arm64'
       run: |
-        # 阻止 apt 安装时自动启动 redis 服务（6379 已由上方动作的容器占用）
-        printf '#!/bin/sh\nexit 101\n' | sudo tee /usr/sbin/policy-rc.d > /dev/null
-        sudo chmod +x /usr/sbin/policy-rc.d
         sudo apt-get update -qq
         sudo apt-get install -y -qq redis-server redis-tools
-        sudo rm -f /usr/sbin/policy-rc.d
-
-        # 3 节点集群
-        for p in 7000 7001 7002; do
-          mkdir -p /tmp/aot-redis/c$p
-          cat > /tmp/aot-redis/c$p/redis.conf <<EOF
-        port $p
-        cluster-enabled yes
-        cluster-config-file nodes.conf
-        cluster-node-timeout 5000
-        appendonly no
-        save ""
-        logfile /tmp/aot-redis/c$p/redis.log
-        dir /tmp/aot-redis/c$p
-        EOF
-          redis-server /tmp/aot-redis/c$p/redis.conf --daemonize yes
-        done
-
-        # 等待节点就绪后建集群，并确认集群状态
-        for i in $(seq 1 30); do redis-cli -p 7000 ping | grep -q PONG && break; sleep 1; done
-        redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 --cluster-replicas 0 --cluster-yes
-        for i in $(seq 1 30); do redis-cli -p 7000 cluster info | grep -q 'cluster_state:ok' && break; sleep 1; done
-        redis-cli -p 7000 cluster info | grep -q 'cluster_state:ok'
-
-        # 哨兵：主 7480 + 哨兵 26379
-        mkdir -p /tmp/aot-redis/master /tmp/aot-redis/sentinel
-        cat > /tmp/aot-redis/master/redis.conf <<EOF
-        port 7480
-        appendonly no
-        save ""
-        logfile /tmp/aot-redis/master/redis.log
-        dir /tmp/aot-redis/master
-        EOF
-        redis-server /tmp/aot-redis/master/redis.conf --daemonize yes
-        cat > /tmp/aot-redis/sentinel/sentinel.conf <<EOF
-        port 26379
-        dir /tmp/aot-redis/sentinel
-        logfile /tmp/aot-redis/sentinel/sentinel.log
-        sentinel monitor mymaster 127.0.0.1 7480 1
-        sentinel down-after-milliseconds mymaster 5000
-        EOF
-        redis-server /tmp/aot-redis/sentinel/sentinel.conf --sentinel --daemonize yes
-        for i in $(seq 1 30); do redis-cli -p 26379 sentinel get-master-addr-by-name mymaster | grep -q 7480 && break; sleep 1; done
-        redis-cli -p 26379 sentinel get-master-addr-by-name mymaster | grep -q 7480
-
-        echo "拓扑就绪：集群 7000-7002（cluster_state:ok），哨兵 26379 → 主 7480"
+        sudo systemctl is-active redis-server || sudo systemctl start redis-server
+        for i in $(seq 1 30); do redis-cli ping | grep -q PONG && break; sleep 1; done
+        redis-cli ping
+    - name: Redis 6379（Windows：Memurai Developer，Redis 7.0 兼容）
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        choco install memurai-developer --no-progress -y
+        if ((Get-Service Memurai).Status -ne 'Running') { Start-Service Memurai }
+        for ($i = 0; $i -lt 30; $i++) {
+          if (Test-NetConnection 127.0.0.1 -Port 6379 -InformationLevel Quiet) { break }
+          Start-Sleep 1
+        }
+        if (-not (Test-NetConnection 127.0.0.1 -Port 6379 -InformationLevel Quiet)) { throw 'Redis 6379 未就绪' }
+    - name: Redis 6379（macOS：brew）
+      if: runner.os == 'macOS'
+      env:
+        HOMEBREW_NO_AUTO_UPDATE: 1
+      run: |
+        brew install redis
+        redis-server --daemonize yes
+        for i in $(seq 1 30); do redis-cli ping | grep -q PONG && break; sleep 1; done
+        redis-cli ping
+    - name: Redis 集群与哨兵拓扑（Linux，集群 7000-7002 / 哨兵主 7480 / 哨兵 26379）
+      if: runner.os == 'Linux'
+      run: bash .github/scripts/redis-topo.sh
     - name: JIT 基线冒烟
+      shell: bash
+      env:
+        # 已搭建拓扑的 Linux 平台要求场景实跑，缺失即失败而非静默 SKIP，守住防回归
+        AOT_REQUIRE_TOPO: ${{ matrix.topo }}
       run: dotnet run -c Release --project AotSmoke/AotSmoke.csproj
-    - name: NativeAOT 发布（linux-x64，要求 0 条 IL 告警）
+    - name: NativeAOT 发布（${{ matrix.rid }}，要求 0 条 IL 告警）
+      shell: bash
       run: |
         set -o pipefail
-        dotnet publish AotSmoke/AotSmoke.csproj -c Release -r linux-x64 -o out 2>&1 | tee publish.log
+        dotnet publish AotSmoke/AotSmoke.csproj -c Release -r ${{ matrix.rid }} -o out 2>&1 | tee publish.log
         if grep -E "warning IL[0-9]+" publish.log; then
           echo "::error::ILC 发布存在告警，必须清零"
           exit 1
         fi
-    - name: NativeAOT 运行冒烟
-      run: ./out/AotSmoke
+    - name: NativeAOT 运行冒烟（${{ matrix.rid }}）
+      shell: bash
+      env:
+        AOT_REQUIRE_TOPO: ${{ matrix.topo }}
+      run: ./out/${{ matrix.bin }}
+
+  # linux-la64（龙芯，必选覆盖）：官方无 NativeAOT 支持（ILCompiler 无官方 loongarch64 运行时包），亦无托管 runner。
+  # 方案：QEMU 用户态仿真（binfmt）+ 龙芯 SDK（github.com/loongson/dotnet，pack 走 lnuget.loongnix.cn）。
+  # 主信号：LA64 进程 JIT 冒烟 23 场景（含集群/哨兵拓扑——Redis 由宿主 x64 提供，QEMU 用户态共享宿主回环网络）；
+  # 探索：NativeAOT 发布尝试（容错，失败不阻断）。
+  la64:
+    name: smoke (linux-la64 qemu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    continue-on-error: true
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Redis 6379（容器镜像）
+      uses: nnhy/redis-github-action@v1.0
+    - name: Redis 集群与哨兵拓扑（Linux，集群 7000-7002 / 哨兵主 7480 / 哨兵 26379）
+      run: bash .github/scripts/redis-topo.sh
+    - name: Install QEMU (loong64 binfmt)
+      run: |
+        sudo apt-get update && sudo apt-get install -y qemu-user-static binfmt-support
+        sudo update-binfmts --enable qemu-loongarch64 || true
+        ls -l /usr/bin/qemu-loongarch64* || true
+    - name: Download Loongson .NET SDK (linux-loongarch64)
+      run: |
+        curl -fL -o "$HOME/la64-sdk.tar.gz" \
+          https://github.com/loongson/dotnet/releases/download/v10.0.112-loongarch64/dotnet-sdk-10.0.112-linux-loongarch64.tar.gz
+        mkdir -p "$HOME/la64" && tar -xzf "$HOME/la64-sdk.tar.gz" -C "$HOME/la64"
+        "$HOME/la64/dotnet" --info
+      # 仿真下 --info 会真实执行 LA64 版 dotnet，是 QEMU 通路的第一道验证
+      env:
+        DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1
+        DOTNET_CLI_TELEMETRY_OPTOUT: 1
+    - name: JIT 冒烟（AotSmoke 23 场景，拓扑强制实跑）
+      env:
+        # 宿主 x64 无 LA64 原生 ICU，仿真进程无法加载；冒烟场景不依赖区域性数据，以 invariant 模式运行
+        DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1
+        DOTNET_CLI_TELEMETRY_OPTOUT: 1
+        DOTNET_ROOT: /home/runner/la64
+        AOT_REQUIRE_TOPO: 1
+      run: |
+        export PATH="$HOME/la64:$PATH"
+        dotnet nuget add source https://lnuget.loongnix.cn/v3/index.json -n loongnuget || true
+        dotnet run -c Release --project AotSmoke/AotSmoke.csproj
+    - name: NativeAOT 发布尝试（linux-loongarch64，探索，容错）
+      continue-on-error: true
+      env:
+        DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1
+        DOTNET_CLI_TELEMETRY_OPTOUT: 1
+        DOTNET_ROOT: /home/runner/la64
+      run: |
+        export PATH="$HOME/la64:$PATH"
+        dotnet publish AotSmoke/AotSmoke.csproj -c Release -r linux-loongarch64 -o AotSmoke/bin/aot-out-la64
+
+  # NativeAOT 冒烟（musl）：alpine 容器内原生发布运行。
+  # 容器内 actions/setup-dotnet 不可用，改用 dotnet-install.sh；官方要求 alpine 3.15+ 且安装 clang/build-base/zlib-dev
+  aot-musl:
+    name: smoke (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-musl-x64
+            os: ubuntu-latest
+          - rid: linux-musl-arm64
+            os: ubuntu-24.04-arm
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Publish & Run NativeAOT Smoke (alpine)
+      run: |
+        docker run --rm -v "$PWD:/src" -w /src alpine:3.20 sh -c '
+          set -e
+          apk add --no-cache bash curl clang build-base zlib-dev icu-libs redis >/dev/null
+          curl -sSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          bash /tmp/dotnet-install.sh --channel 10.0 --install-dir /usr/share/dotnet >/dev/null
+          ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet
+          export DOTNET_CLI_TELEMETRY_OPTOUT=1
+          redis-server --daemonize yes
+          for i in $(seq 1 30); do redis-cli ping | grep -q PONG && break; sleep 1; done
+          dotnet run -c Release --project AotSmoke/AotSmoke.csproj
+          dotnet publish AotSmoke/AotSmoke.csproj -c Release -r ${{ matrix.rid }} -o AotSmoke/bin/aot-out
+          ./AotSmoke/bin/aot-out/AotSmoke
+        '
+
+  # 边缘 RID（观察期，尽力而为）：win-x86(32位)、linux-arm(32位)
+  # 与其余任务一致随 push/PR 与手动触发运行（不设夜间任务），全部 continue-on-error。
+
+  # Windows x86（32位）：官方 NativeAOT 目标，windows-latest 交叉发布后直接运行
+  win-x86:
+    name: aot (win-x86)
+    runs-on: windows-latest
+    timeout-minutes: 40
+    continue-on-error: true
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup dotNET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.x
+    - name: Redis 6379（Windows：Memurai Developer，Redis 7.0 兼容）
+      shell: pwsh
+      run: |
+        choco install memurai-developer --no-progress -y
+        if ((Get-Service Memurai).Status -ne 'Running') { Start-Service Memurai }
+        for ($i = 0; $i -lt 30; $i++) {
+          if (Test-NetConnection 127.0.0.1 -Port 6379 -InformationLevel Quiet) { break }
+          Start-Sleep 1
+        }
+        if (-not (Test-NetConnection 127.0.0.1 -Port 6379 -InformationLevel Quiet)) { throw 'Redis 6379 未就绪' }
+    - name: Publish NativeAOT Smoke (win-x86)
+      run: dotnet publish AotSmoke\AotSmoke.csproj -c Release -r win-x86 -o AotSmoke\bin\aot-out
+    - name: Run NativeAOT Smoke (win-x86)
+      run: AotSmoke\bin\aot-out\AotSmoke.exe
+
+  # Linux arm32（linux-arm）：x64 宿主无原生 runner。
+  # 主信号：QEMU 容器内用 arm32 .NET 运行时跑 JIT 冒烟（Redis 由容器内 apt 提供）；
+  # 探索：宿主交叉发布 NativeAOT（官方文档未给出 x64→arm32 交叉配方，失败不阻断）
+  linux-arm:
+    name: smoke (linux-arm qemu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    continue-on-error: true
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup QEMU (arm)
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: arm
+    - name: JIT Smoke in arm32 Container
+      run: |
+        docker run --rm --platform linux/arm/v7 -v "$PWD:/src" -w /src arm32v7/debian:bookworm-slim sh -c '
+          set -e
+          apt-get update -qq && apt-get install -y -qq curl libicu-dev ca-certificates redis-server >/dev/null
+          curl -sSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          bash /tmp/dotnet-install.sh --channel 10.0 --architecture arm --install-dir /usr/share/dotnet >/dev/null
+          ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet
+          export DOTNET_CLI_TELEMETRY_OPTOUT=1
+          redis-server --daemonize yes
+          for i in $(seq 1 30); do redis-cli ping | grep -q PONG && break; sleep 1; done
+          dotnet run -c Release --project AotSmoke/AotSmoke.csproj
+        '
+    - name: Setup dotNET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.x
+    - name: Cross Publish NativeAOT (linux-arm, 探索)
+      continue-on-error: true
+      run: |
+        sudo apt-get update && sudo apt-get install -y clang lld binutils-arm-linux-gnueabihf gcc-arm-linux-gnueabihf zlib1g-dev:armhf
+        dotnet publish AotSmoke/AotSmoke.csproj -c Release -r linux-arm -o AotSmoke/bin/aot-out-arm
+    - name: Run NativeAOT Smoke (linux-arm, 探索)
+      continue-on-error: true
+      run: |
+        docker run --rm --platform linux/arm/v7 -v "$PWD:/src" -w /src arm32v7/debian:bookworm-slim sh -c '
+          set -e
+          apt-get update -qq && apt-get install -y -qq libc6 redis-server >/dev/null
+          redis-server --daemonize yes
+          for i in $(seq 1 30); do redis-cli ping | grep -q PONG && break; sleep 1; done
+          ./AotSmoke/bin/aot-out-arm/AotSmoke
+        '

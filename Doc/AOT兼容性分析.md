@@ -3,13 +3,17 @@
 > 基线：v6.6 代码库 + NewLife.Core 12.0.2026.1009-beta0916｜评估与实施：2026-10-09｜方式：**分析器扫描 + NativeAOT 真实编译与运行实测**（win-x64，.NET 10，Redis 6.2.5）
 >
 > 复验：NewLife.Core 12.0.2026.1013-beta0732｜2026-10-15｜分析器与 ILC 均 0 告警，23 场景 JIT/NativeAOT 双形态全通（win-x64，.NET 10，Redis 6.2.5；含 4 节点集群与哨兵拓扑实测），升级未引入新的兼容或 AOT 问题；同日清理本地注解垫片与 Core 公开存根的类型重复（旧 TFM 384 条 CS0436 清零）。
+>
+> 扩展：2026-10-16｜AOT 冒烟 CI 扩展为多 RID 矩阵（必选覆盖 win-x64 / linux-x64 / linux-arm64 / linux-la64；另含 win-arm64、osx 双架构、musl 容器与边缘 RID 任务），普通单元测试同步四平台覆盖，见 §6。
+>
+> 复验：2026-10-16｜NewLife.Core 维持 12.0.2026.1013-beta0732（NuGet 最新 beta，无需升级）｜本机全解决方案编译 0 错误；XUnitTest 387 通过 / 0 失败 / 10 跳过；23 场景 JIT 与 NativeAOT 双形态在严格拓扑（集群+哨兵）下全通（win-x64，Redis 7.0.15）。
 
 ---
 
 ## 1. 现状摘要
 
 - **库侧已达标**：主库与扩展包在 net8.0 目标常驻 `IsAotCompatible`，分析器扫描与 ILC 发布均 **0 条 AOT 告警**；核心链路 **23 场景三形态（JIT/裁剪/AOT）全通**（连接、RESP3、字符串、计数、哈希、列表、队列、可靠队列、泛型弹列、延迟队列、Stream、事件总线、多消费组队列、PubSub、JSON 对象/数组/字典、Message 字段解码、集群路由、哨兵主从寻址）。
-- **工程化配套就绪**：`AotSmoke` 冒烟工程入仓（JIT/AOT 双跑、非 0 退出码即失败），`aot.yml` CI 防回归（分析器告警阻断 + linux-x64 原生发布运行冒烟）。
+- **工程化配套就绪**：`AotSmoke` 冒烟工程入仓（JIT/AOT 双跑、非 0 退出码即失败），`aot.yml` CI 防回归（分析器告警阻断 + 多 RID 原生发布运行冒烟矩阵），边缘 RID（win-x86 / linux-arm）随同一工作流观察期覆盖，普通单元测试同步覆盖四平台（详见 §6）。
 - **改造前基线**：主库原目标框架 net45/net461/netstandard2.0/netstandard2.1，不含 net8.0+ 且未启用分析器；net8.0 + IsAotCompatible 实测 **6 条 AOT 告警**（已全部处置，见 §2.2 处置档案）。
 - **已知边界**：AOT 下 JSON 主机按动态代码能力显式选择（JIT=SystemJson / AOT=FastJson，属有意设计，见 §2.4）；运行期类型与嵌套类型的反射解码要求调用方以泛型入口或静态引用保根（§3）。
 
@@ -115,6 +119,7 @@
 | 5 | 文档与声明 | 本文档更新；Readme 中英文增补 NativeAOT 支持说明 | ✅ |
 | 6 | 注解垫片清理 | 删除本地 `Common/AotAnnotations.cs`，旧 TFM 注解特性统一由 NewLife.Core 公开存根提供，384 条 CS0436 类型重复告警清零 | ✅ |
 | 7 | CI 拓扑实跑 | `aot.yml` 冒烟任务自动搭建集群（7000-7002）与哨兵（主 7480 / 哨兵 26379）；`AotSmoke` 支持 `AOT_REQUIRE_TOPO=1` 严格模式（拓扑缺失按场景失败处理），CI 23 场景全实跑不再 SKIP | ✅ |
+| 8 | 多 RID 矩阵 | `aot.yml` 扩展为 smoke 矩阵（win-x64 / win-arm64 / linux-x64 / linux-arm64 / osx-arm64 / osx-x64 原生 runner）+ la64（QEMU 仿真 + 龙芯 SDK）+ musl 双架构（alpine 容器）+ 边缘 RID（win-x86 / linux-arm，并入同一工作流）；`test.yml` 单测同步覆盖 win-x64 / linux-x64 / linux-arm64 / linux-la64；全部随 push/PR 与手动触发（不设夜间任务）；仅 linux-x64 阻断，其余观察期 | ✅ |
 
 ---
 
@@ -137,4 +142,40 @@ dotnet publish AotSmoke\AotSmoke.csproj -c Release -r win-x64 -o out
 .\out\AotSmoke.exe    # 逐场景 PASS/FAIL，非 0 退出码即失败
 ```
 
-> CI：`aot.yml` 在 linux-x64 上重复执行上述校验（Redis 6379 由 redis-github-action 提供，集群/哨兵拓扑由工作流自动搭建并以 `AOT_REQUIRE_TOPO=1` 严格实跑）。
+> CI：`aot.yml` 多 RID 矩阵在原生 runner 上重复执行上述校验（linux-x64 / linux-arm64 / linux-la64 由工作流自动搭建集群/哨兵拓扑并以 `AOT_REQUIRE_TOPO=1` 严格实跑；Redis 6379 载体：Linux x64 = redis-github-action、Linux arm64 = apt、Windows = Chocolatey memurai-developer、macOS = brew、LA64 = 宿主容器镜像）。边缘 RID（win-x86 / linux-arm）同属 `aot.yml`（观察期，随 push/PR 与手动触发运行，不设夜间任务）。
+
+---
+
+## 6. 多 RID 支持矩阵与 CI
+
+> 必选覆盖：**win-x64 / linux-x64 / linux-arm64 / linux-la64**（普通单元测试与 AOT 冒烟均覆盖）；扩展覆盖：win-arm64、osx 双架构、linux-musl 双架构；边缘 RID（win-x86 / linux-arm）随常规任务尽力而为（观察期）。
+> 前提：**NativeAOT 官方不支持跨 OS 编译**（同 OS 内 x64↔arm64 可交叉）；除 LA64（QEMU 用户态仿真）外，每个 RID 均使用原生 runner 发布运行。
+
+### 6.1 覆盖分层
+
+| 层级 | 目标 RID | 单元测试 | AOT 冒烟 | runner / 载体 | Redis 载体 | 状态 |
+|---|---|---|---|---|---|---|
+| 必选 | linux-x64 | ✔ 阻断 | ✔ 阻断 | ubuntu-latest | redis-github-action（docker） | 门禁（现状基线） |
+| 必选 | win-x64 | ✔ | ✔ | windows-latest | Chocolatey memurai-developer | 观察期 |
+| 必选 | linux-arm64 | ✔ | ✔ | ubuntu-24.04-arm | apt redis-server | 观察期 |
+| 必选 | linux-la64 | ✔（QEMU） | ✔ JIT（QEMU）+ NativeAOT 发布探索 | ubuntu-latest + QEMU binfmt + 龙芯 SDK | 宿主 x64 容器镜像（仿真进程共享宿主回环网络） | 观察期 |
+| 扩展 | win-arm64 | — | ✔ | windows-11-arm | memurai（x64 仿真） | 观察期 |
+| 扩展 | osx-arm64 / osx-x64 | — | ✔ | macos-latest / macos-15-intel | brew redis | 观察期 |
+| 扩展 | linux-musl-x64 / arm64 | — | ✔ | ubuntu(-arm) + alpine:3.20 容器 | apk redis | 观察期 |
+| 边缘 | win-x86 | — | ✔ 交叉发布运行 | windows-latest | memurai | 观察期 |
+| 边缘 | linux-arm（32 位） | — | JIT（QEMU 容器）+ 交叉发布探索 | ubuntu-latest + arm32v7 容器 | 容器内 apt redis | 观察期 |
+
+- **观察期约定**：新增平台 job 均带 `continue-on-error`，连续稳定全绿后逐项转阻断门禁（linux-x64 阻断基线保持）。
+- **触发方式**：全部任务随 push/PR 与手动触发（workflow_dispatch）运行，不设夜间任务（多代码库服务端场景下，代码可能十天半月才同步到 GitHub，夜间空跑无意义）。
+- **拓扑场景（集群/哨兵）范围**：linux-x64 / linux-arm64 / linux-la64 强制实跑（`AOT_REQUIRE_TOPO=1`）；win/osx/musl 先跑基本场景，拓扑场景自动 SKIP，稳定后再评估扩展。
+- **LA64 说明**：官方不发 linux-loongarch64 的 runtime pack，**无 NativeAOT 支持**（ILCompiler 源码含 LoongArch64 后端但不构成承诺）；故 AOT 兼容以 LA64 进程 JIT 冒烟为主信号（QEMU 用户态仿真 + [龙芯 SDK](https://github.com/loongson/dotnet) 10.0.112，pack 走 lnuget.loongnix.cn，宿主无 LA64 原生 ICU 以 invariant 模式运行），NativeAOT 发布仅作探索、失败不阻断。
+- **Windows Redis 说明**：Windows 无原生 Redis，CI 使用 Memurai Developer（Redis 7.0 兼容，开发/测试免费，自带开发许可；CI 属测试用途）；win-arm64 走 x64 仿真，若失败后备方案为 redis-windows 社区构建。
+- **job 显示名变化**：`smoke` 由单一 job 变为矩阵后，检查名由 `smoke` 变为 `smoke (linux-x64)` 等；如仓库分支保护配置了旧必需检查名，需在 GitHub 设置中同步更新。
+
+### 6.2 明确排除（避免反复讨论）
+
+| 目标 | 排除理由 |
+|---|---|
+| Android / iOS / tvOS / macCatalyst / WASM | 应用模型类目标，无法在本仓验证 |
+| FreeBSD / linux-ppc64le / linux-s390x / linux-riscv64 | 无托管 runner，官方/社区 pack 渠道未验；需要时按 NewLife.Core 的 QEMU 配方另立专项 |
+| Windows x64→Linux 交叉 NativeAOT | 官方不支持跨 OS 编译 |
