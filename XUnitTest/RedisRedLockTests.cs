@@ -6,7 +6,6 @@ using Xunit;
 namespace XUnitTest;
 
 /// <summary>RedLock 多实例分布式锁测试</summary>
-[Collection("Basic")]
 public class RedisRedLockTests
 {
     private readonly FullRedis _redis;

@@ -9,7 +9,6 @@ using Xunit;
 
 namespace XUnitTest;
 
-[Collection("Basic")]
 public class ListTests
 {
     protected readonly FullRedis _redis;

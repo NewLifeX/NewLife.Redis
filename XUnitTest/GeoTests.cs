@@ -7,7 +7,6 @@ using Xunit;
 
 namespace XUnitTest;
 
-[Collection("Basic")]
 public class GeoTests
 {
     protected readonly FullRedis _redis;

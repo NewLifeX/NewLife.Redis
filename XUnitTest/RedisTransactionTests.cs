@@ -5,7 +5,6 @@ using Xunit;
 
 namespace XUnitTest;
 
-[Collection("Basic")]
 public class RedisTransactionTests
 {
     private readonly FullRedis _redis;

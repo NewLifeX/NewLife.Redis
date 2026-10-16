@@ -6,7 +6,6 @@ using Xunit;
 
 namespace XUnitTest;
 
-[Collection("Basic")]
 public class StreamInfoTests
 {
     /// <summary>从字符串创建 IPacket 辅助方法</summary>

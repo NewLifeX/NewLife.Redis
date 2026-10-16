@@ -8,11 +8,12 @@ using NewLife.Caching;
 using NewLife.Log;
 using Xunit;
 
-// 所有测试用例放入一个汇编级集合，除非单独指定Collection特性
-[assembly: CollectionBehavior(CollectionBehavior.CollectionPerAssembly)]
+// 测试类默认各自独立集合并行执行，仅需串行的类单独标注 [Collection]；限制并发线程数，避免本机与远端服务器压力过大
+[assembly: CollectionBehavior(CollectionBehavior.CollectionPerClass, MaxParallelThreads = 6)]
 
 namespace XUnitTest;
 
+// Basic 家族独占 DB2/DB4（SwapDB/Move 为整库操作），与同样使用 DB2 的 SearchTest/Resp3Tests 串行执行
 [Collection("Basic")]
 public class BasicTest
 {
@@ -418,8 +419,8 @@ public class BasicTest
         // 在当前DB设置键
         ic.Set(key, "swap_value");
 
-        // 交换DB 2 和 DB 3
-        var rs = ic.SwapDB(2, 3);
+        // 交换DB 2 和 DB 4。DB4 为 Basic 家族独占的伙伴库，避免并行执行时交换到其它测试正在使用的 DB3
+        var rs = ic.SwapDB(2, 4);
         Assert.Equal("OK", rs);
     }
 
@@ -431,7 +432,7 @@ public class BasicTest
 
         using var db = new FullRedis();
         db.Init(BasicTest.GetConfig());
-        db.Db = 3;
+        db.Db = 4;
         db.Timeout = 2_000;
         // BasicTest2 派生类会加前缀，第二连接必须同步，否则读写不同键
         db.Prefix = ic.Prefix;
@@ -443,8 +444,8 @@ public class BasicTest
 
             ic.Set(key, "move_value");
 
-            // 移动到DB3
-            Assert.True(ic.Move(key, 3));
+            // 移动到DB4（Basic 家族独占伙伴库，避免影响并行的 DB3 测试）
+            Assert.True(ic.Move(key, 4));
             Assert.False(ic.ContainsKey(key));
             Assert.Equal("move_value", db.Get<String>(key));
 
@@ -662,7 +663,7 @@ public class BasicTest
         {
             action();
         }
-        catch (RedisException ex) when (ex.Message.Contains("NOPERM") || ex.Message.Contains("no permissions") || ex.Message.Contains("disabled") || ex.Message.Contains("MISCONF"))
+        catch (RedisException ex) when (ex.Message.Contains("NOPERM") || ex.Message.Contains("no permissions") || ex.Message.Contains("disabled") || ex.Message.Contains("MISCONF") || ex.Message.Contains("already in progress"))
         {
             XTrace.WriteLine("服务器限制该命令，跳过：{0}", ex.Message);
         }
@@ -1129,8 +1130,8 @@ public class BasicTest
 
         try
         {
-            // 先加载一个简单只读函数
-            var lib = "#!lua name=mylib2\nredis.register_function('myecho2', function(k, a) return a[1] end)";
+            // 先加载一个简单只读函数。FCALL_RO 要求函数声明 no-writes 标志，Redis 7.2+ 对无标志函数会拒绝执行
+            var lib = "#!lua name=mylib2\nredis.register_function{function_name='myecho2', callback=function(keys, args) return args[1] end, flags={'no-writes'}}";
             ic.FunctionLoad(lib, replace: true);
 
             var result = ic.FCallRO<String>("myecho2", [], ["hello"]);

@@ -29,6 +29,8 @@ public class RedisTest
 
         _redis = new Redis();
         _redis.Init(config);
+        // 独占 DB5，避免 FLUSHDB（Clear）波及并行执行的其它测试类
+        _redis.Db = 5;
         _redis.Retry = 0;
         _redis.Timeout = 2_000;
         _redis.Log = XTrace.Log;

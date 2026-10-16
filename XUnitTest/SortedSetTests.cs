@@ -8,7 +8,6 @@ using Xunit;
 
 namespace XUnitTest;
 
-[Collection("Basic")]
 public class SortedSetTests
 {
     private readonly FullRedis _redis;

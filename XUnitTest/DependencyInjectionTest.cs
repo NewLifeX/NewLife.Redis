@@ -5,7 +5,6 @@ using Xunit;
 
 namespace XUnitTest
 {
-    [Collection("Basic")]
     public class DependencyInjectionTest
     {
         public readonly ServiceProvider provider;

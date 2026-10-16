@@ -10,7 +10,6 @@ using Xunit;
 
 namespace XUnitTest;
 
-[Collection("Basic")]
 public class HashTest
 {
     protected readonly FullRedis _redis;
@@ -123,6 +122,11 @@ public class HashTest
         var key = $"NewLife:HashTestInfo:Test";
         {
             _redis.MaxMessageSize = Int32.MaxValue;
+
+            // 万级字段逐个写入会产生上万次网络往返，启用管道批量提交，写入数据量与读取路径均保持不变
+            var ap = _redis.AutoPipeline;
+            _redis.AutoPipeline = 100;
+
             var hash = _redis.GetDictionary<String>(key) as RedisHash<String, String>;
             hash.Clear();
             for (var i = 0; i < 10000; i++)
@@ -146,6 +150,8 @@ public class HashTest
                     Assert.Fail($"Index:{i} Item:{list[i]} Msg:{ex.Message}");
                 }
             }
+
+            _redis.AutoPipeline = ap;
         }
     }
 
