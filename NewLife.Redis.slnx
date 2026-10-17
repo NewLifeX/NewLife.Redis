@@ -1,0 +1,25 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/Samples/">
+    <Project Path="Samples/Benchmark/Benchmark.csproj" />
+    <Project Path="Samples/QueueDemo/QueueDemo.csproj" />
+    <Project Path="Samples/RedisSwitch/RedisSwitch.csproj" />
+    <Project Path="Samples/WebDemo/WebDemo.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".github/workflows/publish-beta.yml" />
+    <File Path=".github/workflows/publish.yml" />
+    <File Path=".github/workflows/test.yml" />
+    <File Path="Readme.MD" />
+  </Folder>
+  <Project Path="AotSmoke/AotSmoke.csproj" />
+  <Project Path="NewLife.Redis.Extensions/NewLife.Redis.Extensions.csproj" />
+  <Project Path="NewLife.Redis/NewLife.Redis.csproj" />
+  <Project Path="Test/Test.csproj" />
+  <Project Path="XUnitTest/XUnitTest.csproj" />
+</Solution>
