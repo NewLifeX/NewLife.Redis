@@ -31,7 +31,7 @@ jobs:
       uses: nnhy/redis-github-action@v1.0
     - name: Test
       run: |
-        dotnet test -c Release XUnitTest/XUnitTest.csproj
+        dotnet test -c Release XUnitTest/XUnitTest.csproj --no-build
 
   # 多平台单元测试矩阵：与 build-publish（linux-x64 阻断基线）共同必选覆盖 win-x64 / linux-x64 / linux-arm64 / linux-la64。
   # 新增平台先观察期（continue-on-error），稳定全绿后逐项转阻断（与 aot.yml 观察期约定一致）；LA64 经 QEMU 仿真（官方无托管 runner）。

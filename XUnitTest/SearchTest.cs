@@ -22,9 +22,7 @@ public class SearchTest
         _redis.Retry = 0;
         _redis.Log = XTrace.Log;
 
-#if DEBUG
-        _redis.ClientLog = XTrace.Log;
-#endif
+        if (BasicTest.EnableClientLog) _redis.ClientLog = XTrace.Log;
     }
 
     [RedisFact(DisplayName = "搜索测试")]

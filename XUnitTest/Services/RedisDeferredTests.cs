@@ -23,9 +23,7 @@ public class RedisDeferredTests
         _redis.Expire = 10 * 60;
         _redis.Log = XTrace.Log;
 
-#if DEBUG
-        _redis.ClientLog = XTrace.Log;
-#endif
+        if (BasicTest.EnableClientLog) _redis.ClientLog = XTrace.Log;
     }
 
     [RedisFact]
@@ -44,7 +42,8 @@ public class RedisDeferredTests
         var vv = new[] { Rand.Next(10000), Rand.Next(10000), Rand.Next(10, 1000) };
 
         using var st = new RedisDeferred(_redis, "SiteDayStat");
-        st.Period = 2000;
+        using var done = new ManualResetEventSlim(false);
+        st.Period = 1000;
         st.Process += (s, e) =>
         {
             var ks = e.Keys;
@@ -61,6 +60,7 @@ public class RedisDeferredTests
             // 全部处理完成后一次性发布，避免测试线程读到循环中间态（远端高延迟叠加时曾高频偶发）
             vs = last;
             keys = ks;
+            done.Set();
         };
 
         // 计算key
@@ -85,12 +85,7 @@ public class RedisDeferredTests
         // 变动key进入延迟队列
         st.Add(key2);
 
-        for (var i = 0; i < 30; i++)
-        {
-            if (keys != null) break;
-
-            Thread.Sleep(1_000);
-        }
+        Assert.True(done.Wait(TimeSpan.FromSeconds(15)), "等待延迟处理超时");
 
         Assert.NotNull(keys);
         Assert.Equal(2, keys.Length);

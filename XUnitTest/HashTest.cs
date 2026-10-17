@@ -22,9 +22,7 @@ public class HashTest
         _redis.Init(config);
         _redis.Log = XTrace.Log;
 
-#if DEBUG
-        _redis.ClientLog = XTrace.Log;
-#endif
+        if (BasicTest.EnableClientLog) _redis.ClientLog = XTrace.Log;
     }
 
     [RedisFact]

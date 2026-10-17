@@ -20,9 +20,7 @@ public class GarnetCompatibilityTests
         _redis.Init(config);
         _redis.Log = XTrace.Log;
 
-#if DEBUG
-        _redis.ClientLog = XTrace.Log;
-#endif
+        if (BasicTest.EnableClientLog) _redis.ClientLog = XTrace.Log;
     }
 
     [RedisFact(DisplayName = "服务器类型检测")]

@@ -35,9 +35,7 @@ public class RedisTest
         _redis.Timeout = 2_000;
         _redis.Log = XTrace.Log;
 
-#if DEBUG
-        _redis.ClientLog = XTrace.Log;
-#endif
+        if (BasicTest.EnableClientLog) _redis.ClientLog = XTrace.Log;
 
         // 测试高级功能，如果keys过多，则清空
         if (BasicTest.RedisAvailable && _redis.Count > 10000) _redis.Clear();
@@ -472,9 +470,7 @@ public class RedisTest
         var redis = new Redis();
         redis.Init(config);
         redis.Log = XTrace.Log;
-#if DEBUG
-        redis.ClientLog = XTrace.Log;
-#endif
+        if (BasicTest.EnableClientLog) redis.ClientLog = XTrace.Log;
 
         var ic = redis;
         var key = "Name";

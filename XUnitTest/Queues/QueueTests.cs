@@ -26,9 +26,7 @@ public class QueueTests
         _redis.Init(config);
         _redis.Log = XTrace.Log;
 
-#if DEBUG
-        _redis.ClientLog = XTrace.Log;
-#endif
+        if (BasicTest.EnableClientLog) _redis.ClientLog = XTrace.Log;
     }
 
     [RedisFact]
@@ -110,13 +108,13 @@ public class QueueTests
         Assert.Equal(vs[2], q.TakeOne());
         Assert.Equal(vs[3], q.TakeOne());
 
-        // 延迟2秒生产消息
-        ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); q.Add("xxyy"); });
+        // 延迟生产消息，验证阻塞消费在消息到达后立即返回
+        ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(300); q.Add("xxyy"); });
         var sw = Stopwatch.StartNew();
-        var rs = q.TakeOne(3);
+        var rs = q.TakeOne(2);
         sw.Stop();
         Assert.Equal("xxyy", rs);
-        Assert.True(sw.ElapsedMilliseconds >= 2000);
+        Assert.True(sw.ElapsedMilliseconds >= 250);
     }
 
     [RedisFact]
@@ -247,20 +245,20 @@ public class QueueTests
         Assert.Equal("新生命团队", await q.TakeOneAsync(0));
         Assert.Equal("ABEF", await q.TakeOneAsync(0));
 
-        // 空消息
+        // 空消息，等待 1 秒超时
         var sw = Stopwatch.StartNew();
-        var rs = await q.TakeOneAsync(2);
+        var rs = await q.TakeOneAsync(1);
         sw.Stop();
         Assert.Null(rs);
-        Assert.True(sw.ElapsedMilliseconds >= 2000);
+        Assert.True(sw.ElapsedMilliseconds >= 900);
 
-        // 延迟2秒生产消息
-        ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); q.Add("xxyy"); });
+        // 延迟生产消息，验证阻塞消费在消息到达后立即返回
+        ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(300); q.Add("xxyy"); });
         sw = Stopwatch.StartNew();
-        rs = await q.TakeOneAsync(3);
+        rs = await q.TakeOneAsync(2);
         sw.Stop();
         Assert.Equal("xxyy", rs);
-        Assert.True(sw.ElapsedMilliseconds >= 2000);
+        Assert.True(sw.ElapsedMilliseconds >= 250);
     }
 
     [RedisFact]

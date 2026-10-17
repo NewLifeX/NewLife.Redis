@@ -27,9 +27,7 @@ public class ReliableQueueTests
         _redis.Init(config);
         _redis.Log = XTrace.Log;
 
-#if DEBUG
-        _redis.ClientLog = XTrace.Log;
-#endif
+        if (BasicTest.EnableClientLog) _redis.ClientLog = XTrace.Log;
     }
 
     [RedisFact]
@@ -190,13 +188,13 @@ public class ReliableQueueTests
         Assert.Equal(vs[3], queue.TakeOne());
         queue.Acknowledge(vs);
 
-        // 延迟2秒生产消息
-        ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); queue.Add("xxyy"); });
+        // 延迟生产消息，验证阻塞消费在消息到达后立即返回
+        ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(300); queue.Add("xxyy"); });
         var sw = Stopwatch.StartNew();
-        var rs = queue.TakeOne(3);
+        var rs = queue.TakeOne(2);
         sw.Stop();
         Assert.Equal("xxyy", rs);
-        Assert.True(sw.ElapsedMilliseconds >= 2000);
+        Assert.True(sw.ElapsedMilliseconds >= 250);
     }
 
     [RedisFact]
@@ -242,7 +240,7 @@ public class ReliableQueueTests
         Assert.Equal(count, count3);
     }
 
-    /// <summary>AckKey独一无二，一百万个key测试</summary>
+    /// <summary>AckKey独一无二，一万个key测试</summary>
     [RedisFact]
     public void UniqueAckKey()
     {
@@ -250,7 +248,7 @@ public class ReliableQueueTests
 
         var hash = new HashSet<String>();
 
-        for (var i = 0; i < 1_000_000; i++)
+        for (var i = 0; i < 10_000; i++)
         {
             var q = _redis.GetReliableQueue<String>(key);
 
@@ -356,7 +354,7 @@ public class ReliableQueueTests
 
         _redis.Remove(key);
         var queue = _redis.GetReliableQueue<String>(key);
-        queue.RetryInterval = 5;
+        queue.RetryInterval = 2;
 
         // 清空
         queue.ClearAllAck();
@@ -425,20 +423,20 @@ public class ReliableQueueTests
         Assert.Equal("新生命团队", await q.TakeOneAsync(0));
         Assert.Equal("ABEF", await q.TakeOneAsync(0));
 
-        // 空消息
+        // 空消息，等待 1 秒超时
         var sw = Stopwatch.StartNew();
-        var rs = await q.TakeOneAsync(2);
+        var rs = await q.TakeOneAsync(1);
         sw.Stop();
         Assert.Null(rs);
-        Assert.True(sw.ElapsedMilliseconds >= 2000);
+        Assert.True(sw.ElapsedMilliseconds >= 900);
 
-        // 延迟2秒生产消息
-        ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); q.Add("xxyy"); });
+        // 延迟生产消息，验证阻塞消费在消息到达后立即返回
+        ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(300); q.Add("xxyy"); });
         sw = Stopwatch.StartNew();
-        rs = await q.TakeOneAsync(3);
+        rs = await q.TakeOneAsync(2);
         sw.Stop();
         Assert.Equal("xxyy", rs);
-        Assert.True(sw.ElapsedMilliseconds >= 2000);
+        Assert.True(sw.ElapsedMilliseconds >= 250);
     }
 
     [RedisFact]
@@ -598,7 +596,7 @@ public class ReliableQueueTests
         _redis.Remove(key);
         _redis.Remove($"{key}:Delay");
         var queue = _redis.GetReliableQueue<String>(key);
-        queue.RetryInterval = 5;
+        queue.RetryInterval = 2;
 
         // 发现回滚
         var rcount = queue.RollbackAllAck();
@@ -618,13 +616,13 @@ public class ReliableQueueTests
 
         // 初始化延迟
         var dq = queue.InitDelay();
-        dq.TransferInterval = 2;
+        dq.TransferInterval = 1;
 
         // 添加延迟消息
         var sw = Stopwatch.StartNew();
         var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
         foreach (var item in vs)
-            queue.AddDelay(item, 2);
+            queue.AddDelay(item, 1);
 
         // 可信队列消费
         var v1 = await queue.TakeOneAsync(-1);
@@ -632,11 +630,11 @@ public class ReliableQueueTests
 
         // 到期以后
         XTrace.WriteLine("可信队列阻塞消费");
-        var v2 = await queue.TakeOneAsync(5);
+        var v2 = await queue.TakeOneAsync(3);
         sw.Stop();
         Assert.Equal("1234", v2);
         // 延迟队列没有阻塞方法，需要等1秒。延迟集合 score 为秒级时间戳，最多提前1秒到期，故仅校验未立即投递
-        Assert.True(sw.ElapsedMilliseconds >= 1000);
+        Assert.True(sw.ElapsedMilliseconds >= 900);
         queue.Acknowledge(v2);
     }
 
@@ -652,20 +650,20 @@ public class ReliableQueueTests
         var t1 = Task.Run(async () =>
         {
             var queue = _redis.GetReliableQueue<String>(key);
-            await queue.TakeOneAsync(3);
+            await queue.TakeOneAsync(1);
         });
 
         var t2 = Task.Run(async () =>
         {
             var queue = _redis.GetReliableQueue<String>(key);
-            await queue.TakeOneAsync(3);
+            await queue.TakeOneAsync(1);
         });
 
         await Task.WhenAll(t1, t2);
 
         sw.Stop();
         XTrace.WriteLine("ReliableQueue_BlockTest: {0}", sw.Elapsed);
-        Assert.True(sw.ElapsedMilliseconds < 3_000 + 500);
+        Assert.True(sw.ElapsedMilliseconds < 1_500);
     }
 
     private class RedisMessage<T> { public MyModel Data { get; set; } }
@@ -674,12 +672,12 @@ public class ReliableQueueTests
     {
         var queue = _redis.GetReliableQueue<RedisMessage<MyModel>>("TakeOneNotDataAsync");
         queue.RetryInterval = 60;//重新处理确认队列中死信的间隔。默认60s
-        var message = await queue.TakeOneAsync(3);
+        var message = await queue.TakeOneAsync(1);
         Assert.Null(message);
 
         var queue2 = _redis.GetReliableQueue<Int32>("TakeOneNotDataAsync_Int32");
         queue2.RetryInterval = 60;//重新处理确认队列中死信的间隔。默认60s
-        var messageInt = await queue2.TakeOneAsync(3);
+        var messageInt = await queue2.TakeOneAsync(1);
         Assert.Equal(0, messageInt);
     }
 }

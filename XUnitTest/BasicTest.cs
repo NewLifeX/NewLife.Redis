@@ -8,8 +8,9 @@ using NewLife.Caching;
 using NewLife.Log;
 using Xunit;
 
-// 测试类默认各自独立集合并行执行，仅需串行的类单独标注 [Collection]；限制并发线程数，避免本机与远端服务器压力过大
-[assembly: CollectionBehavior(CollectionBehavior.CollectionPerClass, MaxParallelThreads = 6)]
+// 测试类默认各自独立集合并行执行，仅需串行的类单独标注 [Collection]；限制并发线程数，避免本机与远端服务器压力过大。
+// 实际并发数由 xunit.runner.json 的 maxParallelThreads 覆盖，便于按机器/CI 调整而无需改代码
+[assembly: CollectionBehavior(CollectionBehavior.CollectionPerClass, MaxParallelThreads = 12)]
 
 namespace XUnitTest;
 
@@ -30,9 +31,7 @@ public class BasicTest
         _redis.Timeout = 2_000;
         _redis.Log = XTrace.Log;
 
-#if DEBUG
-        _redis.ClientLog = XTrace.Log;
-#endif
+        if (BasicTest.EnableClientLog) _redis.ClientLog = XTrace.Log;
     }
 
     /// <summary>获取经过前缀处理后的键名（用于与Redis返回的键名比较）</summary>
@@ -40,6 +39,10 @@ public class BasicTest
 
     #region Redis连接配置
     private static String _config;
+
+    /// <summary>是否输出Redis客户端命令日志。默认关闭以避免拖慢测试，设置环境变量 REDIS_TEST_LOG=1 开启</summary>
+    public static Boolean EnableClientLog { get; } = Environment.GetEnvironmentVariable("REDIS_TEST_LOG").ToBoolean();
+
     /// <summary>获取Redis连接配置。优先级：环境变量 REDIS_CONNECTION > config\redis.config 文件 > 默认127.0.0.1:6379</summary>
     /// <returns></returns>
     public static String GetConfig()

@@ -21,9 +21,7 @@ public class RedisReplicationTests
         _redis.Db = 2;
         _redis.Log = XTrace.Log;
 
-#if DEBUG
-        _redis.ClientLog = XTrace.Log;
-#endif
+        if (BasicTest.EnableClientLog) _redis.ClientLog = XTrace.Log;
     }
 
 #if DEBUG

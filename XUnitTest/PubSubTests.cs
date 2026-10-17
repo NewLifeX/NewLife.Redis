@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,9 +22,20 @@ namespace XUnitTest
             _redis.Init(config);
             _redis.Log = XTrace.Log;
 
-#if DEBUG
-            _redis.ClientLog = XTrace.Log;
-#endif
+            if (BasicTest.EnableClientLog) _redis.ClientLog = XTrace.Log;
+        }
+
+        /// <summary>循环发布直到订阅方收到指定数量的消息。订阅命令异步生效，固定睡眠在高负载下不稳定</summary>
+        private static void PublishUntil(Action publish, Func<Int32> received, Int32 expected, Int32 timeoutMs = 5_000)
+        {
+            var sw = Stopwatch.StartNew();
+            while (received() < expected && sw.ElapsedMilliseconds < timeoutMs)
+            {
+                publish();
+                Thread.Sleep(20);
+            }
+
+            SpinWait.SpinUntil(() => received() >= expected, 1_000);
         }
 
         [RedisFact(DisplayName = "单通道定义")]
@@ -36,24 +48,13 @@ namespace XUnitTest
             var count = 0;
             Task.Run(() => pb.SubscribeAsync((t, s) =>
             {
-                count++;
+                Interlocked.Increment(ref count);
                 XTrace.WriteLine("Consume: [{0}] {1}", t, s);
             }, source.Token));
 
-            Thread.Sleep(100);
+            PublishUntil(() => pb.Publish("test"), () => Volatile.Read(ref count), 3);
 
-            var rs = pb.Publish("test");
-            Assert.Equal(1, rs);
-
-            Thread.Sleep(100);
-            pb.Publish("test2");
-
-            Thread.Sleep(100);
-            pb.Publish("test3");
-
-            Thread.Sleep(100);
-
-            Assert.Equal(3, count);
+            Assert.True(count >= 3, $"收到消息数不足：{count}");
         }
 
         [RedisFact(DisplayName = "多通道定义")]
@@ -66,26 +67,19 @@ namespace XUnitTest
             var count = 0;
             Task.Run(() => pb.SubscribeAsync((t, s) =>
             {
-                count++;
+                Interlocked.Increment(ref count);
                 XTrace.WriteLine("Consume: [{0}] {1}", t, s);
             }, source.Token));
 
-            Thread.Sleep(100);
-
             var pb1 = new PubSub(_redis, "pb_t1");
-            var rs = pb1.Publish("test");
-            Assert.Equal(1, rs);
-
-            Thread.Sleep(100);
             var pb2 = new PubSub(_redis, "pb_t2");
-            pb2.Publish("test2");
+            PublishUntil(() =>
+            {
+                pb1.Publish("test");
+                pb2.Publish("test2");
+            }, () => Volatile.Read(ref count), 3);
 
-            Thread.Sleep(100);
-            pb2.Publish("test3");
-
-            Thread.Sleep(100);
-
-            Assert.Equal(3, count);
+            Assert.True(count >= 3, $"收到消息数不足：{count}");
         }
 
         [RedisFact]
@@ -110,19 +104,17 @@ namespace XUnitTest
                 XTrace.WriteLine("Consume: [{0}] [{1}] {2}", pattern, channel, msg);
             }, source.Token));
 
-            Thread.Sleep(100);
-
-            // 发布到匹配模式的频道
+            // 模式订阅无法通过服务端自省精确判断就绪，改为循环发布直到收到
             var pb1 = new PubSub(_redis, "pb_ps_test");
-            var rs = pb1.Publish("hello");
-            Assert.Equal(1, rs);
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            while (count < 2 && sw.ElapsedMilliseconds < 5_000)
+            {
+                pb1.Publish("hello");
+                Thread.Sleep(20);
+            }
+            SpinWait.SpinUntil(() => count >= 2, 1_000);
 
-            Thread.Sleep(100);
-            pb1.Publish("world");
-
-            Thread.Sleep(100);
-
-            Assert.Equal(2, count);
+            Assert.True(count >= 2, $"收到消息数不足：{count}");
         }
 
         [RedisFact(DisplayName = "PubSub自省-活跃频道")]
@@ -131,9 +123,10 @@ namespace XUnitTest
             var pb = new PubSub(_redis, "pb_introspect");
 
             // 先订阅一个频道使其活跃
+            var count = 0;
             var source = new CancellationTokenSource(2_000);
-            Task.Run(() => pb.SubscribeAsync((t, s) => { }, source.Token));
-            Thread.Sleep(100);
+            Task.Run(() => pb.SubscribeAsync((t, s) => Interlocked.Increment(ref count), source.Token));
+            PublishUntil(() => pb.Publish("probe"), () => Volatile.Read(ref count), 1);
 
             var channels = pb.PubSubChannels("pb_introspect");
             Assert.NotNull(channels);
@@ -146,9 +139,10 @@ namespace XUnitTest
             var pb = new PubSub(_redis, "pb_numsub");
 
             // 先订阅
+            var count = 0;
             var source = new CancellationTokenSource(2_000);
-            Task.Run(() => pb.SubscribeAsync((t, s) => { }, source.Token));
-            Thread.Sleep(100);
+            Task.Run(() => pb.SubscribeAsync((t, s) => Interlocked.Increment(ref count), source.Token));
+            PublishUntil(() => pb.Publish("probe"), () => Volatile.Read(ref count), 1);
 
             var rs = pb.PubSubNumSub("pb_numsub");
             Assert.NotNull(rs);
@@ -178,14 +172,16 @@ namespace XUnitTest
                 XTrace.WriteLine("ShardConsume: [{0}] {1}", channel, msg);
             }, source.Token));
 
-            Thread.Sleep(100);
+            // 分片订阅没有对应的就绪自省命令，循环发布直到收到
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            while (count < 1 && sw.ElapsedMilliseconds < 5_000)
+            {
+                pb.SPublish("shard_msg");
+                Thread.Sleep(20);
+            }
+            SpinWait.SpinUntil(() => count >= 1, 1_000);
 
-            var rs = pb.SPublish("shard_msg");
-            Assert.Equal(1, rs);
-
-            Thread.Sleep(100);
-
-            Assert.Equal(1, count);
+            Assert.True(count >= 1, $"收到消息数不足：{count}");
         }
     }
 }

@@ -32,11 +32,16 @@ public class RedisEventBusTests
                 return Task.CompletedTask;
             });
 
-            // 稍等消费循环就绪后连续发布，规避“从最后位置消费”的时序竞态
-            await Task.Delay(1_000);
-            await bus.PublishAsync(1);
-            await bus.PublishAsync(2);
-            await bus.PublishAsync(3);
+            // 消费循环在后台创建消费组，固定延迟既慢又不稳定；消费组就绪前发布的消息会被从最后位置消费跳过，
+            // 因此循环发布直到订阅方收到，正常情况数十毫秒内完成
+            var deadline = DateTime.UtcNow.AddSeconds(10);
+            while (!source.Task.IsCompleted && DateTime.UtcNow < deadline)
+            {
+                await bus.PublishAsync(1);
+                await bus.PublishAsync(2);
+                await bus.PublishAsync(3);
+                await Task.Delay(20);
+            }
 
             var completed = await Task.WhenAny(source.Task, Task.Delay(10_000));
             Assert.Same(source.Task, completed);
@@ -77,9 +82,14 @@ public class RedisEventBusTests
                 return Task.CompletedTask;
             });
 
-            // 稍等消费循环就绪后发布，规避“从最后位置消费”的时序竞态
-            await Task.Delay(1_000);
-            await bus.PublishAsync(new OnlineEvent { UserName = "smartStone", Level = 9 });
+            // 同 PublishAndSubscribe_ClientId，循环发布直到消费组就绪并收到消息
+            var deadline = DateTime.UtcNow.AddSeconds(10);
+            var evtPublished = new OnlineEvent { UserName = "smartStone", Level = 9 };
+            while (!source.Task.IsCompleted && DateTime.UtcNow < deadline)
+            {
+                await bus.PublishAsync(evtPublished);
+                await Task.Delay(20);
+            }
 
             var completed = await Task.WhenAny(source.Task, Task.Delay(10_000));
             Assert.Same(source.Task, completed);

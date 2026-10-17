@@ -24,9 +24,7 @@ public class RedisLockTest
         _redis.Timeout = 2_000;
         _redis.Log = XTrace.Log;
 
-#if DEBUG
-        _redis.ClientLog = XTrace.Log;
-#endif
+        if (BasicTest.EnableClientLog) _redis.ClientLog = XTrace.Log;
     }
     [TestOrder(50)]
     [RedisFact(DisplayName = "正常锁")]
@@ -60,21 +58,21 @@ public class RedisLockTest
     {
         var ic = _redis;
 
-        var ck1 = ic.AcquireLock("lock:TestLock2", 2000);
+        var ck1 = ic.AcquireLock("lock:TestLock2", 1000);
         // 故意不用using，验证GC是否能回收
         //using var ck1 = ic.AcquireLock("TestLock2", 3000);
 
         var sw = Stopwatch.StartNew();
 
-        // 抢相同锁，不可能成功。超时时间必须小于3000，否则前面的锁过期后，这里还是可以抢到的
-        Assert.Throws<InvalidOperationException>(() => ic.AcquireLock("lock:TestLock2", 1000));
+        // 抢相同锁，不可能成功。超时时间必须小于锁有效期，否则前面的锁过期后，这里还是可以抢到的
+        Assert.Throws<InvalidOperationException>(() => ic.AcquireLock("lock:TestLock2", 500));
 
-        // 耗时必须超过有效期
+        // 耗时必须超过等待时间
         sw.Stop();
         XTrace.WriteLine("TestLock2 ElapsedMilliseconds={0}ms", sw.ElapsedMilliseconds);
-        Assert.True(sw.ElapsedMilliseconds >= 1000);
+        Assert.True(sw.ElapsedMilliseconds >= 400);
 
-        Thread.Sleep(2000 - 1000 + 100);
+        Thread.Sleep(600);
 
         // 那个锁其实已经不在了，缓存应该把它干掉
         Assert.False(ic.ContainsKey("lock:TestLock2"));
@@ -86,22 +84,22 @@ public class RedisLockTest
     {
         var ic = _redis;
 
-        var ck1 = ic.AcquireLock("lock:TestLock3", 2000);
+        var ck1 = ic.AcquireLock("lock:TestLock3", 1000);
         // 故意不用using，验证GC是否能回收
         //using var ck1 = ic.AcquireLock("TestLock3", 3000);
 
         var sw = Stopwatch.StartNew();
 
-        // 抢相同锁，不可能成功。超时时间必须小于3000，否则前面的锁过期后，这里还是可以抢到的
-        var ck2 = ic.AcquireLock("lock:TestLock3", 1000, 1000, false);
+        // 抢相同锁，不可能成功。超时时间必须小于锁有效期，否则前面的锁过期后，这里还是可以抢到的
+        var ck2 = ic.AcquireLock("lock:TestLock3", 500, 500, false);
         Assert.Null(ck2);
 
-        // 耗时必须超过有效期
+        // 耗时必须超过等待时间
         sw.Stop();
         XTrace.WriteLine("TestLock3 ElapsedMilliseconds={0}ms", sw.ElapsedMilliseconds);
-        Assert.True(sw.ElapsedMilliseconds >= 1000);
+        Assert.True(sw.ElapsedMilliseconds >= 400);
 
-        Thread.Sleep(2000 - 1000 + 100);
+        Thread.Sleep(600);
 
         // 那个锁其实已经不在了，缓存应该把它干掉
         Assert.False(ic.ContainsKey("lock:TestLock3"));

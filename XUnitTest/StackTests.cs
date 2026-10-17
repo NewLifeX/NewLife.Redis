@@ -25,9 +25,7 @@ public class StackTests
         _redis.Timeout = 5_000;
         _redis.Log = XTrace.Log;
 
-#if DEBUG
-        _redis.ClientLog = XTrace.Log;
-#endif
+        if (BasicTest.EnableClientLog) _redis.ClientLog = XTrace.Log;
     }
 
     [RedisFact]
@@ -93,12 +91,12 @@ public class StackTests
         Assert.Equal("abcd", await q.TakeOneAsync(0));
         Assert.Equal("1234", await q.TakeOneAsync(0));
 
-        // 空消息
+        // 空消息，等待 1 秒超时
         var sw = Stopwatch.StartNew();
         String? rs = null;
         try
         {
-            rs = await q.TakeOneAsync(2);
+            rs = await q.TakeOneAsync(1);
         }
         catch (OperationCanceledException)
         {
@@ -106,14 +104,14 @@ public class StackTests
         }
         sw.Stop();
         Assert.Null(rs);
-        Assert.True(sw.ElapsedMilliseconds >= 1500, $"超时不足: {sw.ElapsedMilliseconds}ms");
+        Assert.True(sw.ElapsedMilliseconds >= 900, $"超时不足: {sw.ElapsedMilliseconds}ms");
 
-        // 延迟2秒生产消息
-        ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(1500); q.Add("xxyy"); });
+        // 延迟生产消息，验证阻塞消费在消息到达后立即返回
+        ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(300); q.Add("xxyy"); });
         sw = Stopwatch.StartNew();
         try
         {
-            rs = await q.TakeOneAsync(3);
+            rs = await q.TakeOneAsync(2);
         }
         catch (OperationCanceledException)
         {
@@ -121,6 +119,6 @@ public class StackTests
         }
         sw.Stop();
         Assert.Equal("xxyy", rs);
-        Assert.True(sw.ElapsedMilliseconds >= 1000, $"超时不足: {sw.ElapsedMilliseconds}ms");
+        Assert.True(sw.ElapsedMilliseconds >= 250, $"超时不足: {sw.ElapsedMilliseconds}ms");
     }
 }

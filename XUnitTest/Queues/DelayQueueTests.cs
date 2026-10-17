@@ -26,9 +26,20 @@ public class DelayQueueTests
         _redis.Init(config);
         _redis.Log = XTrace.Log;
 
-#if DEBUG
-        _redis.ClientLog = XTrace.Log;
-#endif
+        if (BasicTest.EnableClientLog) _redis.ClientLog = XTrace.Log;
+    }
+
+    /// <summary>等待取出一条到期消息。到期集合按秒取整，轮询比固定睡眠更稳定</summary>
+    private static String WaitTake(RedisDelayQueue<String> queue, Int32 timeoutMs = 5_000)
+    {
+        var sw = Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < timeoutMs)
+        {
+            var value = queue.TakeOne(1);
+            if (value != null) return value;
+        }
+
+        return null;
     }
 
     [RedisFact]
@@ -80,18 +91,14 @@ public class DelayQueueTests
         Assert.Equal("新生命团队", vs2[0]);
         queue.Acknowledge(vs2[0]);
 
-        // 延迟获取
-        Thread.Sleep(1000);
-        var vs3 = queue.Take(5).ToArray();
-        Assert.Single(vs3);
-        Assert.Equal("abcd", vs3[0]);
-        queue.Acknowledge(vs3[0]);
+        // 延迟获取。到期时间按秒取整，固定睡眠可能跨越多个到期点，改为逐个等待到期消息
+        var v3 = WaitTake(queue);
+        Assert.Equal("abcd", v3);
+        queue.Acknowledge(v3);
 
         // 延迟获取
-        Thread.Sleep(1000);
-        var vs4 = queue.Take(5).ToArray();
-        Assert.Single(vs4);
-        Assert.Equal("1234", vs4[0]);
+        var v4 = WaitTake(queue);
+        Assert.Equal("1234", v4);
 
         // 对比个数
         var count3 = queue.Count;
@@ -104,8 +111,7 @@ public class DelayQueueTests
     }
 
     [RedisFact]
-    public void Queue_Block()
-    {
+    public void Queue_Block()    {
         var key = "DelayQueue_block";
 
         // 删除已有
@@ -140,13 +146,13 @@ public class DelayQueueTests
         Assert.Equal(vs[3], queue.TakeOne());
         queue.Acknowledge(vs);
 
-        // 延迟2秒生产消息
-        ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); queue.Add("xxyy"); });
+        // 延迟生产消息，验证阻塞消费在消息到达后立即返回
+        ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(300); queue.Add("xxyy"); });
         var sw = Stopwatch.StartNew();
-        var rs = queue.TakeOne(3);
+        var rs = queue.TakeOne(2);
         sw.Stop();
         Assert.Equal("xxyy", rs);
-        Assert.True(sw.ElapsedMilliseconds >= 2000);
+        Assert.True(sw.ElapsedMilliseconds >= 250);
     }
 
     [RedisFact]
@@ -158,7 +164,7 @@ public class DelayQueueTests
         _redis.Remove(key);
         var queue = _redis.GetDelayQueue<String>(key);
         _redis.SetExpire(key, TimeSpan.FromMinutes(60));
-        queue.Delay = 2;
+        queue.Delay = 1;
 
         // 取出个数
         var count = queue.Count;
@@ -173,7 +179,7 @@ public class DelayQueueTests
         var vs2 = queue.Take(3).ToArray();
         Assert.Empty(vs2);
 
-        Thread.Sleep(2000);
+        Thread.Sleep(1100);
         vs2 = queue.Take(3).ToArray();
         Assert.Equal(2, vs2.Length);
         Assert.Equal("1234", vs2[0]);
@@ -314,20 +320,20 @@ public class DelayQueueTests
         Assert.Equal("abcd", await queue.TakeOneAsync(0));
         Assert.Equal("新生命团队", await queue.TakeOneAsync(0));
 
-        // 空消息
+        // 空消息，等待 1 秒超时
         var sw = Stopwatch.StartNew();
-        var rs = await queue.TakeOneAsync(2);
+        var rs = await queue.TakeOneAsync(1);
         sw.Stop();
         Assert.Null(rs);
-        Assert.True(sw.ElapsedMilliseconds >= 2000);
+        Assert.True(sw.ElapsedMilliseconds >= 900);
 
-        // 延迟2秒生产消息
-        ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); queue.Add("xxyy"); });
+        // 延迟生产消息，验证阻塞消费在消息到达后立即返回
+        ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(300); queue.Add("xxyy"); });
         sw = Stopwatch.StartNew();
-        rs = await queue.TakeOneAsync(3);
+        rs = await queue.TakeOneAsync(2);
         sw.Stop();
         Assert.Equal("xxyy", rs);
-        Assert.True(sw.ElapsedMilliseconds >= 2000);
+        Assert.True(sw.ElapsedMilliseconds >= 250);
     }
 
     [RedisFact]
@@ -339,7 +345,7 @@ public class DelayQueueTests
         _redis.Remove(key);
         var queue = new RedisDelayQueue<String>(_redis, key)
         {
-            Delay = 2
+            Delay = 1
         };
 
         // 添加
@@ -369,13 +375,13 @@ public class DelayQueueTests
         // 添加
         var sw = Stopwatch.StartNew();
         var vs = new[] { "1234", "abcd", "新生命团队", "ABEF" };
-        queue.Delay = 2;
-        queue.TransferInterval = 2;
+        queue.Delay = 1;
+        queue.TransferInterval = 1;
         queue.Add(vs);
 
         // 开始转移
         XTrace.WriteLine("开始转移");
-        var source = new CancellationTokenSource(3000);
+        var source = new CancellationTokenSource(2000);
         var task = queue.TransferAsync(queue2, null, source.Token);
 
         // 可信队列消费
@@ -384,10 +390,10 @@ public class DelayQueueTests
 
         // 到期以后
         XTrace.WriteLine("可信队列阻塞消费");
-        var v2 = await queue2.TakeOneAsync(3);
+        var v2 = await queue2.TakeOneAsync(2);
         sw.Stop();
         Assert.Equal("1234", v2);
-        Assert.True(sw.ElapsedMilliseconds >= 2000);
+        Assert.True(sw.ElapsedMilliseconds >= 900);
         queue2.Acknowledge(v2);
 
         //await task;

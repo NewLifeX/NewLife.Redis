@@ -12,6 +12,8 @@ using Xunit;
 
 namespace XUnitTest.Services;
 
+// 队列落在 DB4，与 Basic 家族的 SwapDB/Move 整库操作串行，避免互踩
+[Collection("Basic")]
 public class StatTests
 {
     private readonly FullRedis _redis;
@@ -24,23 +26,30 @@ public class StatTests
         _redis.Init(config);
         _redis.Log = XTrace.Log;
 
-#if DEBUG
-        _redis.ClientLog = XTrace.Log;
-#endif
+        if (BasicTest.EnableClientLog) _redis.ClientLog = XTrace.Log;
     }
 
     [RedisFact]
     public void Test1()
     {
+        using var saved = new ManualResetEventSlim(false);
+        String savedKey = null;
+        IDictionary<String, Int32> savedData = null;
+
         using var st = new RedisStat(_redis, "SiteHourStat")
         {
-            OnSave = OnSave
+            OnSave = (key, data) =>
+            {
+                savedKey = key;
+                savedData = data;
+                saved.Set();
+            }
         };
 
         // 降低延迟队列间隔
         var q = st.GetValue("_queue") as RedisReliableQueue<String>;
         var dq = q.InitDelay();
-        dq.TransferInterval = 2;
+        dq.TransferInterval = 1;
 
         // 计算key
         var date = DateTime.Today;
@@ -52,15 +61,13 @@ public class StatTests
             st.Increment(key, "Error", 1);
         st.Increment(key, "Cost", Rand.Next(10, 100));
 
-        // 变动key进入延迟队列
-        st.AddDelayQueue(key, 2);
+        // 变动key进入延迟队列，等待回调完成而不是固定睡眠
+        st.AddDelayQueue(key, 1);
 
-        Thread.Sleep(4_000);
+        Assert.True(saved.Wait(TimeSpan.FromSeconds(10)), "等待统计保存超时");
+        Assert.Equal(key, savedKey);
+        Assert.Equal(1, savedData["Total"]);
+        Assert.InRange(savedData["Cost"], 10, 99);
         XTrace.WriteLine("Test1 finished");
-    }
-
-    private void OnSave(String key, IDictionary<String, Int32> data)
-    {
-        XTrace.WriteLine("保存：{0}，数据：{1}", key, data.ToJson());
     }
 }

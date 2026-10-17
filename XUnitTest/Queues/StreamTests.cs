@@ -27,9 +27,7 @@ public class StreamTests
         _redis.Init(config);
         _redis.Log = XTrace.Log;
 
-#if DEBUG
-        _redis.ClientLog = XTrace.Log;
-#endif
+        if (BasicTest.EnableClientLog) _redis.ClientLog = XTrace.Log;
     }
 
     [RedisFact]
@@ -331,13 +329,13 @@ public class StreamTests
         var rs2 = queue.TakeOne();
         Assert.NotNull(rs2);
 
-        // 延迟2秒生产消息
-        ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); queue.Add("xxyy"); });
+        // 延迟生产消息，验证阻塞消费在消息到达后立即返回
+        ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(300); queue.Add("xxyy"); });
         var sw = Stopwatch.StartNew();
-        var rs3 = await queue.TakeOneAsync(3);
+        var rs3 = await queue.TakeOneAsync(2);
         sw.Stop();
         Assert.Equal("xxyy", rs3);
-        Assert.True(sw.ElapsedMilliseconds >= 2000);
+        Assert.True(sw.ElapsedMilliseconds >= 250);
     }
 
     [RedisFact]
@@ -369,13 +367,13 @@ public class StreamTests
         var rs2 = queue.TakeOne();
         Assert.NotNull(rs2);
 
-        // 延迟2秒生产消息
-        ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(2000); queue.Add("xxyy"); });
+        // 延迟生产消息，验证阻塞消费在消息到达后立即返回
+        ThreadPool.QueueUserWorkItem(s => { Thread.Sleep(300); queue.Add("xxyy"); });
         var sw = Stopwatch.StartNew();
-        var msg = await queue.TakeMessageAsync(3);
+        var msg = await queue.TakeMessageAsync(2);
         sw.Stop();
         Assert.Equal("xxyy", msg.GetBody<String>());
-        Assert.True(sw.ElapsedMilliseconds >= 2000);
+        Assert.True(sw.ElapsedMilliseconds >= 250);
 
         // 等待队列
         var pi = queue.GetPending(queue.Group);
@@ -491,9 +489,7 @@ public class StreamTests
         var key = "stream_Claim";
         var rds = _redis.CreateSub(9);
         rds.Log = XTrace.Log;
-#if DEBUG
-        rds.ClientLog = XTrace.Log;
-#endif
+        if (BasicTest.EnableClientLog) rds.ClientLog = XTrace.Log;
 
         // 删除已有
         _redis.Remove(key);

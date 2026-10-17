@@ -21,9 +21,7 @@ public class ListTests
         _redis.Init(config);
         _redis.Log = XTrace.Log;
 
-#if DEBUG
-        _redis.ClientLog = XTrace.Log;
-#endif
+        if (BasicTest.EnableClientLog) _redis.ClientLog = XTrace.Log;
     }
 
     [RedisFact]
@@ -242,21 +240,21 @@ public class ListTests
         var t1 = Task.Run(() =>
         {
             var queue = _redis.GetList<String>(key) as RedisList<String>;
-            queue.BRPOPLPUSH("lkey_ack1", 3);
+            queue.BRPOPLPUSH("lkey_ack1", 1);
             XTrace.WriteLine("lkey_ack1");
         });
 
         var t2 = Task.Run(() =>
         {
             var queue = _redis.GetList<String>(key) as RedisList<String>;
-            queue.BRPOPLPUSH("lkey_ack2", 3);
+            queue.BRPOPLPUSH("lkey_ack2", 1);
             XTrace.WriteLine("lkey_ack2");
         });
 
         var t3 = Task.Run(() =>
         {
             var queue = _redis.GetList<String>(key) as RedisList<String>;
-            queue.BRPOPLPUSH("lkey_ack3", 3);
+            queue.BRPOPLPUSH("lkey_ack3", 1);
             XTrace.WriteLine("lkey_ack3");
         });
 
@@ -264,7 +262,7 @@ public class ListTests
 
         sw.Stop();
         XTrace.WriteLine("BRPOPLPUSH_BlockTest: {0}", sw.Elapsed);
-        //Assert.True(sw.ElapsedMilliseconds < 3_000 + 500);
+        Assert.True(sw.ElapsedMilliseconds < 3_000);
     }
 }
 
