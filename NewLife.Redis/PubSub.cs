@@ -20,6 +20,7 @@ public class PubSub : RedisBase
         if (onMessage == null) throw new ArgumentNullException(nameof(onMessage));
 
         var client = Redis.Pool.Get();
+        var returnToPool = false;
         try
         {
             client.Reset();
@@ -29,19 +30,35 @@ public class PubSub : RedisBase
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                var source = new CancellationTokenSource(Redis.Timeout);
-                var source2 = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, source.Token);
+                using var source = new CancellationTokenSource(Redis.Timeout);
+                using var source2 = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, source.Token);
 
-                var rs = await client.ReadMoreAsync<String[]>(source2.Token).ConfigureAwait(false);
+                String[]? rs;
+                try
+                {
+                    rs = await client.ReadMoreAsync<String[]>(source2.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                {
+                    // 读取超时，继续等待下一条消息
+                    continue;
+                }
+                catch (OperationCanceledException)
+                {
+                    // 主动取消，跳出循环后退订，避免把订阅态连接归还连接池
+                    break;
+                }
+
                 if (rs != null && rs.Length == 3 && rs[0] == "message") onMessage(rs[1], rs[2]);
             }
 
-            await client.ExecuteAsync<String[]>("UNSUBSCRIBE", channels, cancellationToken).ConfigureAwait(false);
+            // 清空取消时残留的推送帧，确保退订命令与响应一一对应
+            client.Reset();
+            returnToPool = await TryUnsubscribeAsync(client, "UNSUBSCRIBE", channels, Redis.Timeout).ConfigureAwait(false);
         }
         finally
         {
-            // 异常时也要归还连接，避免连接池泄漏
-            Redis.Pool.Return(client);
+            if (returnToPool) Redis.Pool.Return(client); else client.TryDispose();
         }
     }
 
@@ -61,6 +78,7 @@ public class PubSub : RedisBase
         if (onMessage == null) throw new ArgumentNullException(nameof(onMessage));
 
         var client = Redis.Pool.Get();
+        var returnToPool = false;
         try
         {
             client.Reset();
@@ -70,19 +88,33 @@ public class PubSub : RedisBase
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                var source = new CancellationTokenSource(Redis.Timeout);
-                var source2 = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, source.Token);
+                using var source = new CancellationTokenSource(Redis.Timeout);
+                using var source2 = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, source.Token);
 
-                var rs = await client.ReadMoreAsync<String[]>(source2.Token).ConfigureAwait(false);
+                String[]? rs;
+                try
+                {
+                    rs = await client.ReadMoreAsync<String[]>(source2.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                {
+                    continue;
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+
                 if (rs != null && rs.Length == 4 && rs[0] == "pmessage") onMessage(rs[1], rs[2], rs[3]);
             }
 
-            await client.ExecuteAsync<String[]>("PUNSUBSCRIBE", patterns, cancellationToken).ConfigureAwait(false);
+            // 清空取消时残留的推送帧，确保退订命令与响应一一对应
+            client.Reset();
+            returnToPool = await TryUnsubscribeAsync(client, "PUNSUBSCRIBE", patterns, Redis.Timeout).ConfigureAwait(false);
         }
         finally
         {
-            // 异常时也要归还连接，避免连接池泄漏
-            Redis.Pool.Return(client);
+            if (returnToPool) Redis.Pool.Return(client); else client.TryDispose();
         }
     }
     #endregion
@@ -110,23 +142,65 @@ public class PubSub : RedisBase
         if (onMessage == null) throw new ArgumentNullException(nameof(onMessage));
 
         var client = Redis.Pool.Get();
-        client.Reset();
-
-        var channels = Key.Split(",", ";").Cast<Object>().ToArray();
-        await client.ExecuteAsync<String[]>("SSUBSCRIBE", channels, cancellationToken).ConfigureAwait(false);
-
-        while (!cancellationToken.IsCancellationRequested)
+        var returnToPool = false;
+        try
         {
-            var source = new CancellationTokenSource(Redis.Timeout);
-            var source2 = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, source.Token);
+            client.Reset();
 
-            var rs = await client.ReadMoreAsync<String[]>(source2.Token).ConfigureAwait(false);
-            if (rs != null && rs.Length == 3 && rs[0] == "smessage") onMessage(rs[1], rs[2]);
+            var channels = Key.Split(",", ";").Cast<Object>().ToArray();
+            await client.ExecuteAsync<String[]>("SSUBSCRIBE", channels, cancellationToken).ConfigureAwait(false);
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                using var source = new CancellationTokenSource(Redis.Timeout);
+                using var source2 = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, source.Token);
+
+                String[]? rs;
+                try
+                {
+                    rs = await client.ReadMoreAsync<String[]>(source2.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                {
+                    continue;
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+
+                if (rs != null && rs.Length == 3 && rs[0] == "smessage") onMessage(rs[1], rs[2]);
+            }
+
+            // 清空取消时残留的推送帧，确保退订命令与响应一一对应
+            client.Reset();
+            returnToPool = await TryUnsubscribeAsync(client, "SUNSUBSCRIBE", channels, Redis.Timeout).ConfigureAwait(false);
         }
+        finally
+        {
+            if (returnToPool) Redis.Pool.Return(client); else client.TryDispose();
+        }
+    }
 
-        await client.ExecuteAsync<String[]>("SUNSUBSCRIBE", channels, cancellationToken).ConfigureAwait(false);
-
-        Redis.Pool.Return(client);
+    /// <summary>尝试退出订阅模式。失败时丢弃该连接，避免订阅态连接污染连接池</summary>
+    /// <param name="client">客户端连接</param>
+    /// <param name="command">退订命令</param>
+    /// <param name="channels">频道或模式</param>
+    /// <param name="timeout">退订超时时间，单位毫秒</param>
+    /// <returns>连接是否已退出订阅模式并可归还连接池</returns>
+    private static async Task<Boolean> TryUnsubscribeAsync(RedisClient client, String command, Object[] channels, Int32 timeout)
+    {
+        try
+        {
+            // 退订不能无限等待，Redis 无响应时直接丢弃该连接
+            using var source = new CancellationTokenSource(timeout > 0 ? timeout : 5_000);
+            await client.ExecuteAsync<String[]>(command, channels, source.Token).ConfigureAwait(false);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
     #endregion
 
