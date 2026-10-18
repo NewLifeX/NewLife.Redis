@@ -1,12 +1,20 @@
 # NewLife.Redis — High-Performance Redis Client Component
 
 ![GitHub top language](https://img.shields.io/github/languages/top/newlifex/newlife.redis?logo=github)
-![GitHub License](https://img.shields.io/github/license/newlifex/newlife.redis?logo=github)
-![Nuget Downloads](https://img.shields.io/nuget/dt/NewLife.Redis?logo=nuget)
-![Nuget](https://img.shields.io/nuget/v/NewLife.Redis?logo=nuget)
-![Nuget (with prereleases)](https://img.shields.io/nuget/vpre/NewLife.Redis?label=dev%20nuget&logo=nuget)
 
-🌐 [中文](Readme.MD) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Español](README.es.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Русский](README.ru.md)
+
+![GitHub License](https://img.shields.io/github/license/NewLifeX/NewLife.Redis?logo=github)
+![NuGet Downloads](https://img.shields.io/nuget/dt/NewLife.Redis?logo=nuget)
+![NuGet](https://img.shields.io/nuget/v/NewLife.Redis?logo=nuget)
+![NuGet prerelease](https://img.shields.io/nuget/vpre/NewLife.Redis?label=dev%20nuget&logo=nuget)
+[![test](https://github.com/NewLifeX/NewLife.Redis/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/NewLifeX/NewLife.Redis/actions/workflows/test.yml)
+![platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)
+[![contributors](https://img.shields.io/github/contributors/NewLifeX/NewLife.Redis?logo=github)](https://github.com/NewLifeX/NewLife.Redis/graphs/contributors)
+
+
+<!-- lang:start -->
+🌐 [中文](Readme.MD) | [繁體中文](README.zh-TW.md) | [Español](README.es.md) | [Deutsch](README.de.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [한국어](README.ko.md) | [العربية](README.ar.md)
+<!-- lang:end -->
 
 `NewLife.Redis` is a **high-performance / high-throughput / easy-to-integrate** .NET Redis client component built by the NewLife team. Since 2017, it has been running stably on multiple production platforms handling billions of records and high concurrency, processing **80+ billion** command calls daily.
 

@@ -1,11 +1,20 @@
 # NewLife.Redis — عميل Redis عالي الأداء
 
 ![GitHub top language](https://img.shields.io/github/languages/top/newlifex/newlife.redis?logo=github)
-![GitHub License](https://img.shields.io/github/license/newlifex/newlife.redis?logo=github)
-![Nuget Downloads](https://img.shields.io/nuget/dt/NewLife.Redis?logo=nuget)
-![Nuget](https://img.shields.io/nuget/v/NewLife.Redis?logo=nuget)
 
-🌐 [中文](Readme.MD) | [English](Readme.en.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Español](README.es.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Русский](README.ru.md) | [Português](README.pt.md)
+
+![GitHub License](https://img.shields.io/github/license/NewLifeX/NewLife.Redis?logo=github)
+![NuGet Downloads](https://img.shields.io/nuget/dt/NewLife.Redis?logo=nuget)
+![NuGet](https://img.shields.io/nuget/v/NewLife.Redis?logo=nuget)
+![NuGet prerelease](https://img.shields.io/nuget/vpre/NewLife.Redis?label=dev%20nuget&logo=nuget)
+[![test](https://github.com/NewLifeX/NewLife.Redis/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/NewLifeX/NewLife.Redis/actions/workflows/test.yml)
+![platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)
+[![contributors](https://img.shields.io/github/contributors/NewLifeX/NewLife.Redis?logo=github)](https://github.com/NewLifeX/NewLife.Redis/graphs/contributors)
+
+
+<!-- lang:start -->
+🌐 [中文](Readme.MD) | [繁體中文](README.zh-TW.md) | [English](README.en.md) | [Español](README.es.md) | [Deutsch](README.de.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [한국어](README.ko.md)
+<!-- lang:end -->
 
 ---
 
