@@ -15,6 +15,7 @@ using NewLife.Net;
 using NewLife.Reflection;
 using NewLife.Serialization;
 using NewLife.Threading;
+using NewLife;
 
 namespace NewLife.Caching;
 
@@ -741,7 +742,7 @@ public class RedisClient : DisposeBase
         }
 
         if (!password.IsNullOrEmpty() && !Auth(username, password))
-            throw new Exception("登录失败！");
+            throw new Exception(L.T("Login failed."));
 
         Logined = true;
         LoginTime = DateTime.Now;
@@ -1661,7 +1662,7 @@ public class RedisClient : DisposeBase
         if (rs != "OK")
         {
             using var span = Host.Tracer?.NewSpan($"redis:{Name}:ErrorSetAll", values);
-            if (Host.ThrowOnFailure) throw new XException("Redis.SetAll({0})失败。{1}", values.ToJson(), rs);
+            if (Host.ThrowOnFailure) throw new XException(L.T("Redis.SetAll({0}) failed. {1}"), values.ToJson(), rs);
         }
 
         return rs == "OK";

@@ -13,6 +13,7 @@ using NewLife.Reflection;
 using NewLife.Security;
 using NewLife.Serialization;
 using NewLife.Threading;
+using NewLife;
 
 namespace NewLife.Caching;
 
@@ -837,7 +838,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     {
         get
         {
-            if (Count > 10000) throw new InvalidOperationException("数量过大时，禁止获取所有键，请使用FullRedis.Search");
+            if (Count > 10000) throw new InvalidOperationException(L.T("Fetching all keys is not allowed when the count is large; use FullRedis.Search instead."));
 
             return Execute(rds => rds.Execute<String[]>("KEYS", "*")) ?? [];
         }
@@ -875,7 +876,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         if (rs.IsNullOrEmpty()) return false;
 
         using var span = Tracer?.NewSpan($"redis:{Name}:ErrorSet", new { key, value });
-        if (ThrowOnFailure) throw new XException("Redis.Set({0},{1})失败。{2}", key, value, rs);
+        if (ThrowOnFailure) throw new XException(L.T("Redis.Set({0},{1}) failed. {2}"), key, value, rs);
 
         return false;
     }
@@ -994,25 +995,25 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <typeparam name="T">元素类型</typeparam>
     /// <param name="key">键</param>
     /// <returns></returns>
-    public override IDictionary<String, T> GetDictionary<T>(String key) => throw new NotSupportedException("Redis未支持该功能，需要new FullRedis");
+    public override IDictionary<String, T> GetDictionary<T>(String key) => throw new NotSupportedException(L.T("This feature requires FullRedis."));
 
     /// <summary>获取队列</summary>
     /// <typeparam name="T">元素类型</typeparam>
     /// <param name="key">键</param>
     /// <returns></returns>
-    public override IProducerConsumer<T> GetQueue<T>(String key) => throw new NotSupportedException("Redis未支持该功能，需要new FullRedis");
+    public override IProducerConsumer<T> GetQueue<T>(String key) => throw new NotSupportedException(L.T("This feature requires FullRedis."));
 
     /// <summary>获取栈</summary>
     /// <typeparam name="T">元素类型</typeparam>
     /// <param name="key">键</param>
     /// <returns></returns>
-    public override IProducerConsumer<T> GetStack<T>(String key) => throw new NotSupportedException("Redis未支持该功能，需要new FullRedis");
+    public override IProducerConsumer<T> GetStack<T>(String key) => throw new NotSupportedException(L.T("This feature requires FullRedis."));
 
     /// <summary>获取Set</summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="key"></param>
     /// <returns></returns>
-    public override ICollection<T> GetSet<T>(String key) => throw new NotSupportedException("Redis未支持该功能，需要new FullRedis");
+    public override ICollection<T> GetSet<T>(String key) => throw new NotSupportedException(L.T("This feature requires FullRedis."));
     #endregion
 
     #region 高级操作
@@ -1044,7 +1045,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             if (result == "OK") return true;
 
             using var span = Tracer?.NewSpan($"redis:{Name}:ErrorAdd", new { key, value });
-            if (ThrowOnFailure) throw new XException("Redis.Add({0},{1})失败。{2}", key, value, result);
+            if (ThrowOnFailure) throw new XException(L.T("Redis.Add({0},{1}) failed. {2}"), key, value, result);
 
             return false;
         }

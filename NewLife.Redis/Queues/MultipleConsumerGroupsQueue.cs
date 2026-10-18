@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using NewLife.Data;
 using NewLife.Log;
+using NewLife;
 
 namespace NewLife.Caching.Queues;
 
@@ -97,7 +98,7 @@ public class MultipleConsumerGroupsQueue<[DynamicallyAccessedMembers(Dynamically
             _Queue.MaxLength = QueueLen;
         }
         else
-            throw new NullReferenceException("连接Redis服务器失败。");
+            throw new NullReferenceException(L.T("Failed to connect to the Redis server."));
 
     }
 
@@ -111,7 +112,7 @@ public class MultipleConsumerGroupsQueue<[DynamicallyAccessedMembers(Dynamically
     {
         _Redis = new FullRedis() { Timeout = TimeOut, Encoder = Encoder };
         _Redis.Init(connStr);
-        if (_Redis == null) throw new NullReferenceException("连接Redis服务器失败。");
+        if (_Redis == null) throw new NullReferenceException(L.T("Failed to connect to the Redis server."));
 
         _Queue = _Redis.GetStream<T>(queueName);
         _Queue.MaxLength = QueueLen;
@@ -126,7 +127,7 @@ public class MultipleConsumerGroupsQueue<[DynamicallyAccessedMembers(Dynamically
     public void Connect(FullRedis redis, String queueName)
     {
         _Redis = redis;
-        if (_Redis == null) throw new NullReferenceException("连接Redis服务器失败。");
+        if (_Redis == null) throw new NullReferenceException(L.T("Failed to connect to the Redis server."));
 
         _Queue = _Redis.GetStream<T>(queueName);
         _Queue.MaxLength = QueueLen;

@@ -1,0 +1,8 @@
+# 繁體中文譯文。鍵為英文源文，缺失時執行期回退英文。
+"Failed to connect to the Redis server.": "連接Redis服務器失敗。"
+"Fetching all keys is not allowed when the count is large; use FullRedis.Search instead.": "數量過大時，禁止獲取所有鍵，請使用FullRedis.Search"
+"This feature requires FullRedis.": "Redis未支持該功能，需要new FullRedis"
+"Redis.Set({0},{1}) failed. {2}": "Redis.Set({0},{1})失敗。{2}"
+"Redis.Add({0},{1}) failed. {2}": "Redis.Add({0},{1})失敗。{2}"
+"Login failed.": "登錄失敗！"
+"Redis.SetAll({0}) failed. {1}": "Redis.SetAll({0})失敗。{1}"
