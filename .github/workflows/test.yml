@@ -119,3 +119,26 @@ jobs:
         name: test-results-linux-la64
         path: TestResults/*.trx
         if-no-files-found: ignore
+
+  localization:
+    name: localization checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Check locales
+      shell: pwsh
+      run: |
+        $failed = $false
+        Get-ChildItem -Path . -Recurse -Directory -Filter Locales | ForEach-Object {
+          if (Test-Path (Join-Path $_.FullName 'zh-Hans.yml')) {
+            $src = Split-Path $_.FullName -Parent
+            pwsh -File ./check-locales.ps1 -LocaleDir $_.FullName -Baseline zh-Hans.yml -SourceDir $src
+            if ($LASTEXITCODE -ne 0) { $failed = $true }
+          }
+        }
+        if ($failed) { exit 1 }
+    - name: Check README languages
+      shell: pwsh
+      run: pwsh -File ./sync-readme-languages.ps1 -Check

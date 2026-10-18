@@ -1,0 +1,30 @@
+name: readme
+
+on:
+  push:
+    paths:
+      - 'README*'
+      - 'Readme*'
+      - 'readme-languages.json'
+      - 'sync-readme-languages.ps1'
+      - '.github/workflows/readme.yml'
+  pull_request:
+    paths:
+      - 'README*'
+      - 'Readme*'
+      - 'readme-languages.json'
+      - 'sync-readme-languages.ps1'
+      - '.github/workflows/readme.yml'
+  workflow_dispatch:
+
+jobs:
+  languages:
+    name: README languages
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Check README languages
+      shell: pwsh
+      run: pwsh -File ./sync-readme-languages.ps1 -Check
