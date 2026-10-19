@@ -1,0 +1,81 @@
+name: mobile
+
+on:
+  push:
+    branches: [ '*' ]
+    paths:
+      - 'Samples/MobileSmoke/**'
+      - 'NewLife.Redis/**'
+      - '.github/workflows/mobile.yml'
+  pull_request:
+    branches: [ '*' ]
+    paths:
+      - 'Samples/MobileSmoke/**'
+      - 'NewLife.Redis/**'
+      - '.github/workflows/mobile.yml'
+  workflow_dispatch:
+
+jobs:
+  # Android 模拟器：启动 APK 执行冒烟，logcat 出现 SMOKE_OK 即通过。
+  # 观察期（continue-on-error），稳定全绿后转阻断。
+  android:
+    name: android emulator
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    continue-on-error: true
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup dotNET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+    - name: Install Android workload
+      run: dotnet workload install android
+    - name: Enable KVM
+      run: |
+        echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+        sudo udevadm control --reload-rules
+        sudo udevadm trigger --name-match=kvm
+    - name: Run Android smoke
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: 36
+        target: google_apis
+        arch: x86_64
+        disable-animations: true
+        script: pwsh ./Samples/MobileSmoke/run-android.ps1 -Configuration Release
+    - name: Upload Android artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: mobile-android
+        path: Bin/MobileSmoke/**/*.apk
+        if-no-files-found: ignore
+
+  # iOS 模拟器：构建 .app 并安装运行，读取应用容器内的 smoke.json。
+  ios:
+    name: ios simulator
+    runs-on: macos-26
+    timeout-minutes: 45
+    continue-on-error: true
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup dotNET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.402
+    - name: Select Xcode
+      run: sudo xcode-select -s /Applications/Xcode_26.6.app
+    - name: Install iOS workload
+      run: dotnet workload install ios --version 10.400.1
+    - name: Run iOS smoke
+      run: bash ./Samples/MobileSmoke/run-ios.sh
+    - name: Upload iOS artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: mobile-ios
+        path: Bin/MobileSmoke/artifacts/**
+        if-no-files-found: ignore

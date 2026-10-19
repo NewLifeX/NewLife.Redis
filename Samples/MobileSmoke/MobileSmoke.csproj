@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- 移动端兼容冒烟：在主库之上运行核心 API，Android 跑模拟器、iOS 跑模拟器 -->
+  <PropertyGroup>
+    <TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>MobileSmoke</AssemblyName>
+    <RootNamespace>MobileSmoke</RootNamespace>
+    <ApplicationId>com.newlife.smoke.redis</ApplicationId>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <OutputPath>..\..\Bin\MobileSmoke</OutputPath>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(TargetFramework.Contains('-android'))">
+    <SupportedOSPlatformVersion>24</SupportedOSPlatformVersion>
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <!-- 冒烟不评估裁剪体积，关闭链路裁剪以保证反射与 GetExportedTypes 可用 -->
+    <AndroidLinkMode>None</AndroidLinkMode>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
+    <SupportedOSPlatformVersion>13.0</SupportedOSPlatformVersion>
+    <MtouchLink>None</MtouchLink>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\NewLife.Redis/NewLife.Redis.csproj" />
+  </ItemGroup>
+
+</Project>
