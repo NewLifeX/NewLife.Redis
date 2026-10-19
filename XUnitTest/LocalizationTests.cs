@@ -28,6 +28,12 @@ public class LocalizationTests
 {
     internal static Boolean CulturesAvailable { get; } = CheckCultures();
 
+    private static readonly String[] _cultures =
+    [
+        "ar", "bn", "cs", "da", "de", "el", "es", "fa", "fi", "fr", "he", "hi", "hu", "id", "it", "ja",
+        "ko", "ms", "nb", "nl", "pl", "pt", "ro", "ru", "sv", "th", "tr", "uk", "vi", "zh-Hans", "zh-Hant",
+    ];
+
     private static Boolean CheckCultures()
     {
         try
@@ -129,6 +135,31 @@ public class LocalizationTests
         finally
         {
             UseCulture(null, null);
+        }
+    }
+
+    [LocalizationFact]
+    public void AllLocaleTablesAreRegistered()
+    {
+        // 触发扩展程序集加载，确保两套词表都已注册
+        Assert.NotNull(typeof(NewLife.Redis.Extensions.RedisXmlRepository).Assembly);
+
+        foreach (var culture in _cultures)
+        {
+            UseCulture(culture, culture);
+            try
+            {
+                var text = Localization.Translate("Using Redis server: {0}", "127.0.0.1:6379");
+                Assert.NotEqual("Using Redis server: 127.0.0.1:6379", text);
+                Assert.Contains("127.0.0.1:6379", text);
+
+                var ext = Localization.Translate("Redis is not configured. Specify a connection string named RedisCache in the configuration file or configuration center.");
+                Assert.NotEqual("Redis is not configured. Specify a connection string named RedisCache in the configuration file or configuration center.", ext);
+            }
+            finally
+            {
+                UseCulture(null, null);
+            }
         }
     }
 
