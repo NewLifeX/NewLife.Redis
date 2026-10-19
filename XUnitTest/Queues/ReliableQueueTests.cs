@@ -628,9 +628,9 @@ public class ReliableQueueTests
         var v1 = await queue.TakeOneAsync(-1);
         Assert.Null(v1);
 
-        // 到期以后
+        // 到期以后。并行用例可能让定时器延后，留足等待时间避免偶发超时
         XTrace.WriteLine("可信队列阻塞消费");
-        var v2 = await queue.TakeOneAsync(3);
+        var v2 = await queue.TakeOneAsync(10);
         sw.Stop();
         Assert.Equal("1234", v2);
         // 延迟队列没有阻塞方法，需要等1秒。延迟集合 score 为秒级时间戳，最多提前1秒到期，故仅校验未立即投递
