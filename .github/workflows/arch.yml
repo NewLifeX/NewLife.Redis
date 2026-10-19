@@ -50,7 +50,7 @@ jobs:
             apt-get update -qq
             apt-get install -y -qq --no-install-recommends libicu74 libssl3 libstdc++6 ca-certificates >/dev/null
             /opt/dotnet/dotnet --info
-            cd /src && dotnet Bin/ArchSmoke/AotSmoke.dll
+            cd /src && /opt/dotnet/dotnet Bin/ArchSmoke/AotSmoke.dll
           '
 
   s390x:
@@ -76,11 +76,11 @@ jobs:
         docker run --rm --platform linux/s390x \
           -v "$PWD:/src" -w /src \
           -e DOTNET_CLI_TELEMETRY_OPTOUT=1 \
-          s390x/ubuntu:24.04 \
+          s390x/ubuntu:25.10 \
           sh -c '
             set -e
             apt-get update -qq
-            apt-get install -y -qq --no-install-recommends dotnet-runtime-10.0 libicu74 libssl3 ca-certificates >/dev/null
+            apt-get install -y -qq --no-install-recommends dotnet-runtime-10.0 ca-certificates >/dev/null
             dotnet --info
             cd /src && dotnet Bin/ArchSmoke/AotSmoke.dll
           '

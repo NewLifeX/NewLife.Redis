@@ -31,7 +31,7 @@ jobs:
       with:
         dotnet-version: 10.0.x
     - name: Install Android workload
-      run: dotnet workload install android
+      run: dotnet workload install android || sudo dotnet workload install android
     - name: Enable KVM
       run: |
         echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -69,7 +69,7 @@ jobs:
     - name: Select Xcode
       run: sudo xcode-select -s /Applications/Xcode_26.6.app
     - name: Install iOS workload
-      run: dotnet workload install ios --version 10.400.1
+      run: dotnet workload install ios --version 10.400.1 || sudo dotnet workload install ios --version 10.400.1
     - name: Run iOS smoke
       run: bash ./Samples/MobileSmoke/run-ios.sh
     - name: Upload iOS artifacts
