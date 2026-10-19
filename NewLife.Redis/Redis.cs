@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
@@ -1133,7 +1134,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         if (value == 1)
             return Execute(key, (rds, k) => rds.Execute<Int64>("DECR", k), true);
         else
-            return Execute(key, (rds, k) => rds.Execute<Int64>("DECRBY", k, value.ToString()), true);
+            return Execute(key, (rds, k) => rds.Execute<Int64>("DECRBY", k, value.ToString(CultureInfo.InvariantCulture)), true);
     }
 
     /// <summary>递减，原子操作，乘以100后按整数操作</summary>
@@ -1247,7 +1248,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <param name="args"></param>
     public void WriteLog(String format, params Object?[] args)
     {
-        DefaultSpan.Current?.AppendTag(String.Format(format, args));
+        DefaultSpan.Current?.AppendTag(Logger.FormatMessage(Log, format, args));
 
         Log?.InfoPrefixed(Name.IsNullOrEmpty() ? null : "[" + Name + "]", format, args);
     }

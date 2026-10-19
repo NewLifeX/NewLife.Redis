@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "Objek antrean bernilai null saat berlangganan."
 "The Redis object is null.": "Objek Redis bernilai null."
 "The message queue object is null.": "Objek antrean pesan bernilai null."
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} berhasil={2}/{3} berlalu={4}ms validitas={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} batas waktu={1}ms berlalu={2}ms berhasil={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"

@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "كائن قائمة الانتظار فارغ عند الاشتراك."
 "The Redis object is null.": "كائن Redis فارغ."
 "The message queue object is null.": "كائن قائمة انتظار الرسائل فارغ."
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} نجاح={2}/{3} المنقضي={4}ms الصلاحية={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} المهلة={1}ms المنقضي={2}ms نجاح={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"

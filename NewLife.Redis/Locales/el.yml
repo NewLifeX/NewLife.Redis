@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "Το αντικείμενο ουράς είναι null κατά τη συνδρομή."
 "The Redis object is null.": "Το αντικείμενο Redis είναι null."
 "The message queue object is null.": "Το αντικείμενο ουράς μηνυμάτων είναι null."
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} επιτυχία={2}/{3} πέρασε={4}ms εγκυρότητα={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} χρονικό όριο={1}ms πέρασε={2}ms επιτυχία={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"

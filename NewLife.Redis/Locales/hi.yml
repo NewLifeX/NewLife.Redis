@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "सदस्यता लेते समय कतार ऑब्जेक्ट null है।"
 "The Redis object is null.": "Redis ऑब्जेक्ट null है।"
 "The message queue object is null.": "संदेश कतार ऑब्जेक्ट null है।"
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} सफल={2}/{3} बीता={4}ms वैधता={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} समयबाह्य={1}ms बीता={2}ms सफल={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"

@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "Het wachtrijobject is null bij het abonneren."
 "The Redis object is null.": "Het Redis-object is null."
 "The message queue object is null.": "Het berichtwachtrijobject is null."
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} succes={2}/{3} verstreken={4}ms geldigheid={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} time-out={1}ms verstreken={2}ms succes={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"

@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "Objekt fronty je při přihlášení k odběru null."
 "The Redis object is null.": "Objekt Redis je null."
 "The message queue object is null.": "Objekt fronty zpráv je null."
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} úspěch={2}/{3} uplynulo={4}ms platnost={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} časový limit={1}ms uplynulo={2}ms úspěch={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"

@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Runtime.CompilerServices;
+using NewLife;
 using NewLife.Data;
 using NewLife.Reflection;
 using NewLife.Serialization;
@@ -44,13 +46,38 @@ public class RedisJsonEncoder : DefaultPacketEncoder
 #endif
     }
 
+    /// <summary>对象编码为字符串。基础类型始终使用不变文化，避免逗号小数点等区域设置污染Redis协议</summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    protected override String? OnEncode(Object value)
+    {
+        return value.GetType().GetTypeCode() switch
+        {
+            TypeCode.Object => base.OnEncode(value),
+            TypeCode.String => value as String,
+            TypeCode.DateTime => ((DateTime)value).ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture),
+            _ => value is IFormattable formattable ? formattable.ToString(null, CultureInfo.InvariantCulture) : value.ToString(),
+        };
+    }
+
     /// <summary>字符串解码为对象。复杂类型采用Json反序列化</summary>
     /// <param name="value"></param>
     /// <param name="type"></param>
     /// <returns></returns>
     protected override Object? OnDecode(String value, Type type)
     {
-        if (type == typeof(Boolean) && value == "OK") return true;
+        var targetType = Nullable.GetUnderlyingType(type) ?? type;
+        if (targetType == typeof(Boolean) && value == "OK") return true;
+        if (String.IsNullOrWhiteSpace(value)) return base.OnDecode(value, type);
+
+        if (targetType == typeof(String)) return value;
+        if (targetType == typeof(Boolean)) return value.ToBoolean();
+        if (targetType.IsEnum)
+        {
+            if (Int64.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n)) return Enum.ToObject(targetType, n);
+            return Enum.Parse(targetType, value, true);
+        }
+        if (targetType.IsBaseType()) return Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
 
         return base.OnDecode(value, type);
     }

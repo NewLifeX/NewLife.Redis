@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "Køobjektet er null ved abonnement."
 "The Redis object is null.": "Redis-objektet er null."
 "The message queue object is null.": "Meldingskøobjektet er null."
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} suksess={2}/{3} forløpt={4}ms gyldighet={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} tidsavbrudd={1}ms forløpt={2}ms suksess={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"

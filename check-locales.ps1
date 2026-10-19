@@ -58,6 +58,29 @@ function Get-PlaceholderSpecs([string]$text) {
     return $map
 }
 
+function Test-FormatString([string]$text) {
+    # 花括号必须成对，单花括号内只能是合法占位符（{0}、{0:n0} 等）
+    $i = 0
+    while ($i -lt $text.Length) {
+        $ch = $text[$i]
+        if ($ch -eq '{') {
+            if ($i + 1 -lt $text.Length -and $text[$i + 1] -eq '{') { $i += 2; continue }
+            $end = $text.IndexOf('}', $i + 1)
+            if ($end -lt 0) { return $false }
+            $body = $text.Substring($i + 1, $end - $i - 1)
+            if ($body -notmatch '^\d+(?:,-?\d+)?(?::[^}]*)?$') { return $false }
+            $i = $end + 1
+            continue
+        }
+        if ($ch -eq '}') {
+            if ($i + 1 -lt $text.Length -and $text[$i + 1] -eq '}') { $i += 2; continue }
+            return $false
+        }
+        $i++
+    }
+    return $true
+}
+
 function Read-Locale([string]$path) {
     $entries = [ordered]@{}
     $errors = @()
@@ -76,6 +99,8 @@ function Read-Locale([string]$path) {
             continue
         }
         $entries[$key] = Unescape-Yaml $m.Groups[2].Value
+        if (!(Test-FormatString $key)) { $errors += "第 $lineNo 行键格式串花括号非法：$key" }
+        if (!(Test-FormatString $entries[$key])) { $errors += "第 $lineNo 行译文格式串花括号非法：$key" }
     }
     return @{ Entries = $entries; Errors = $errors }
 }

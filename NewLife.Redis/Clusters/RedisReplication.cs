@@ -1,4 +1,5 @@
-﻿using NewLife.Log;
+﻿using System.Globalization;
+using NewLife.Log;
 using NewLife.Net;
 using NewLife.Threading;
 
@@ -340,9 +341,9 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
             if (node is RedisNode redisNode && ++redisNode.Error >= Redis.Retry)
             {
                 redisNode.NextTime = now.AddSeconds(Redis.ShieldingTime);
-                var msg = $"Shielding {redisNode.EndPoint} until {redisNode.NextTime.ToFullString()}";
-                span?.AppendTag(msg);
-                Redis.WriteLog("Shielding {0} until {1}", redisNode.EndPoint, redisNode.NextTime.ToFullString());
+                var until = redisNode.NextTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                span?.AppendTag(Logger.FormatMessage(Log, "Shielding {0} until {1}", [redisNode.EndPoint, until]));
+                Redis.WriteLog("Shielding {0} until {1}", redisNode.EndPoint, until);
             }
         }
 

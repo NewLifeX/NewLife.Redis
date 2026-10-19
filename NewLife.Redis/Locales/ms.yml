@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "Objek baris gilir ialah null semasa melanggan."
 "The Redis object is null.": "Objek Redis ialah null."
 "The message queue object is null.": "Objek baris gilir mesej ialah null."
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} berjaya={2}/{3} berlalu={4}ms kesahan={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} tamat masa={1}ms berlalu={2}ms berjaya={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"

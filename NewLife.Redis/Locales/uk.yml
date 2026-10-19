@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "Об’єкт черги дорівнює null під час підписки."
 "The Redis object is null.": "Об’єкт Redis дорівнює null."
 "The message queue object is null.": "Об’єкт черги повідомлень дорівнює null."
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} успіх={2}/{3} минуло={4}ms термін={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} тайм-аут={1}ms минуло={2}ms успіх={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"

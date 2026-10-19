@@ -6,16 +6,64 @@
 #   pwsh -File check-english-exceptions.ps1                       # 本仓默认目录，失败退出码 1
 #   pwsh -File check-english-exceptions.ps1 -Dir src -List        # 盘点中文消息，不失败
 #   pwsh -File check-english-exceptions.ps1 -Dir src -Csv hits.csv # 导出待翻译清单
+#   pwsh -File check-english-exceptions.ps1 -Dir src -LocaleDir src/Locales # 同时校验运行时消息均已登记词表
 param(
     [String]$Root = $PSScriptRoot,
     [String[]]$Dir,
     [String[]]$Exclude = @(),
     [String]$MessageCall = 'throw new|new\s+[A-Za-z0-9_.]*Exception\(|: base\(|Console\.Write|MessageBox\.Show|AppendTag\(|NewError\(|NewSpan\(|Debug\.Fail\(|WriteLog\(|OnWrite\(|OnDisconnected\(|XTrace\.|Log\??\.(Write|Error|Info|Debug|Warn|Fatal)|WriteInfoEvent\(|WriteErrorEvent\(|BadRequest\(|WriteResultAsync\(|AppendFormat\(|L\.T\(|ex\s*\?\?=\s*new|ex\s*=\s*new',
+    [String[]]$LocaleDir = @(),
+    [String[]]$AllowMissing = @("IO_StreamTooLong", "Not enough data to read.", "unknown command", "ERR unknown", "ERR no such key"),
     [Switch]$List,
     [String]$Csv
 )
 
 $ErrorActionPreference = "Stop"
+
+function Unescape-Yaml([string]$text) {
+    # 与源生成器保持一致：还原 \\ \" \n \r \t \uXXXX
+    return [regex]::Replace($text, '\\(u[0-9a-fA-F]{4}|.)', {
+        param($m)
+        $v = $m.Groups[1].Value
+        if ($v.Length -eq 5) { return [string][char][Convert]::ToInt32($v.Substring(1), 16) }
+        switch -CaseSensitive ($v) {
+            'n' { return "`n" }
+            'r' { return "`r" }
+            't' { return "`t" }
+            '\\' { return '\' }
+            '"' { return '"' }
+            default { return $m.Value }
+        }
+    })
+}
+
+# 运行时消息必须是词表键，否则该消息在任何语言下都只能回退英文
+$localeKeys = $null
+if ($LocaleDir -and $LocaleDir.Count -gt 0) {
+    $localeKeys = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($item in $LocaleDir) {
+        $path = if ([IO.Path]::IsPathRooted($item)) { $item } else { Join-Path $Root $item }
+        if (!(Test-Path -LiteralPath $path)) { throw "未找到语言目录：$path" }
+        foreach ($file in Get-ChildItem $path -Filter *.yml) {
+            foreach ($line in Get-Content $file.FullName -Encoding UTF8) {
+                if ($line -match '^\s*"((?:[^"\\]|\\.)*)"\s*:') {
+                    [void]$localeKeys.Add((Unescape-Yaml $Matches[1]))
+                }
+            }
+        }
+    }
+}
+
+$keyPatterns = @(
+    'L\.T\(\s*"((?:[^"\\]|\\.)*)"',
+    'throw\s+new\s+[A-Za-z0-9_.]*Exception\(\s*"((?:[^"\\]|\\.)*)"',
+    'new\s+XException\(\s*"((?:[^"\\]|\\.)*)"',
+    '\bWriteLog\(\s*"((?:[^"\\]|\\.)*)"',
+    '(?:InfoPrefixed|ErrorPrefixed|WritePrefixed)\([^,]+,\s*"((?:[^"\\]|\\.)*)"',
+    'XTrace\.(?:WriteLine|WriteError|WriteDebug|WriteLog)\(\s*"((?:[^"\\]|\\.)*)"',
+    '\b(?:Log|log|errLog)\??\.(?:Write|Info|Error|Debug|Warn|Fatal)\(\s*"((?:[^"\\]|\\.)*)"',
+    'OnDisconnected\(\s*"((?:[^"\\]|\\.)*)"'
+)
 
 if (!$Dir -or $Dir.Count -eq 0) { $Dir = @("NewLife.Redis", "NewLife.Redis.Extensions", "NewLife.Extensions.Caching.Redis") }
 $dirs = @()
@@ -26,6 +74,7 @@ foreach ($item in $Dir) {
 if ($dirs.Count -eq 0) { throw "未找到待检查目录：$($Dir -join ', ')" }
 
 $hits = @()
+$missing = @()
 
 foreach ($dir in $dirs) {
     foreach ($file in Get-ChildItem $dir -Recurse -Filter *.cs) {
@@ -41,7 +90,7 @@ foreach ($dir in $dirs) {
         }
         if ($excluded) { continue }
 
-        $lines = Get-Content $file.FullName -Encoding UTF8
+        $lines = @(Get-Content $file.FullName -Encoding UTF8)
         $inBlock = $false
         for ($i = 0; $i -lt $lines.Count; $i++) {
             $line = $lines[$i].Trim()
@@ -59,6 +108,19 @@ foreach ($dir in $dirs) {
             if ($code -match "^\s*\[") { continue }
             if ($code -match $MessageCall -and $code -match "[\u4e00-\u9fa5]") {
                 $hits += [pscustomobject]@{ File = $rel; Line = $i + 1; Text = $code }
+            }
+
+            if ($localeKeys) {
+                foreach ($pattern in $keyPatterns) {
+                    foreach ($m in [regex]::Matches($code, $pattern)) {
+                        $key = Unescape-Yaml $m.Groups[1].Value
+                        if ($key -notmatch '[A-Za-z]') { continue }
+                        if ($AllowMissing -contains $key) { continue }
+                        if (!$localeKeys.Contains($key)) {
+                            $missing += [pscustomobject]@{ File = $rel; Line = $i + 1; Key = $key }
+                        }
+                    }
+                }
             }
         }
     }
@@ -86,5 +148,13 @@ if ($hits.Count -gt 0) {
     exit 1
 }
 
-Write-Host "OK: 未发现中文运行时消息。"
+if ($missing.Count -gt 0) {
+    Write-Host "发现 $($missing.Count) 处运行时消息未登记词表（任何语言下都只能回退英文）：" -ForegroundColor Red
+    foreach ($hit in $missing) {
+        Write-Host ("  {0}:{1}: {2}" -f $hit.File, $hit.Line, $hit.Key)
+    }
+    exit 1
+}
+
+Write-Host "OK: 未发现中文运行时消息，词表覆盖全部运行时消息。"
 exit 0

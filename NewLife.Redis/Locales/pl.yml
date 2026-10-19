@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "Obiekt kolejki ma wartość null podczas subskrypcji."
 "The Redis object is null.": "Obiekt Redis ma wartość null."
 "The message queue object is null.": "Obiekt kolejki wiadomości ma wartość null."
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} sukces={2}/{3} upłynęło={4}ms ważność={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} limit czasu={1}ms upłynęło={2}ms sukces={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"

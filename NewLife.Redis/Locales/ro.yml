@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "Obiectul coadă este null la abonare."
 "The Redis object is null.": "Obiectul Redis este null."
 "The message queue object is null.": "Obiectul coadă de mesaje este null."
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} succes={2}/{3} scurs={4}ms validitate={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} timeout={1}ms scurs={2}ms succes={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"

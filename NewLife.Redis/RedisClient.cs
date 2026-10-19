@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -1021,9 +1022,9 @@ public class RedisClient : DisposeBase
         }
 
 #if NETFRAMEWORK || NETSTANDARD2_0
-        return Int32.TryParse(span[..k].ToString(), out var rs) ? rs : -1;
+        return Int32.TryParse(span[..k].ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var rs) ? rs : -1;
 #else
-        return Int32.TryParse(span[..k], out var rs) ? rs : -1;
+        return Int32.TryParse(span[..k], NumberStyles.Integer, CultureInfo.InvariantCulture, out var rs) ? rs : -1;
 #endif
     }
 
@@ -1339,6 +1340,24 @@ public class RedisClient : DisposeBase
         return default;
     }
 
+    /// <summary>使用不变文化转换字符串值，避免区域设置影响Redis协议</summary>
+    /// <param name="value"></param>
+    /// <param name="type"></param>
+    /// <returns></returns>
+    internal static Object? ChangeType(String value, Type type)
+    {
+        var targetType = Nullable.GetUnderlyingType(type) ?? type;
+
+        if (targetType == typeof(Boolean)) return value == "OK" || value.ToBoolean();
+        if (targetType.IsEnum)
+        {
+            if (Int64.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n)) return Enum.ToObject(targetType, n);
+            return Enum.Parse(targetType, value, true);
+        }
+
+        return Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
+    }
+
     /// <summary>尝试转换类型</summary>
     /// <param name="value"></param>
     /// <param name="type"></param>
@@ -1353,33 +1372,34 @@ public class RedisClient : DisposeBase
             try
             {
                 // 常见值类型特化，避免Convert.ChangeType装箱开销
-                if (type == typeof(Boolean))
+                var targetType = Nullable.GetUnderlyingType(type) ?? type;
+                if (targetType == typeof(Boolean))
                 {
-                    target = str == "OK" || str == "True" || str == "1";
+                    target = str == "OK" || str.ToBoolean();
                     return true;
                 }
-                if (type == typeof(Int32))
+                if (targetType == typeof(Int32))
                 {
-                    target = Int32.TryParse(str, out var n) ? n : 0;
+                    target = Int32.TryParse(str, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) ? n : 0;
                     return true;
                 }
-                if (type == typeof(Int64))
+                if (targetType == typeof(Int64))
                 {
-                    target = Int64.TryParse(str, out var n) ? n : 0L;
+                    target = Int64.TryParse(str, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) ? n : 0L;
                     return true;
                 }
-                if (type == typeof(Double))
+                if (targetType == typeof(Double))
                 {
-                    target = Double.TryParse(str, out var n) ? n : 0d;
+                    target = Double.TryParse(str, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var n) ? n : 0d;
                     return true;
                 }
-                if (type == typeof(String))
+                if (targetType == typeof(String))
                 {
                     target = str;
                     return true;
                 }
 
-                target = Convert.ChangeType(str, type);
+                target = ChangeType(str, targetType);
                 return true;
             }
             catch (Exception ex)
@@ -1413,7 +1433,7 @@ public class RedisClient : DisposeBase
                 if (objs[i] is IPacket pk4)
                     arr.SetValue(Host.Encoder.Decode(pk4, elmType), i);
                 else if (objs[i] is String strElm)
-                    arr.SetValue(Convert.ChangeType(strElm, elmType), i);
+                    arr.SetValue(ChangeType(strElm, elmType), i);
                 else if (elmType == typeof(Object))
                     arr.SetValue(objs[i], i);
                 else if (objs[i] != null && objs[i].GetType().As(elmType))
@@ -1602,13 +1622,13 @@ public class RedisClient : DisposeBase
             if (!password.IsNullOrEmpty())
             {
                 if (!username.IsNullOrEmpty())
-                    rs = ExecuteCommand("HELLO", [protover.ToString(), "AUTH", username, password]);
+                    rs = ExecuteCommand("HELLO", [protover.ToString(CultureInfo.InvariantCulture), "AUTH", username, password]);
                 else
-                    rs = ExecuteCommand("HELLO", [protover.ToString(), "AUTH", "default", password]);
+                    rs = ExecuteCommand("HELLO", [protover.ToString(CultureInfo.InvariantCulture), "AUTH", "default", password]);
             }
             else
             {
-                rs = ExecuteCommand("HELLO", [protover.ToString()]);
+                rs = ExecuteCommand("HELLO", [protover.ToString(CultureInfo.InvariantCulture)]);
             }
 
             // HELLO响应为Map类型（RESP3）或数组类型，解析为字典

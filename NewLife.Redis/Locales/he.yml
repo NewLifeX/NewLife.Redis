@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "אובייקט התור הוא null בעת ההרשמה."
 "The Redis object is null.": "אובייקט ה-Redis הוא null."
 "The message queue object is null.": "אובייקט תור ההודעות הוא null."
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} הצלחה={2}/{3} חלף={4}ms תוקף={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} פסק זמן={1}ms חלף={2}ms הצלחה={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"

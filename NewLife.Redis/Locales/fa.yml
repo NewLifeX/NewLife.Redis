@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "شیء صف هنگام اشتراک null است."
 "The Redis object is null.": "شیء Redis null است."
 "The message queue object is null.": "شیء صف پیام null است."
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} موفق={2}/{3} سپری‌شده={4}ms اعتبار={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} مهلت={1}ms سپری‌شده={2}ms موفق={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"

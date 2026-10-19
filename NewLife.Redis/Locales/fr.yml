@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "L'objet de file est null lors de l'abonnement."
 "The Redis object is null.": "L'objet Redis est null."
 "The message queue object is null.": "L'objet de file de messages est null."
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} succès={2}/{3} écoulé={4}ms validité={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} délai={1}ms écoulé={2}ms succès={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"

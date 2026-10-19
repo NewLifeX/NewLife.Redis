@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "訂閱時佇列物件為 null。"
 "The Redis object is null.": "Redis 物件為 null。"
 "The message queue object is null.": "訊息佇列物件為 null。"
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} 成功={2}/{3} 耗時={4}ms 有效期={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} 逾時={1}ms 耗時={2}ms 成功={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"

@@ -100,6 +100,29 @@ public class LocalizationTests
     }
 
     [LocalizationFact]
+    public void LogTraceTagIsTranslated()
+    {
+        UseCulture("zh-Hans", "zh-Hans");
+        try
+        {
+            var log = new CaptureLog();
+            var redis = new Redis { Name = "r1", Log = log, Tracer = new DefaultTracer { MaxSamples = 100 } };
+            using var span = redis.Tracer.NewSpan("test");
+
+            redis.WriteLog("Using Redis server: {0}", "127.0.0.1:6379");
+
+            Assert.Single(log.Messages);
+            Assert.Equal("[r1]使用 Redis 服务器：127.0.0.1:6379", log.Messages[0]);
+            Assert.Contains("使用 Redis 服务器", span.Tag);
+            Assert.Contains("127.0.0.1:6379", span.Tag);
+        }
+        finally
+        {
+            UseCulture(null, null);
+        }
+    }
+
+    [LocalizationFact]
     public void LogCultureIsIndependentFromUICulture()
     {
         UseCulture("zh-Hans", "en-US");
@@ -155,11 +178,36 @@ public class LocalizationTests
 
                 var ext = Localization.Translate("Redis is not configured. Specify a connection string named RedisCache in the configuration file or configuration center.");
                 Assert.NotEqual("Redis is not configured. Specify a connection string named RedisCache in the configuration file or configuration center.", ext);
+
+                var redlock = Localization.Translate("RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms", "k", "t", 1, 2, 3, 4);
+                Assert.NotEqual("RedLock.Acquire key=k token=t success=1/2 elapsed=3ms validity=4ms", redlock);
+                Assert.Contains("k", redlock);
             }
             finally
             {
                 UseCulture(null, null);
             }
+        }
+    }
+
+    [LocalizationFact]
+    public void RedLockLogMessagesAreTranslated()
+    {
+        UseCulture("zh-Hans", "zh-Hans");
+        try
+        {
+            var acquired = Localization.Translate("RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms", "lock", "token", 2, 3, 10, 5000);
+            Assert.Contains("成功", acquired);
+            Assert.Contains("耗时", acquired);
+            Assert.Contains("lock", acquired);
+
+            var timeout = Localization.Translate("RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}", "lock", 100, 10, 1, 3);
+            Assert.Contains("超时", timeout);
+            Assert.Contains("成功", timeout);
+        }
+        finally
+        {
+            UseCulture(null, null);
         }
     }
 

@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "ออบเจ็กต์คิวเป็น null เมื่อสมัครรับข้อมูล"
 "The Redis object is null.": "ออบเจ็กต์ Redis เป็น null"
 "The message queue object is null.": "ออบเจ็กต์คิวข้อความเป็น null"
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} สำเร็จ={2}/{3} ใช้เวลา={4}ms อายุ={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} หมดเวลา={1}ms ใช้เวลา={2}ms สำเร็จ={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"

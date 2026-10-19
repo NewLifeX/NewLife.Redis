@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "구독할 때 큐 개체가 null입니다."
 "The Redis object is null.": "Redis 개체가 null입니다."
 "The message queue object is null.": "메시지 큐 개체가 null입니다."
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} 성공={2}/{3} 경과={4}ms 유효={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} 시간 초과={1}ms 경과={2}ms 성공={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"

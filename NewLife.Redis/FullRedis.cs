@@ -1321,7 +1321,7 @@ public class FullRedis : Redis
         var items = rs[1] is Object[] arr ? arr.Select(e =>
         {
             if (e is IPacket pk) return (T?)Encoder.Decode(pk, typeof(T));
-            if (e is String str) return (T?)Convert.ChangeType(str, typeof(T));
+            if (e is String str) return (T?)RedisClient.ChangeType(str, typeof(T));
             return default;
         }).ToArray() : null;
 
@@ -1579,7 +1579,7 @@ public class FullRedis : Redis
                 if (arr[i] is IPacket pkM)
                     member = (T?)Encoder.Decode(pkM, typeof(T));
                 else if (arr[i] is String strM)
-                    member = (T?)Convert.ChangeType(strM, typeof(T));
+                    member = (T?)RedisClient.ChangeType(strM, typeof(T));
                 else
                 {
                     WriteLog("ZMPop[{0}] unknown member type: {1}", i, arr[i]?.GetType().Name);

@@ -168,7 +168,7 @@ public class MultipleConsumerGroupsQueue<[DynamicallyAccessedMembers(Dynamically
         catch (Exception err)
         {
             //遇到其它非消费组名已经存在的错误消息时，停止消费并提示消息
-            if (err.Message.IndexOf(ConsumeGroupExistErrMsgKeyWord) < 0)
+            if (err.Message.IndexOf(ConsumeGroupExistErrMsgKeyWord, StringComparison.OrdinalIgnoreCase) < 0)
             {
                 if (XTrace.Debug) XTrace.WriteException(err);
                 OnStopSubscribe(err.Message);

@@ -141,7 +141,15 @@ jobs:
         if ($failed) { exit 1 }
     - name: Check English runtime messages
       shell: pwsh
-      run: pwsh -File ./check-english-exceptions.ps1
+      run: |
+        $failed = $false
+        pwsh -File ./check-english-exceptions.ps1 -Dir NewLife.Redis -LocaleDir NewLife.Redis/Locales
+        if ($LASTEXITCODE -ne 0) { $failed = $true }
+        pwsh -File ./check-english-exceptions.ps1 -Dir NewLife.Redis.Extensions -LocaleDir NewLife.Redis.Extensions/Locales
+        if ($LASTEXITCODE -ne 0) { $failed = $true }
+        pwsh -File ./check-english-exceptions.ps1 -Dir NewLife.Extensions.Caching.Redis -LocaleDir NewLife.Redis/Locales
+        if ($LASTEXITCODE -ne 0) { $failed = $true }
+        if ($failed) { exit 1 }
     - name: Check README languages
       shell: pwsh
       run: pwsh -File ./sync-readme-languages.ps1 -Check

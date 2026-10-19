@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using NewLife.Caching;
 using NewLife.Data;
 using NewLife.Net;
@@ -9,6 +11,7 @@ using Xunit;
 
 namespace XUnitTest;
 
+[Collection("Localization")]
 public class RedisClientTests
 {
     [Fact(DisplayName = "连接串支持IPv6和双栈开关")]
@@ -113,6 +116,107 @@ public class RedisClientTests
         yield return [Decimal.MaxValue];
         yield return [Int64.MinValue];
         yield return [Double.MaxValue];
+    }
+
+    [LocalizationFact(DisplayName = "协议解析不受区域小数点与负号影响")]
+    public void ParseUsesInvariantCulture()
+    {
+        WithCulture("de-DE", () =>
+        {
+            var client = new TestRedisClient(new Redis());
+
+            Assert.True(client.TryChangeType("12.34", typeof(Double), out var d));
+            Assert.Equal(12.34d, d);
+
+            Assert.True(client.TryChangeType("56.78", typeof(Decimal), out var m));
+            Assert.Equal(56.78m, m);
+
+            Assert.True(client.TryChangeType("2026-08-01 08:30:15", typeof(DateTime), out var dt));
+            Assert.Equal(new DateTime(2026, 8, 1, 8, 30, 15), dt);
+
+            Assert.True(client.TryChangeType("Monday", typeof(DayOfWeek), out var day));
+            Assert.Equal(DayOfWeek.Monday, day);
+        });
+
+        WithCulture("ar-SA", () =>
+        {
+            var client = new TestRedisClient(new Redis());
+
+            Assert.True(client.TryChangeType("-5", typeof(Int32), out var i));
+            Assert.Equal(-5, i);
+
+            Assert.True(client.TryChangeType("-7", typeof(Int64), out var l));
+            Assert.Equal(-7L, l);
+        });
+
+        WithCulture("th-TH", () =>
+        {
+            var client = new TestRedisClient(new Redis());
+
+            Assert.True(client.TryChangeType("2026-08-01 08:30:15", typeof(DateTime), out var dt));
+            Assert.Equal(new DateTime(2026, 8, 1, 8, 30, 15), dt);
+        });
+    }
+
+    [LocalizationFact(DisplayName = "协议编码不受区域小数点与日期格式影响")]
+    public void EncodeUsesInvariantCulture()
+    {
+        WithCulture("de-DE", () =>
+        {
+            var client = new TestRedisClient(new Redis());
+            var args = new Object[] { "key", 12.34d, -12.34d, -5L, 56.78m, new DateTime(2026, 8, 1, 8, 30, 15, 123) };
+            var size = client.CommandSize("SET", args);
+            var buf = new Byte[size];
+            var n = client.Write(buf, "SET", args);
+            var text = Encoding.UTF8.GetString(buf, 0, n);
+
+            Assert.Contains("12.34", text);
+            Assert.Contains("-12.34", text);
+            Assert.Contains("-5", text);
+            Assert.Contains("56.78", text);
+            Assert.Contains("2026-08-01 08:30:15.123", text);
+            Assert.DoesNotContain("12,34", text);
+            Assert.DoesNotContain("56,78", text);
+        });
+    }
+
+    [RedisFact(DisplayName = "逗号小数文化下有序集合分值往返正常")]
+    public void SortedSetScoreRoundTripUnderCommaCulture()
+    {
+        if (!LocalizationTests.CulturesAvailable) return;
+
+        WithCulture("de-DE", () =>
+        {
+            using var redis = new FullRedis();
+            redis.Init(BasicTest.GetConfig());
+
+            var key = "zset_culture_" + Guid.NewGuid().ToString("N");
+            try
+            {
+                var zset = new RedisSortedSet<String>(redis, key);
+
+                Assert.Equal(1, zset.Add("stone", 12.34));
+                Assert.Equal(12.34, zset.GetScore("stone"));
+            }
+            finally
+            {
+                redis.Remove(key);
+            }
+        });
+    }
+
+    private static void WithCulture(String name, Action action)
+    {
+        var culture = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo(name);
+            action();
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = culture;
+        }
     }
 
     private class TestRedisClient : RedisClient

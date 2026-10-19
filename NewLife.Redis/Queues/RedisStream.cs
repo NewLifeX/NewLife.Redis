@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using NewLife.Data;
 using NewLife.Log;
 using NewLife;
@@ -565,7 +566,7 @@ public class RedisStream<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTy
                 if (id.IsNullOrEmpty()) break;
 
                 var p = id.IndexOf('-');
-                if (p > 0) id = $"{id[..p].ToLong() + 1}-0";
+                if (p > 0) id = (id[..p].ToLong() + 1).ToString(CultureInfo.InvariantCulture) + "-0";
             }
 
             // 清理历史空闲消费者
@@ -714,7 +715,7 @@ public class RedisStream<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTy
     /// <param name="end"></param>
     /// <param name="count"></param>
     /// <returns></returns>
-    public IList<Message> Range(DateTime start, DateTime end, Int32 count = -1) => Range(start.ToUniversalTime().ToLong() + "-0", end.ToUniversalTime().ToLong() + "-0", count);
+    public IList<Message> Range(DateTime start, DateTime end, Int32 count = -1) => Range(start.ToUniversalTime().ToLong().ToString(CultureInfo.InvariantCulture) + "-0", end.ToUniversalTime().ToLong().ToString(CultureInfo.InvariantCulture) + "-0", count);
 
     /// <summary>原始独立消费</summary>
     /// <remarks>
@@ -1075,12 +1076,12 @@ XREAD count 3 streams stream_key 0-0
             var topic = Key;
             var sinf = GetInfo();
             if (sinf != null)
-                Redis.WriteLog("Queue [{0}] has {1} messages, {2} consumer groups, last message at {3}.", topic, sinf.Length, sinf.Groups, sinf.LastGenerated);
+                Redis.WriteLog("Queue [{0}] has {1} messages, {2} consumer groups, last message at {3}.", topic, sinf.Length, sinf.Groups, sinf.LastGenerated.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture));
 
             var group = Group;
             var ginf = GetGroups()?.FirstOrDefault(e => e.Name.EqualIgnoreCase(group));
             if (ginf != null)
-                Redis.WriteLog("Consumer group [{0}] has {1} consumers, last delivered at {2}, pending: {3}.", ginf.Name, ginf.Consumers, ginf.LastDelivered, ginf.Pending);
+                Redis.WriteLog("Consumer group [{0}] has {1} consumers, last delivered at {2}, pending: {3}.", ginf.Name, ginf.Consumers, ginf.LastDelivered.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture), ginf.Pending);
         }
         catch (Exception ex)
         {

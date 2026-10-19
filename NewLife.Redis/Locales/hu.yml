@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "A várólista-objektum null az előfizetéskor."
 "The Redis object is null.": "A Redis-objektum null."
 "The message queue object is null.": "Az üzenetsor-objektum null."
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} siker={2}/{3} eltelt={4}ms érvényesség={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} időtúllépés={1}ms eltelt={2}ms siker={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"

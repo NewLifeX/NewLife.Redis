@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "L'oggetto coda è null durante la sottoscrizione."
 "The Redis object is null.": "L'oggetto Redis è null."
 "The message queue object is null.": "L'oggetto coda di messaggi è null."
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} successo={2}/{3} trascorso={4}ms validità={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} timeout={1}ms trascorso={2}ms successo={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"

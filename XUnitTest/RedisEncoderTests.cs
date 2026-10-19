@@ -1,10 +1,13 @@
 using System;
+using System.Globalization;
 using System.Reflection;
+using System.Text;
 using NewLife.Caching;
 using Xunit;
 
 namespace XUnitTest;
 
+[Collection("Localization")]
 public class RedisEncoderTests
 {
     private static readonly MethodInfo _onDecode = typeof(RedisJsonEncoder)
@@ -73,6 +76,78 @@ public class RedisEncoderTests
     {
         var result = InvokeOnDecode("OK", typeof(String));
         Assert.Equal("OK", result);
+    }
+
+    [Fact(DisplayName = "解码数字布尔与枚举")]
+    public void DecodeBooleanAndEnum()
+    {
+        Assert.Equal(true, InvokeOnDecode("1", typeof(Boolean)));
+        Assert.Equal(false, InvokeOnDecode("0", typeof(Boolean)));
+        Assert.Equal(DayOfWeek.Monday, InvokeOnDecode("Monday", typeof(DayOfWeek)));
+        Assert.Equal(DayOfWeek.Monday, InvokeOnDecode("1", typeof(DayOfWeek)));
+    }
+
+    [Fact(DisplayName = "解码空字符串保留基础类型默认值")]
+    public void DecodeEmptyString()
+    {
+        Assert.Equal(0, InvokeOnDecode("", typeof(Int32)));
+        Assert.Equal(0L, InvokeOnDecode("", typeof(Int64)));
+        Assert.Equal(false, InvokeOnDecode("", typeof(Boolean)));
+        Assert.Equal("", InvokeOnDecode("", typeof(String)));
+    }
+
+    [LocalizationFact(DisplayName = "编码不受区域小数点与日期格式影响")]
+    public void EncodeUsesInvariantCulture()
+    {
+        WithCulture("de-DE", () =>
+        {
+            Assert.Equal("12.34", Encoding.UTF8.GetString(_encoder.Encode(12.34d)!.GetSpan()));
+            Assert.Equal("-12.34", Encoding.UTF8.GetString(_encoder.Encode(-12.34d)!.GetSpan()));
+            Assert.Equal("-5", Encoding.UTF8.GetString(_encoder.Encode(-5L)!.GetSpan()));
+            Assert.Equal("56.78", Encoding.UTF8.GetString(_encoder.Encode(56.78m)!.GetSpan()));
+            Assert.Equal("2026-08-01 08:30:15.123", Encoding.UTF8.GetString(_encoder.Encode(new DateTime(2026, 8, 1, 8, 30, 15, 123))!.GetSpan()));
+        });
+
+        WithCulture("th-TH", () =>
+        {
+            Assert.Equal("2026-08-01 08:30:15.123", Encoding.UTF8.GetString(_encoder.Encode(new DateTime(2026, 8, 1, 8, 30, 15, 123))!.GetSpan()));
+        });
+    }
+
+    [LocalizationFact(DisplayName = "解码不受区域小数点与负号影响")]
+    public void DecodeUsesInvariantCulture()
+    {
+        WithCulture("de-DE", () =>
+        {
+            Assert.Equal(12.34d, InvokeOnDecode("12.34", typeof(Double)));
+            Assert.Equal(56.78m, InvokeOnDecode("56.78", typeof(Decimal)));
+            Assert.Equal(new DateTime(2026, 8, 1, 8, 30, 15), InvokeOnDecode("2026-08-01 08:30:15", typeof(DateTime)));
+        });
+
+        WithCulture("th-TH", () =>
+        {
+            Assert.Equal(new DateTime(2026, 8, 1, 8, 30, 15), InvokeOnDecode("2026-08-01 08:30:15", typeof(DateTime)));
+        });
+
+        WithCulture("ar-SA", () =>
+        {
+            Assert.Equal(-5, InvokeOnDecode("-5", typeof(Int32)));
+            Assert.Equal(-7L, InvokeOnDecode("-7", typeof(Int64)));
+        });
+    }
+
+    private static void WithCulture(String name, Action action)
+    {
+        var culture = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo(name);
+            action();
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = culture;
+        }
     }
 
     private class EncoderModel

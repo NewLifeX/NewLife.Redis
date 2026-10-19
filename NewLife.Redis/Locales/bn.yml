@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "সাবস্ক্রাইব করার সময় সারি অবজেক্ট null।"
 "The Redis object is null.": "Redis অবজেক্ট null।"
 "The message queue object is null.": "বার্তা সারি অবজেক্ট null।"
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} সফল={2}/{3} অতিবাহিত={4}ms বৈধতা={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} সময়সীমা={1}ms অতিবাহিত={2}ms সফল={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"

@@ -100,8 +100,9 @@
 ### 2.7 多语言词表与 InvariantGlobalization
 
 - 31 种语言的运行时词表由 NewLife.Core 源生成器在编译期写入程序集，不使用 `ResourceManager` 与卫星程序集；译文按需 Deflate 解压，NativeAOT 下无动态代码依赖。
-- 两套词表（主库 71 条、扩展组件 2 条）均通过模块初始化器注册；注册失败仅影响译文命中，运行时按英文回退。
-- `AotSmoke` 固定 `InvariantGlobalization=true`：命名区域性不可用，源生成器捕获 `CultureNotFoundException` 后跳过注册，冒烟场景不依赖区域性数据，21 个场景实测通过。
+- 两套词表（主库 74 条、扩展组件 2 条）均通过模块初始化器注册；注册失败仅影响译文命中，运行时按英文回退。
+- 协议数字、日期与布尔值按 `InvariantCulture` 编码和解析，与 `AotSmoke` 的 `InvariantGlobalization=true` 姿态保持一致。
+- `AotSmoke` 固定 `InvariantGlobalization=true`：命名区域性不可用，源生成器捕获 `CultureNotFoundException` 后跳过注册，冒烟场景不依赖区域性数据，23 个场景实测通过。
 - `LocalizationTests` 在 invariant 模式下由 `LocalizationFactAttribute` 自动跳过；正常环境逐一验证 31 种语言与扩展组件词表。
 - AOT/裁剪分析器对多语言代码保持 **0 条 IL 告警**。
 

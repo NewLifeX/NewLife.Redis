@@ -70,3 +70,6 @@
 "The queue object is null when subscribing.": "Jono-objekti on null tilattaessa."
 "The Redis object is null.": "Redis-objekti on null."
 "The message queue object is null.": "Viestijono-objekti on null."
+"RedLock.Acquire key={0} token={1} success={2}/{3} elapsed={4}ms validity={5}ms": "RedLock.Acquire key={0} token={1} onnistui={2}/{3} kulunut={4}ms voimassa={5}ms"
+"RedLock.Acquire key={0} timeout={1}ms elapsed={2}ms success={3}/{4}": "RedLock.Acquire key={0} aikakatkaisu={1}ms kulunut={2}ms onnistui={3}/{4}"
+"RedLock.Release key={0} token={1}": "RedLock.Release key={0} token={1}"
