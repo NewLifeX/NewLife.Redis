@@ -270,7 +270,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
         }
         catch (Exception ex)
         {
-            Redis.Log.Error(ex.Message);
+            Redis.Log.ErrorPrefixed(Redis.Name.IsNullOrEmpty() ? null : "[" + Redis.Name + "]", ex.Message);
         }
         finally
         {
@@ -307,7 +307,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
         }
         catch (Exception ex)
         {
-            Redis.Log.Error(ex.Message);
+            Redis.Log.ErrorPrefixed(Redis.Name.IsNullOrEmpty() ? null : "[" + Redis.Name + "]", ex.Message);
         }
         finally
         {
