@@ -7,6 +7,8 @@
 > 扩展：2026-10-16｜AOT 冒烟 CI 扩展为多 RID 矩阵（必选覆盖 win-x64 / linux-x64 / linux-arm64 / linux-la64；另含 win-arm64、osx 双架构、musl 容器与边缘 RID 任务），普通单元测试同步四平台覆盖，见 §6。
 >
 > 复验：2026-10-16｜NewLife.Core 维持 12.0.2026.1013-beta0732（NuGet 最新 beta，无需升级）｜本机全解决方案编译 0 错误；XUnitTest 387 通过 / 0 失败 / 10 跳过；23 场景 JIT 与 NativeAOT 双形态在严格拓扑（集群+哨兵）下全通（win-x64，Redis 7.0.15）。
+>
+> 复验：2026-10-19｜NewLife.Core 升级至 12.0.2026.1019-beta0659｜全解决方案 0 错误；XUnitTest 411 通过 / 10 跳过 / 0 失败，invariant 模式 404 通过 / 17 跳过 / 0 失败；AOT 分析器 0 条 IL 告警；win-x64 NativeAOT 21 PASS / 2 SKIP（本机无集群/哨兵拓扑，CI 严格模式 23/23）；Android/iOS 与 linux-riscv64 / arm / arm64 / musl-x64 / osx-arm64 / win-arm64 RID 构建通过。
 
 ---
 
@@ -127,7 +129,7 @@
 | 5 | 文档与声明 | 本文档更新；Readme 中英文增补 NativeAOT 支持说明 | ✅ |
 | 6 | 注解垫片清理 | 删除本地 `Common/AotAnnotations.cs`，旧 TFM 注解特性统一由 NewLife.Core 公开存根提供，384 条 CS0436 类型重复告警清零 | ✅ |
 | 7 | CI 拓扑实跑 | `aot.yml` 冒烟任务自动搭建集群（7000-7002）与哨兵（主 7480 / 哨兵 26379）；`AotSmoke` 支持 `AOT_REQUIRE_TOPO=1` 严格模式（拓扑缺失按场景失败处理），CI 23 场景全实跑不再 SKIP | ✅ |
-| 8 | 多 RID 矩阵 | `aot.yml` 扩展为 smoke 矩阵（win-x64 / win-arm64 / linux-x64 / linux-arm64 / osx-arm64 / osx-x64 原生 runner）+ la64（QEMU 仿真 + 龙芯 SDK）+ musl 双架构（alpine 容器）+ 边缘 RID（win-x86 / linux-arm，并入同一工作流）；`test.yml` 单测同步覆盖 win-x64 / linux-x64 / linux-arm64 / linux-la64；全部随 push/PR 与手动触发（不设夜间任务）；仅 linux-x64 阻断，其余观察期 | ✅ |
+| 8 | 多 RID 矩阵 | `aot.yml` 扩展为 smoke 矩阵（win-x64 / win-arm64 / linux-x64 / linux-arm64 / osx-arm64 / osx-x64 原生 runner）+ la64（QEMU 仿真 + 龙芯 SDK）+ musl 双架构（alpine 容器）+ 边缘 RID（win-x86 / linux-arm，并入同一工作流）；`test.yml` 单测同步覆盖 win-x64 / linux-x64 / linux-arm64 / linux-la64；`mobile.yml` 覆盖 Android 模拟器与 iOS 模拟器；`arch.yml` 覆盖 QEMU riscv64 / s390x；全部随 push/PR 与手动触发（不设夜间任务）；仅 linux-x64 阻断，其余观察期 | ✅ |
 
 ---
 
@@ -175,6 +177,8 @@ dotnet publish AotSmoke\AotSmoke.csproj -c Release -r win-x64 -o out
 
 - **观察期约定**：新增平台 job 均带 `continue-on-error`，连续稳定全绿后逐项转阻断门禁（linux-x64 阻断基线保持）。
 - **触发方式**：全部任务随 push/PR 与手动触发（workflow_dispatch）运行，不设夜间任务（多代码库服务端场景下，代码可能十天半月才同步到 GitHub，夜间空跑无意义）。
+- **移动端覆盖**：`mobile.yml` 在 Android 模拟器与 iOS 模拟器构建并运行 `Samples/MobileSmoke`，分别以 logcat `SMOKE_OK` 与应用容器 `smoke.json` 判定通过；移动端关闭链路裁剪，用于验证 API 与运行时兼容，不作为 NativeAOT 结论。
+- **指令集覆盖**：`arch.yml` 在 QEMU riscv64 / s390x 容器内运行 `AotSmoke` 的 JIT 冒烟（s390x 同时验证大端字节序）；这两个架构无官方 NativeAOT runtime pack，AOT 结论仍以已列 RID 为准。
 - **拓扑场景（集群/哨兵）范围**：linux-x64 / linux-arm64 / linux-la64 强制实跑（`AOT_REQUIRE_TOPO=1`）；win/osx/musl 先跑基本场景，拓扑场景自动 SKIP，稳定后再评估扩展。
 - **LA64 说明**：官方不发 linux-loongarch64 的 runtime pack，**无 NativeAOT 支持**（ILCompiler 源码含 LoongArch64 后端但不构成承诺）；故 AOT 兼容以 LA64 进程 JIT 冒烟为主信号（QEMU 用户态仿真 + [龙芯 SDK](https://github.com/loongson/dotnet) 10.0.112，pack 走 lnuget.loongnix.cn，宿主无 LA64 原生 ICU 以 invariant 模式运行），NativeAOT 发布仅作探索、失败不阻断。
 - **Windows Redis 说明**：Windows 无原生 Redis，CI 使用 Memurai Developer（Redis 7.0 兼容，开发/测试免费，自带开发许可；CI 属测试用途）；win-arm64 走 x64 仿真，若失败后备方案为 redis-windows 社区构建。
@@ -184,6 +188,7 @@ dotnet publish AotSmoke\AotSmoke.csproj -c Release -r win-x64 -o out
 
 | 目标 | 排除理由 |
 |---|---|
-| Android / iOS / tvOS / macCatalyst / WASM | 应用模型类目标，无法在本仓验证 |
-| FreeBSD / linux-ppc64le / linux-s390x / linux-riscv64 | 无托管 runner，官方/社区 pack 渠道未验；需要时按 NewLife.Core 的 QEMU 配方另立专项 |
+| tvOS / macCatalyst / WASM | 应用模型类目标，本仓未纳入冒烟；Android / iOS 已由 `mobile.yml` 覆盖 |
+| FreeBSD / linux-ppc64le | 无托管 runner，官方/社区 pack 渠道未验；需要时按 NewLife.Core 的 QEMU 配方另立专项 |
+| linux-s390x / linux-riscv64 的 NativeAOT | 无官方 NativeAOT runtime pack；JIT 冒烟已由 `arch.yml` 覆盖，AOT 结论不包含这两个架构 |
 | Windows x64→Linux 交叉 NativeAOT | 官方不支持跨 OS 编译 |
