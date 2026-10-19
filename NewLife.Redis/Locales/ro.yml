@@ -1,0 +1,8 @@
+# Română 词表（ro）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"Failed to connect to the Redis server.": "Conectarea la serverul Redis a eșuat."
+"Fetching all keys is not allowed when the count is large; use FullRedis.Search instead.": "Nu este permisă preluarea tuturor cheilor când numărul este mare; utilizați FullRedis.Search."
+"This feature requires FullRedis.": "Această funcționalitate necesită FullRedis."
+"Redis.Set({0},{1}) failed. {2}": "Redis.Set({0},{1}) a eșuat. {2}"
+"Redis.Add({0},{1}) failed. {2}": "Redis.Add({0},{1}) a eșuat. {2}"
+"Login failed.": "Autentificarea a eșuat."
+"Redis.SetAll({0}) failed. {1}": "Redis.SetAll({0}) a eșuat. {1}"

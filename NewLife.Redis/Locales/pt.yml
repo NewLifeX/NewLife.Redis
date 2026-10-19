@@ -1,0 +1,8 @@
+# Português 词表（pt）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"Failed to connect to the Redis server.": "Falha ao conectar ao servidor Redis."
+"Fetching all keys is not allowed when the count is large; use FullRedis.Search instead.": "Não é permitido obter todas as chaves quando a quantidade é grande; use FullRedis.Search."
+"This feature requires FullRedis.": "Este recurso requer FullRedis."
+"Redis.Set({0},{1}) failed. {2}": "Falha em Redis.Set({0},{1}). {2}"
+"Redis.Add({0},{1}) failed. {2}": "Falha em Redis.Add({0},{1}). {2}"
+"Login failed.": "Falha no início de sessão."
+"Redis.SetAll({0}) failed. {1}": "Falha em Redis.SetAll({0}). {1}"

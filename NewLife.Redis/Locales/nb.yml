@@ -1,0 +1,8 @@
+# Norsk bokmål 词表（nb）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"Failed to connect to the Redis server.": "Kunne ikke koble til Redis-serveren."
+"Fetching all keys is not allowed when the count is large; use FullRedis.Search instead.": "Det er ikke tillatt å hente alle nøkler når antallet er stort; bruk FullRedis.Search i stedet."
+"This feature requires FullRedis.": "Denne funksjonen krever FullRedis."
+"Redis.Set({0},{1}) failed. {2}": "Redis.Set({0},{1}) mislyktes. {2}"
+"Redis.Add({0},{1}) failed. {2}": "Redis.Add({0},{1}) mislyktes. {2}"
+"Login failed.": "Innlogging mislyktes."
+"Redis.SetAll({0}) failed. {1}": "Redis.SetAll({0}) mislyktes. {1}"

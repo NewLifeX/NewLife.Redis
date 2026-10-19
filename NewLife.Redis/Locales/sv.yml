@@ -1,0 +1,8 @@
+# Svenska 词表（sv）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"Failed to connect to the Redis server.": "Det gick inte att ansluta till Redis-servern."
+"Fetching all keys is not allowed when the count is large; use FullRedis.Search instead.": "Det är inte tillåtet att hämta alla nycklar när antalet är stort; använd FullRedis.Search i stället."
+"This feature requires FullRedis.": "Den här funktionen kräver FullRedis."
+"Redis.Set({0},{1}) failed. {2}": "Redis.Set({0},{1}) misslyckades. {2}"
+"Redis.Add({0},{1}) failed. {2}": "Redis.Add({0},{1}) misslyckades. {2}"
+"Login failed.": "Inloggningen misslyckades."
+"Redis.SetAll({0}) failed. {1}": "Redis.SetAll({0}) misslyckades. {1}"

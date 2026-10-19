@@ -1,0 +1,8 @@
+# العربية 词表（ar）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"Failed to connect to the Redis server.": "تعذّر الاتصال بخادم Redis."
+"Fetching all keys is not allowed when the count is large; use FullRedis.Search instead.": "لا يُسمح بجلب جميع المفاتيح عندما يكون العدد كبيرًا؛ استخدم FullRedis.Search بدلًا من ذلك."
+"This feature requires FullRedis.": "تتطلب هذه الميزة FullRedis."
+"Redis.Set({0},{1}) failed. {2}": "فشل Redis.Set({0},{1}). {2}"
+"Redis.Add({0},{1}) failed. {2}": "فشل Redis.Add({0},{1}). {2}"
+"Login failed.": "فشل تسجيل الدخول."
+"Redis.SetAll({0}) failed. {1}": "فشل Redis.SetAll({0}). {1}"

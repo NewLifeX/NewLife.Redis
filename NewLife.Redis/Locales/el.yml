@@ -1,0 +1,8 @@
+# Ελληνικά 词表（el）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"Failed to connect to the Redis server.": "Αποτυχία σύνδεσης με τον διακομιστή Redis."
+"Fetching all keys is not allowed when the count is large; use FullRedis.Search instead.": "Δεν επιτρέπεται η ανάκτηση όλων των κλειδιών όταν το πλήθος είναι μεγάλο· χρησιμοποιήστε το FullRedis.Search."
+"This feature requires FullRedis.": "Αυτή η λειτουργία απαιτεί FullRedis."
+"Redis.Set({0},{1}) failed. {2}": "Το Redis.Set({0},{1}) απέτυχε. {2}"
+"Redis.Add({0},{1}) failed. {2}": "Το Redis.Add({0},{1}) απέτυχε. {2}"
+"Login failed.": "Η σύνδεση απέτυχε."
+"Redis.SetAll({0}) failed. {1}": "Το Redis.SetAll({0}) απέτυχε. {1}"

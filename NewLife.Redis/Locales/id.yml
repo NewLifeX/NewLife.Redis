@@ -1,0 +1,8 @@
+# Bahasa Indonesia 词表（id）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"Failed to connect to the Redis server.": "Gagal terhubung ke server Redis."
+"Fetching all keys is not allowed when the count is large; use FullRedis.Search instead.": "Mengambil semua kunci tidak diizinkan bila jumlahnya besar; gunakan FullRedis.Search sebagai gantinya."
+"This feature requires FullRedis.": "Fitur ini memerlukan FullRedis."
+"Redis.Set({0},{1}) failed. {2}": "Redis.Set({0},{1}) gagal. {2}"
+"Redis.Add({0},{1}) failed. {2}": "Redis.Add({0},{1}) gagal. {2}"
+"Login failed.": "Login gagal."
+"Redis.SetAll({0}) failed. {1}": "Redis.SetAll({0}) gagal. {1}"
