@@ -1,0 +1,3 @@
+# zh-Hant 词表。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"Redis is not configured. Specify a connection string named RedisCache in the configuration file or configuration center.": "未設定 Redis。請在設定檔或設定中心指定名為 RedisCache 的連線字串。"
+"DataProtection is using Redis to persist keys, Key={0}.": "DataProtection 使用 Redis 保存金鑰，Key={0}。"

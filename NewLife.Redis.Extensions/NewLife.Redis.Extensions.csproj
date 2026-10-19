@@ -117,4 +117,8 @@
     <ProjectReference Include="..\NewLife.Redis\NewLife.Redis.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <AdditionalFiles Include="Locales\*.yml" />
+  </ItemGroup>
+
 </Project>

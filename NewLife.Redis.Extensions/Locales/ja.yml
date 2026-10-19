@@ -1,0 +1,3 @@
+# ja 词表。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"Redis is not configured. Specify a connection string named RedisCache in the configuration file or configuration center.": "Redis が構成されていません。構成ファイルまたは構成センターで RedisCache という名前の接続文字列を指定してください。"
+"DataProtection is using Redis to persist keys, Key={0}.": "DataProtection は Redis を使用してキーを永続化しています。Key={0}。"

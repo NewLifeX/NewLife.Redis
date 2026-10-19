@@ -1,0 +1,3 @@
+# fr 词表。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"Redis is not configured. Specify a connection string named RedisCache in the configuration file or configuration center.": "Redis n'est pas configuré. Spécifiez une chaîne de connexion nommée RedisCache dans le fichier de configuration ou le centre de configuration."
+"DataProtection is using Redis to persist keys, Key={0}.": "DataProtection utilise Redis pour conserver les clés, Key={0}."

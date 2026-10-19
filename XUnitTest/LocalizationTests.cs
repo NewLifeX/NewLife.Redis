@@ -106,6 +106,25 @@ public class LocalizationTests
     }
 
     [Fact]
+    public void ExtensionsMessagesAreTranslated()
+    {
+        UseCulture("zh-Hans", null);
+        try
+        {
+            // 触发扩展程序集加载，执行源生成器产出的模块初始化器
+            Assert.NotNull(typeof(NewLife.Redis.Extensions.RedisXmlRepository).Assembly);
+
+            var text = Localization.Translate("Redis is not configured. Specify a connection string named RedisCache in the configuration file or configuration center.");
+
+            Assert.Equal("未配置 Redis。请在配置文件或配置中心指定名为 RedisCache 的连接字符串。", text);
+        }
+        finally
+        {
+            UseCulture(null, null);
+        }
+    }
+
+    [Fact]
     public void UnknownCultureFallsBackToEnglish()
     {
         UseCulture("tlh", "tlh");
