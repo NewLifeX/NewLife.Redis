@@ -1,30 +1,41 @@
 name: readme
 
+# README 语言切换行由 sync-readme-languages.ps1 从 readme-languages.json 生成；
+# NuGet 包版 README 由 sync-readme-package.ps1 从各 English README 生成。
+# 手工改顺序、或某一份副本忘记同步，都会在这里被拦下。
 on:
   push:
+    branches: [ '*' ]
     paths:
-      - 'README*'
-      - 'Readme*'
-      - 'readme-languages.json'
-      - 'sync-readme-languages.ps1'
+      - 'README*.md'
+      - '**/README*.md'
+      - 'readme-*.json'
+      - 'readme-*.ps1'
       - '.github/workflows/readme.yml'
   pull_request:
+    branches: [ '*' ]
     paths:
-      - 'README*'
-      - 'Readme*'
-      - 'readme-languages.json'
-      - 'sync-readme-languages.ps1'
+      - 'README*.md'
+      - '**/README*.md'
+      - 'readme-*.json'
+      - 'readme-*.ps1'
       - '.github/workflows/readme.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  languages:
-    name: README languages
+  readme:
+    name: check readme
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
 
     steps:
     - uses: actions/checkout@v4
-    - name: Check README languages
+    - name: Check README language switcher
       shell: pwsh
-      run: pwsh -File ./sync-readme-languages.ps1 -Check
+      run: pwsh -NoProfile -File ./sync-readme-languages.ps1 -Check
+    - name: Check README package copy
+      shell: pwsh
+      run: pwsh -NoProfile -File ./sync-readme-package.ps1 -Check

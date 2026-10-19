@@ -15,7 +15,7 @@
     <File Path=".github/workflows/publish-beta.yml" />
     <File Path=".github/workflows/publish.yml" />
     <File Path=".github/workflows/test.yml" />
-    <File Path="Readme.MD" />
+    <File Path="README.md" />
   </Folder>
   <Project Path="AotSmoke/AotSmoke.csproj" />
   <Project Path="NewLife.Redis.Extensions/NewLife.Redis.Extensions.csproj" />

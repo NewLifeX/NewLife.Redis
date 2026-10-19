@@ -9,6 +9,8 @@
 
 > 🆕 本包是旧包 `NewLife.Extensions.Caching.Redis`（v5.5）的继任者。如果你正在使用旧包，请参阅[迁移指引](#从旧包迁移)。
 
+> ℹ️ 本中文版与 [English README](README.md) 同批维护；若两者内容不一致，以英文版为对外口径。
+
 ---
 
 ## 功能概览
@@ -137,6 +139,6 @@ builder.Services.AddDataProtection()
 ## 相关链接
 
 - [NewLife.Redis 主仓库](https://github.com/NewLifeX/NewLife.Redis)
-- [NewLife.Redis 中文文档](https://github.com/NewLifeX/NewLife.Redis/blob/master/Readme.MD)
+- [NewLife.Redis 中文文档](https://github.com/NewLifeX/NewLife.Redis/blob/master/README.zh-CN.md)
 - [NuGet 包](https://www.nuget.org/packages/NewLife.Redis.Extensions/)
 - [新生命团队官网](https://newlifex.com)

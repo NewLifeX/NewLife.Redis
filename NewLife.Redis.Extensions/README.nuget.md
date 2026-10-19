@@ -1,3 +1,5 @@
+<!-- generated from NewLife.Redis.Extensions/README.md by sync-readme-package.ps1; do not edit -->
+
 # NewLife.Redis.Extensions
 
 ![Nuget](https://img.shields.io/nuget/v/NewLife.Redis.Extensions?logo=nuget)
@@ -137,6 +139,6 @@ This is the direct successor to `NewLife.Extensions.Caching.Redis` (v5.5), offer
 ## Related Links
 
 - [NewLife.Redis Main Repository](https://github.com/NewLifeX/NewLife.Redis)
-- [NewLife.Redis Documentation (Chinese)](https://github.com/NewLifeX/NewLife.Redis/blob/master/Readme.MD)
+- [NewLife.Redis Documentation (Chinese)](https://github.com/NewLifeX/NewLife.Redis/blob/master/README.zh-CN.md)
 - [NuGet Package](https://www.nuget.org/packages/NewLife.Redis.Extensions/)
 - [NewLife Team Website](https://newlifex.com)

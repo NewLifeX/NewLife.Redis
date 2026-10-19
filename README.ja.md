@@ -15,12 +15,14 @@
 
 
 <!-- lang:start -->
-🌐 [中文](Readme.MD) | [繁體中文](README.zh-TW.md) | [English](README.en.md) | [Español](README.es.md) | [Deutsch](README.de.md) | [Français](README.fr.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [한국어](README.ko.md) | [العربية](README.ar.md)
+🌐 [English](README.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Español](README.es.md) | [Deutsch](README.de.md) | [Français](README.fr.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [한국어](README.ko.md) | [العربية](README.ar.md)
 <!-- lang:end -->
 
 ---
 
 `NewLife.Redis` は、NewLife チームが開発した **高性能・高スループット・統合容易** な .NET Redis クライアントです。2017年から複数の大規模プロダクション環境で稼働し、**1日80億回以上**のコマンド呼び出しを処理しています。
+
+> ⚠️ この翻訳は古い可能性があります。内容は [English README](README.md) を基準にしてください。
 
 ## クイックスタート
 

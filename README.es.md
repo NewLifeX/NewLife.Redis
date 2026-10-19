@@ -15,12 +15,14 @@
 
 
 <!-- lang:start -->
-🌐 [中文](Readme.MD) | [繁體中文](README.zh-TW.md) | [English](README.en.md) | [Deutsch](README.de.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [한국어](README.ko.md) | [العربية](README.ar.md)
+🌐 [English](README.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Deutsch](README.de.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [한국어](README.ko.md) | [العربية](README.ar.md)
 <!-- lang:end -->
 
 ---
 
 `NewLife.Redis` es un cliente Redis para .NET **de alto rendimiento, alta productividad y fácil integración**, desarrollado por el equipo NewLife. Desde 2017, funciona de forma estable en múltiples plataformas de producción a gran escala, procesando más de **80 mil millones** de llamadas de comandos al día.
+
+> ⚠️ Esta traducción puede quedar desactualizada; la versión autorizada es el [English README](README.md).
 
 ## Inicio Rápido
 

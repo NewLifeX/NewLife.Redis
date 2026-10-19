@@ -3,6 +3,8 @@
 ![Nuget](https://img.shields.io/nuget/v/NewLife.Extensions.Caching.Redis?logo=nuget)
 ![Nuget Downloads](https://img.shields.io/nuget/dt/NewLife.Extensions.Caching.Redis?logo=nuget)
 
+> ℹ️ 本中文版与 [English README](README.md) 同批维护；若两者内容不一致，以英文版为对外口径。
+
 ## ⚠️ 该包已停止维护
 
 `NewLife.Extensions.Caching.Redis` 已进入**仅维护模式**，不再新增功能。请迁移至新的替代包：

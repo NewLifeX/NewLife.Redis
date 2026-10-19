@@ -15,7 +15,7 @@
 
 
 <!-- lang:start -->
-🌐 [中文](Readme.MD) | [繁體中文](README.zh-TW.md) | [Español](README.es.md) | [Deutsch](README.de.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [한국어](README.ko.md) | [العربية](README.ar.md)
+🌐 [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [Español](README.es.md) | [Deutsch](README.de.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [한국어](README.ko.md) | [العربية](README.ar.md)
 <!-- lang:end -->
 
 `NewLife.Redis` is a **high-performance / high-throughput / easy-to-integrate** .NET Redis client component built by the NewLife team. Since 2017, it has been running stably on multiple production platforms handling billions of records and high concurrency, processing **80+ billion** command calls daily.
@@ -26,7 +26,6 @@
 
 ## Table of Contents
 - [NewLife.Redis — High-Performance Redis Client Component](#newliferedis--high-performance-redis-client-component)
-  - [\[中文\]](#中文)
   - [Table of Contents](#table-of-contents)
   - [Introduction](#introduction)
   - [Core Features](#core-features)
@@ -115,7 +114,7 @@
 | Protocol | Status | Description |
 |----------|--------|-------------|
 | RESP2 | ✅ Fully supported | Simple String / Error / Integer / Bulk String / Array |
-| RESP3 | 🔄 Planned | Map / Set / Double types, requires HELLO handshake negotiation |
+| RESP3 | ✅ Fully supported | Map / Set / Double / Boolean / Null / Blob Error types, negotiated via HELLO handshake (Redis 6.0+) |
 
 ### Redis Version Feature Support
 
@@ -735,7 +734,7 @@ A: Basic operations, List/Hash/Set/ZSet/HLL/Geo, and queues are all supported. S
 
 ## Roadmap
 
-- [ ] RESP3 protocol support (foundation for Redis 7.x new features)
+- [x] ~~RESP3 protocol support~~ (Completed)
 - [ ] Redis Functions (FCALL/FUNCTION, replacing Lua scripts)
 - [ ] LMPOP / ZMPOP (Redis 7.0 batch pop)
 - [ ] RedLock multi-instance distributed lock

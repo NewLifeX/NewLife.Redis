@@ -15,17 +15,18 @@
 
 
 <!-- lang:start -->
-🌐 [繁體中文](README.zh-TW.md) | [English](README.en.md) | [Español](README.es.md) | [Deutsch](README.de.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [한국어](README.ko.md) | [العربية](README.ar.md)
+🌐 [English](README.md) | [繁體中文](README.zh-TW.md) | [Español](README.es.md) | [Deutsch](README.de.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [한국어](README.ko.md) | [العربية](README.ar.md)
 <!-- lang:end -->
 
 `NewLife.Redis` 是新生命团队打造的**高性能 / 高吞吐 / 易集成**的 .NET Redis 客户端组件。自 2017 年起在多个千万 / 百亿级数据与高并发生产平台稳定运行，经受日均 **80+ 亿次**命令调用考验。
 
 > 📖 完整文档：[需求文档](Doc/需求文档.md) | [架构文档](Doc/架构文档.md) | [功能清单](Doc/功能清单.md) | [竞品分析](Doc/竞品分析.md) | [Garnet 兼容性](Doc/Garnet兼容性.md) | [AOT 兼容性](Doc/AOT兼容性分析.md)
 
+> ℹ️ 本中文版与 [English README](README.md) 同批维护；若两者内容不一致，以英文版为对外口径。
+
 ---
 ## 目录
 - [NewLife.Redis - 高性能 Redis 客户端组件](#newliferedis---高性能-redis-客户端组件)
-  - [\[English\]](#english)
   - [目录](#目录)
   - [产品介绍](#产品介绍)
   - [核心特性](#核心特性)
@@ -111,7 +112,7 @@
 | 协议 | 状态 | 说明 |
 |------|------|------|
 | RESP2 | ✅ 完整支持 | 简单字符串 / 错误 / 整数 / 批量字符串 / 数组 |
-| RESP3 | 🔄 规划中 | Map / Set / Double 类型，需 HELLO 握手协商 |
+| RESP3 | ✅ 完整支持 | Map / Set / Double / Boolean / Null / Blob Error 类型，HELLO 握手协商（Redis 6.0+）|
 
 ### Redis 版本特性支持
 
@@ -644,7 +645,7 @@ Console.WriteLine($"服务器版本：{redis.Version}");
 | 功能 | 完成状态 |
 |------|---------|
 | RESP2 完整支持 | ✅ |
-| RESP3 | 🔄 规划中 |
+| RESP3 | ✅ |
 | SSL/TLS | ✅ |
 | ACL 认证 | ✅ |
 | 事务 MULTI/EXEC/WATCH | ✅ |
