@@ -1,0 +1,86 @@
+name: arch
+
+# 指令集兼容矩阵：宿主 x64 SDK 构建与架构无关的 IL，容器内用目标架构 .NET 运行时执行冒烟。
+# riscv64 使用社区运行时（无 NuGet runtime pack），s390x 使用 Ubuntu 官方 dotnet-runtime-10.0（同时验证大端字节序）。
+# 观察期（continue-on-error），稳定全绿后转阻断。
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+  workflow_dispatch:
+
+jobs:
+  riscv64:
+    name: arch (linux-riscv64 qemu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    continue-on-error: true
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup dotNET (host, for restore)
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.x
+    - name: Set up QEMU (riscv64)
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: riscv64
+    - name: Download RISC-V .NET SDK (community build)
+      run: |
+        curl -fL -o "$HOME/riscv64-sdk.tar.gz" \
+          https://github.com/filipnavara/dotnet-riscv/releases/download/10.0.113/dotnet-sdk-10.0.113-linux-riscv64.tar.gz
+        mkdir -p "$HOME/riscv64" && tar -xzf "$HOME/riscv64-sdk.tar.gz" -C "$HOME/riscv64"
+        chmod +x "$HOME/riscv64/dotnet" || true
+    - name: Build smoke (host x64 SDK)
+      run: dotnet build AotSmoke/AotSmoke.csproj -c Release -o Bin/ArchSmoke
+    - name: Run smoke (linux-riscv64)
+      run: |
+        docker run --rm --platform linux/riscv64 \
+          -v "$PWD:/src" -w /src \
+          -v "$HOME/riscv64:/opt/dotnet:ro" \
+          -e DOTNET_ROOT=/opt/dotnet \
+          -e DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+          -e DOTNET_EnableHWIntrinsic=0 \
+          -e DOTNET_EnableWriteXorExecute=0 \
+          riscv64/ubuntu:24.04 \
+          sh -c '
+            set -e
+            apt-get update -qq
+            apt-get install -y -qq --no-install-recommends libicu74 libssl3 libstdc++6 ca-certificates >/dev/null
+            /opt/dotnet/dotnet --info
+            cd /src && dotnet Bin/ArchSmoke/AotSmoke.dll
+          '
+
+  s390x:
+    name: arch (linux-s390x qemu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    continue-on-error: true
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup dotNET (host, for restore)
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.x
+    - name: Set up QEMU (s390x)
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: s390x
+    - name: Build smoke (host x64 SDK)
+      run: dotnet build AotSmoke/AotSmoke.csproj -c Release -o Bin/ArchSmoke
+    - name: Run smoke (linux-s390x)
+      run: |
+        docker run --rm --platform linux/s390x \
+          -v "$PWD:/src" -w /src \
+          -e DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+          s390x/ubuntu:24.04 \
+          sh -c '
+            set -e
+            apt-get update -qq
+            apt-get install -y -qq --no-install-recommends dotnet-runtime-10.0 libicu74 libssl3 ca-certificates >/dev/null
+            dotnet --info
+            cd /src && dotnet Bin/ArchSmoke/AotSmoke.dll
+          '
