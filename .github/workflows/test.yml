@@ -139,6 +139,9 @@ jobs:
           }
         }
         if ($failed) { exit 1 }
+    - name: Check English runtime messages
+      shell: pwsh
+      run: pwsh -File ./check-english-exceptions.ps1
     - name: Check README languages
       shell: pwsh
       run: pwsh -File ./sync-readme-languages.ps1 -Check
