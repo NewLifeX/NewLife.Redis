@@ -95,6 +95,14 @@
 | 2 | 哨兵/集群切换后连接池未失效（`Redis.SetSevices`） | 地址变化后旧连接池仍指向旧节点，数据面持续打向哨兵而非主节点（unknown command SET） | 地址变化时清空连接池（`_Pool = null`，与 `Init` 换连接串约定一致），由下次取用重建 |
 | 3 | 哨兵节点刷新查询错对象（`RedisSentinel.GetNodes`） | 切换后数据连接已指向主节点，再查 `INFO Sentinel` 打在主节点上取不到监控信息，节点刷新返回空 | 改为显式遍历 `Redis.Server` 原始哨兵地址逐地址查询，失败跳过 |
 
+### 2.7 多语言词表与 InvariantGlobalization
+
+- 31 种语言的运行时词表由 NewLife.Core 源生成器在编译期写入程序集，不使用 `ResourceManager` 与卫星程序集；译文按需 Deflate 解压，NativeAOT 下无动态代码依赖。
+- 两套词表（主库 71 条、扩展组件 2 条）均通过模块初始化器注册；注册失败仅影响译文命中，运行时按英文回退。
+- `AotSmoke` 固定 `InvariantGlobalization=true`：命名区域性不可用，源生成器捕获 `CultureNotFoundException` 后跳过注册，冒烟场景不依赖区域性数据，21 个场景实测通过。
+- `LocalizationTests` 在 invariant 模式下由 `LocalizationFactAttribute` 自动跳过；正常环境逐一验证 31 种语言与扩展组件词表。
+- AOT/裁剪分析器对多语言代码保持 **0 条 IL 告警**。
+
 ---
 
 ## 3. 已知边界与收口记录（只增不删）
