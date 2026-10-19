@@ -9,6 +9,8 @@
 > 复验：2026-10-16｜NewLife.Core 维持 12.0.2026.1013-beta0732（NuGet 最新 beta，无需升级）｜本机全解决方案编译 0 错误；XUnitTest 387 通过 / 0 失败 / 10 跳过；23 场景 JIT 与 NativeAOT 双形态在严格拓扑（集群+哨兵）下全通（win-x64，Redis 7.0.15）。
 >
 > 复验：2026-10-19｜NewLife.Core 升级至 12.0.2026.1019-beta0659｜全解决方案 0 错误；XUnitTest 411 通过 / 10 跳过 / 0 失败，invariant 模式 404 通过 / 17 跳过 / 0 失败；AOT 分析器 0 条 IL 告警；win-x64 NativeAOT 21 PASS / 2 SKIP（本机无集群/哨兵拓扑，CI 严格模式 23/23）；Android/iOS 与 linux-riscv64 / arm / arm64 / musl-x64 / osx-arm64 / win-arm64 RID 构建通过。
+>
+> 增量复验：2026-10-19｜新增 OTel ActivitySource、Valkey 检测、TairZSet 与 Redis 8.x 核心命令后：全解决方案 0 错误；XUnitTest 429 通过 / 10 跳过 / 0 失败；AOT 分析器 0 条 IL 告警；win-x64 NativeAOT 发布并运行 21 PASS / 2 SKIP。
 
 ---
 

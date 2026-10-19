@@ -630,6 +630,41 @@ public class RedisStream<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTy
     /// <returns></returns>
     public Int32 Delete(String id) => Execute((rc, k) => rc.Execute<Int32>("XDEL", Key, id), true);
 
+    /// <summary>按引用策略批量删除消息（Redis 8.2+ XDELEX）</summary>
+    /// <param name="ids">消息Id列表</param>
+    /// <param name="condition">引用策略：KEEPREF/DELREF/ACKED，空表示服务端默认 KEEPREF</param>
+    /// <returns>与 ids 对应的删除结果：1=已删除，-1=不存在，2=仍有引用未删除</returns>
+    public Int32[]? DeleteMany(String[] ids, String? condition = null)
+    {
+        if (ids == null || ids.Length == 0) return [];
+
+        var args = new List<Object> { Key };
+        if (!condition.IsNullOrEmpty()) args.Add(condition);
+        args.Add("IDS");
+        args.Add(ids.Length);
+        args.AddRange(ids.Cast<Object>());
+
+        return Execute((rc, k) => rc.Execute<Int32[]>("XDELEX", args.ToArray()), true);
+    }
+
+    /// <summary>确认并条件删除消息（Redis 8.2+ XACKDEL）</summary>
+    /// <param name="group">消费组名称</param>
+    /// <param name="ids">消息Id列表</param>
+    /// <param name="condition">引用策略：KEEPREF/DELREF/ACKED，空表示服务端默认 KEEPREF</param>
+    /// <returns>与 ids 对应的处理结果：1=已确认并删除，-1=不存在，2=已确认但仍有引用</returns>
+    public Int32[]? AckDelete(String group, String[] ids, String? condition = null)
+    {
+        if (ids == null || ids.Length == 0) return [];
+
+        var args = new List<Object> { Key, group };
+        if (!condition.IsNullOrEmpty()) args.Add(condition);
+        args.Add("IDS");
+        args.Add(ids.Length);
+        args.AddRange(ids.Cast<Object>());
+
+        return Execute((rc, k) => rc.Execute<Int32[]>("XACKDEL", args.ToArray()), true);
+    }
+
     /// <summary>裁剪队列到指定大小，删除Id较小的消息</summary>
     /// <param name="maxLen">最大长度。为了提高效率，最大长度并没有那么精准</param>
     /// <param name="accurate">精确的长度。如果指定该值，则精确裁剪到指定大小</param>
@@ -640,6 +675,24 @@ public class RedisStream<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTy
             ? Execute((rc, k) => rc.Execute<Int32>("XTRIM", Key, "MAXLEN", maxLen), true)
             : Execute((rc, k) => rc.Execute<Int32>("XTRIM", Key, "MAXLEN", "~", maxLen), true);
     }
+
+    /// <summary>裁剪队列到指定大小，并指定消费组引用策略（Redis 8.2+）</summary>
+    /// <param name="maxLen">最大长度</param>
+    /// <param name="accurate">是否精确裁剪</param>
+    /// <param name="condition">引用策略：KEEPREF/DELREF/ACKED</param>
+    /// <returns>被删除的消息数量</returns>
+    public Int32 Trim(Int32 maxLen, Boolean accurate, String condition)
+    {
+        return accurate
+            ? Execute((rc, k) => rc.Execute<Int32>("XTRIM", Key, "MAXLEN", maxLen, condition), true)
+            : Execute((rc, k) => rc.Execute<Int32>("XTRIM", Key, "MAXLEN", "~", maxLen, condition), true);
+    }
+
+    /// <summary>删除指定时间之前的队列数据，并指定消费组引用策略（Redis 8.2+）</summary>
+    /// <param name="start">开始时间。删除该时间之前</param>
+    /// <param name="condition">引用策略：KEEPREF/DELREF/ACKED</param>
+    /// <returns>被删除的消息数量</returns>
+    public Int32 Trim(DateTime start, String condition) => Execute((rc, k) => rc.Execute<Int32>("XTRIM", Key, "MINID", start.ToUniversalTime().ToLong(), condition), true);
 
     /// <summary>删除指定时间之前的队列数据</summary>
     /// <remarks>v6.2.0开始支持MINID</remarks>

@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Net;
@@ -623,6 +624,32 @@ public class RedisClient : DisposeBase
         return list;
     }
 
+#if NET8_0_OR_GREATER
+    private Activity? StartActivity(String cmd, Object?[]? args)
+    {
+        if (cmd.IsNullOrEmpty()) return null;
+
+        var source = Redis.ActivitySource;
+        if (!source.HasListeners()) return null;
+
+        // 埋点名称，支持二级命令
+        var act = cmd.EqualIgnoreCase("cluster", "xinfo", "xgroup", "xreadgroup") ? $"{cmd}-{args?.FirstOrDefault()}" : cmd;
+        var activity = source.StartActivity(act, ActivityKind.Client);
+        if (activity == null) return null;
+
+        activity.SetTag("db.system", "redis");
+        activity.SetTag("db.operation.name", act);
+        activity.SetTag("db.namespace", Host.Db.ToString(CultureInfo.InvariantCulture));
+        var address = Server.Host;
+        if (address.IsNullOrEmpty()) address = Server.Address?.ToString();
+        if (!address.IsNullOrEmpty()) activity.SetTag("server.address", address);
+        if (Server.Port > 0) activity.SetTag("server.port", Server.Port);
+        activity.SetTag("network.transport", "tcp");
+
+        return activity;
+    }
+#endif
+
     /// <summary>执行命令，发请求，取响应</summary>
     /// <param name="cmd">命令</param>
     /// <param name="args">参数数组</param>
@@ -1084,6 +1111,9 @@ public class RedisClient : DisposeBase
         // 埋点名称，支持二级命令
         var act = cmd.EqualIgnoreCase("cluster", "xinfo", "xgroup", "xreadgroup") ? $"{cmd}-{args?.FirstOrDefault()}" : cmd;
         using var span = cmd.IsNullOrEmpty() ? null : Host.Tracer?.NewSpan($"redis:{Name}:{act}", args);
+#if NET8_0_OR_GREATER
+        using var activity = _ps == null ? StartActivity(cmd, args) : null;
+#endif
         try
         {
             // 管道模式
@@ -1131,6 +1161,10 @@ public class RedisClient : DisposeBase
         catch (Exception ex)
         {
             span?.SetError(ex, args);
+#if NET8_0_OR_GREATER
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.SetTag("error.type", ex.GetType().FullName);
+#endif
             throw;
         }
     }
@@ -1263,6 +1297,9 @@ public class RedisClient : DisposeBase
         // 埋点名称，支持二级命令
         var act = cmd.EqualIgnoreCase("cluster", "xinfo", "xgroup", "xreadgroup") ? $"{cmd}-{args?.FirstOrDefault()}" : cmd;
         using var span = cmd.IsNullOrEmpty() ? null : Host.Tracer?.NewSpan($"redis:{Name}:{act}", args);
+#if NET8_0_OR_GREATER
+        using var activity = _ps == null ? StartActivity(cmd, args) : null;
+#endif
         try
         {
             // 管道模式
@@ -1310,6 +1347,10 @@ public class RedisClient : DisposeBase
         catch (Exception ex)
         {
             span?.SetError(ex, args);
+#if NET8_0_OR_GREATER
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.SetTag("error.type", ex.GetType().FullName);
+#endif
             throw;
         }
     }

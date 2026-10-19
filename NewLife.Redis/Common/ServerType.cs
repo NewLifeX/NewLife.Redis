@@ -26,4 +26,7 @@ public enum ServerType
 
     /// <summary>腾讯云 Redis</summary>
     TencentCloud = 12,
+
+    /// <summary>Valkey 服务器（Linux 基金会维护的 Redis 7.2 分支）</summary>
+    Valkey = 13,
 }

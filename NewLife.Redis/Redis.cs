@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Net.Sockets;
@@ -91,6 +92,18 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <summary>性能跟踪器。仅记录read/write，形成调用链，key在tag中，没有记录异常。高速海量操作时不建议开启</summary>
     public ITracer? Tracer { get; set; }
 
+#if NET8_0_OR_GREATER
+    /// <summary>OpenTelemetry ActivitySource 名称</summary>
+    public const String ActivitySourceName = "NewLife.Redis";
+
+    /// <summary>OpenTelemetry ActivitySource。调用方注册 ActivityListener 后，每条命令生成一个客户端 Activity</summary>
+    /// <remarks>
+    /// 标签遵循 OpenTelemetry Redis 语义约定：db.system、db.operation.name、db.namespace、server.address、server.port、network.transport。
+    /// 未注册监听时为零开销。低版本目标框架不提供该成员。
+    /// </remarks>
+    public static readonly ActivitySource ActivitySource = new(ActivitySourceName, typeof(Redis).Assembly.GetName().Version?.ToString());
+#endif
+
     private IDictionary<String, String>? _Info;
     /// <summary>服务器信息</summary>
     public IDictionary<String, String> Info => _Info ??= GetInfo();
@@ -139,6 +152,12 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <returns>检测到的服务器类型</returns>
     private static ServerType DetectServerType(IDictionary<String, String> inf)
     {
+        // Valkey 在 server 字段为 valkey，或提供 valkey_version 字段
+        if (inf.TryGetValue("server", out var serverV) && serverV?.Contains("valkey", StringComparison.OrdinalIgnoreCase) == true)
+            return ServerType.Valkey;
+        if (inf.TryGetValue("valkey_version", out var valkeyVer) && !valkeyVer.IsNullOrEmpty())
+            return ServerType.Valkey;
+
         // Garnet 在 redis_version 或 server 字段中包含 "Garnet" 字符串
         if (inf.TryGetValue("redis_version", out var ver) && ver?.Contains("Garnet") == true)
             return ServerType.Garnet;

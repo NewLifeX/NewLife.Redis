@@ -781,6 +781,83 @@ public class FullRedis : Redis
     /// <param name="end">结束位置，支持负数表示从末尾计数</param>
     /// <returns>区间字符串</returns>
     public virtual String? SubStr(String key, Int32 start, Int32 end) => Execute(key, (rc, k) => rc.Execute<String>("SUBSTR", k, start, end));
+
+    /// <summary>条件删除字符串键（Redis 8.4+ DELEX）</summary>
+    /// <param name="key">键</param>
+    /// <param name="option">条件类型：IFEQ/IFNE/IFDEQ/IFDNE</param>
+    /// <param name="value">比较值或哈希摘要</param>
+    /// <returns>删除返回true；键不存在或条件不满足返回false</returns>
+    public virtual Boolean DelEx(String key, String option, String value)
+    {
+        RequireVersion("8.4", "DELEX");
+
+        return Execute(key, (rc, k) => rc.Execute<Int32>("DELEX", k, option, value), true) > 0;
+    }
+
+    /// <summary>获取字符串值的哈希摘要（Redis 8.4+ DIGEST）</summary>
+    /// <param name="key">键</param>
+    /// <returns>XXH3 摘要的十六进制字符串；键不存在返回 null</returns>
+    public virtual String? Digest(String key)
+    {
+        RequireVersion("8.4", "DIGEST");
+
+        return Execute(key, (rc, k) => rc.Execute<String>("DIGEST", k));
+    }
+
+    /// <summary>原子批量设置字符串键并统一过期时间（Redis 8.4+ MSETEX）</summary>
+    /// <typeparam name="T">值类型</typeparam>
+    /// <param name="values">键值对集合</param>
+    /// <param name="condition">条件：NX/XX，空表示无条件</param>
+    /// <param name="expire">过期秒数，0表示不设置</param>
+    /// <param name="keepTtl">是否保留原有 TTL</param>
+    /// <returns>全部设置成功返回true；条件不满足返回false</returns>
+    public virtual Boolean MSetEx<T>(IDictionary<String, T> values, String? condition = null, Int32 expire = 0, Boolean keepTtl = false)
+    {
+        RequireVersion("8.4", "MSETEX");
+
+        if (values == null || values.Count == 0) return false;
+
+        String? first = null;
+        var args = new List<Object> { values.Count };
+        foreach (var item in values)
+        {
+            first ??= item.Key;
+            args.Add(GetKey(item.Key));
+            args.Add(item.Value);
+        }
+        if (!condition.IsNullOrEmpty()) args.Add(condition);
+        if (keepTtl)
+            args.Add("KEEPTTL");
+        else if (expire > 0)
+        {
+            args.Add("EX");
+            args.Add(expire);
+        }
+
+        return Execute(first!, (rc, k) => rc.Execute<Int32>("MSETEX", args.ToArray()), true) > 0;
+    }
+
+    /// <summary>条件设置字符串值（Redis 8.4+ SET IFEQ/IFNE/IFDEQ/IFDNE）</summary>
+    /// <typeparam name="T">值类型</typeparam>
+    /// <param name="key">键</param>
+    /// <param name="value">新值</param>
+    /// <param name="option">条件类型：IFEQ/IFNE/IFDEQ/IFDNE</param>
+    /// <param name="operand">比较值或哈希摘要</param>
+    /// <param name="expire">过期秒数，0表示不设置</param>
+    /// <returns>条件满足并设置成功返回 true</returns>
+    public virtual Boolean SetIf<T>(String key, T value, String option, String operand, Int32 expire = 0)
+    {
+        RequireVersion("8.4", "SET IFEQ");
+
+        var args = new List<Object> { GetKey(key), value, option, operand };
+        if (expire > 0)
+        {
+            args.Add("EX");
+            args.Add(expire);
+        }
+
+        return Execute(key, (rc, k) => rc.Execute<String>("SET", args.ToArray()), true) == "OK";
+    }
     #endregion
 
     #region 位图操作
@@ -813,7 +890,8 @@ public class FullRedis : Redis
     public virtual Int64 BitPos(String key, Int32 bit, Int64 start = 0, Int64 end = -1) => Execute(key, (rc, k) => rc.Execute<Int64>("BITPOS", k, bit, start, end));
 
     /// <summary>对多个键执行位运算（BITOP）</summary>
-    /// <param name="operation">操作类型：AND/OR/XOR/NOT</param>
+    /// <remarks>Redis 8.2+ 额外支持 DIFF、DIFF1、ANDOR、ONE 运算符</remarks>
+    /// <param name="operation">操作类型：AND/OR/XOR/NOT；Redis 8.2+ 支持 DIFF/DIFF1/ANDOR/ONE</param>
     /// <param name="destKey">目标键</param>
     /// <param name="keys">源键列表</param>
     /// <returns>存储到目标键的字符串长度</returns>
@@ -1266,6 +1344,31 @@ public class FullRedis : Redis
         return Execute(source, (rc, k) => rc.Execute<T>("LMOVE", k, destination, whereFrom, whereTo), true);
     }
 
+    /// <summary>批量移动列表元素（Redis 8.10+ LMOVEM）</summary>
+    /// <remarks>
+    /// 从 source 指定端弹出 count 个元素并推入 destination 指定端。
+    /// exactly 为 true 时要求源列表元素充足，否则不移动并返回 null；
+    /// oneByOne 为 true 时逐元素移动（OBO），否则整批移动（BULK）。
+    /// </remarks>
+    /// <typeparam name="T">元素类型</typeparam>
+    /// <param name="source">源列表</param>
+    /// <param name="destination">目标列表</param>
+    /// <param name="whereFrom">弹出方向（LEFT/RIGHT）</param>
+    /// <param name="whereTo">推入方向（LEFT/RIGHT）</param>
+    /// <param name="count">移动数量</param>
+    /// <param name="exactly">是否精确移动 count 个元素</param>
+    /// <param name="oneByOne">是否逐元素移动</param>
+    /// <returns>被移动的元素列表，源列表不存在或精确移动不足时返回 null</returns>
+    public virtual T[]? LMoveM<T>(String source, String destination, String whereFrom, String whereTo, Int32 count = 1, Boolean exactly = false, Boolean oneByOne = false)
+    {
+        RequireVersion("8.10", "LMOVEM");
+
+        source = GetKey(source);
+        destination = GetKey(destination);
+        var args = new Object[] { source, destination, whereFrom, whereTo, exactly ? "EXACTLY" : "COUNT", count, oneByOne ? "OBO" : "BULK" };
+        return Execute(source, (rc, k) => rc.Execute<T[]>("LMOVEM", args), true);
+    }
+
     /// <summary>阻塞式原子移动列表元素（Redis 6.2+）</summary>
     /// <remarks>
     /// LMOVE的阻塞版本，如果source列表为空则阻塞等待。
@@ -1685,6 +1788,40 @@ public class FullRedis : Redis
             args.Add(limit);
         }
         return Execute(keys[0], (rc, k) => rc.Execute<Int32>("SINTERCARD", args.ToArray()));
+    }
+
+    /// <summary>获取多个集合并集基数（Redis 8.10+ SUNIONCARD）</summary>
+    /// <param name="keys">集合键列表</param>
+    /// <returns>并集元素数量</returns>
+    public virtual Int64 SUnionCard(params String[] keys)
+    {
+        RequireVersion("8.10", "SUNIONCARD");
+
+        if (keys == null || keys.Length == 0) return 0;
+
+        var args = new List<Object> { keys.Length };
+        foreach (var key in keys)
+        {
+            args.Add(GetKey(key));
+        }
+        return Execute(keys[0], (rc, k) => rc.Execute<Int64>("SUNIONCARD", args.ToArray()));
+    }
+
+    /// <summary>获取多个集合差集基数（Redis 8.10+ SDIFFCARD）</summary>
+    /// <param name="keys">集合键列表，首个为基准集合</param>
+    /// <returns>差集元素数量</returns>
+    public virtual Int64 SDiffCard(params String[] keys)
+    {
+        RequireVersion("8.10", "SDIFFCARD");
+
+        if (keys == null || keys.Length == 0) return 0;
+
+        var args = new List<Object> { keys.Length };
+        foreach (var key in keys)
+        {
+            args.Add(GetKey(key));
+        }
+        return Execute(keys[0], (rc, k) => rc.Execute<Int64>("SDIFFCARD", args.ToArray()));
     }
 
     /// <summary>交换两个数据库的所有键（Redis 4.0+）</summary>
@@ -2226,5 +2363,207 @@ public class FullRedis : Redis
         args.AddRange(fields.Cast<Object>());
         return Execute(key, (rc, k) => rc.Execute<Int32>("EXHDEL", args.ToArray()), true);
     }
+
+    /// <summary>TairZSet：添加成员及分数（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="score">分数。TairZSet 支持多维分数，如 "10#20"</param>
+    /// <param name="member">成员</param>
+    /// <returns>新增成员数量</returns>
+    public virtual Int32 ExZAdd(String key, String score, String member) => Execute(key, (rc, k) => rc.Execute<Int32>("EXZADD", k, score, member), true);
+
+    /// <summary>TairZSet：批量添加成员及分数（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="members">成员与分数映射，键为成员、值为分数</param>
+    /// <returns>新增成员数量</returns>
+    public virtual Int32 ExZAdd(String key, IDictionary<String, String> members)
+    {
+        if (members == null || members.Count == 0) return 0;
+
+        var args = new List<Object> { GetKey(key) };
+        foreach (var item in members)
+        {
+            args.Add(item.Value);
+            args.Add(item.Key);
+        }
+        return Execute(key, (rc, k) => rc.Execute<Int32>("EXZADD", args.ToArray()), true);
+    }
+
+    /// <summary>TairZSet：成员分数递增（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="score">增量，支持多维分数</param>
+    /// <param name="member">成员</param>
+    /// <returns>递增后的分数</returns>
+    public virtual String? ExZIncrBy(String key, String score, String member) => Execute(key, (rc, k) => rc.Execute<String>("EXZINCRBY", k, score, member), true);
+
+    /// <summary>TairZSet：获取成员分数（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="member">成员</param>
+    /// <returns>分数，成员不存在返回 null</returns>
+    public virtual String? ExZScore(String key, String member) => Execute(key, (rc, k) => rc.Execute<String>("EXZSCORE", k, member));
+
+    /// <summary>TairZSet：成员数量（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <returns>成员数量</returns>
+    public virtual Int32 ExZCard(String key) => Execute(key, (rc, k) => rc.Execute<Int32>("EXZCARD", k));
+
+    /// <summary>TairZSet：成员排名（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="member">成员</param>
+    /// <returns>从 0 开始的升序排名，不存在返回 null</returns>
+    public virtual Int32? ExZRank(String key, String member) => Execute(key, (rc, k) => rc.Execute<Int32?>("EXZRANK", k, member));
+
+    /// <summary>TairZSet：成员逆序排名（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="member">成员</param>
+    /// <returns>从 0 开始的降序排名，不存在返回 null</returns>
+    public virtual Int32? ExZRevRank(String key, String member) => Execute(key, (rc, k) => rc.Execute<Int32?>("EXZREVRANK", k, member));
+
+    /// <summary>TairZSet：按分数统计成员数量（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="min">最小分数</param>
+    /// <param name="max">最大分数</param>
+    /// <returns>成员数量</returns>
+    public virtual Int32 ExZCount(String key, String min, String max) => Execute(key, (rc, k) => rc.Execute<Int32>("EXZCOUNT", k, min, max));
+
+    /// <summary>TairZSet：按字典区间统计成员数量（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="min">最小成员</param>
+    /// <param name="max">最大成员</param>
+    /// <returns>成员数量</returns>
+    public virtual Int32 ExZLexCount(String key, String min, String max) => Execute(key, (rc, k) => rc.Execute<Int32>("EXZLEXCOUNT", k, min, max));
+
+    /// <summary>TairZSet：按排名区间获取成员（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="start">起始排名</param>
+    /// <param name="stop">结束排名</param>
+    /// <param name="withScores">是否同时返回分数</param>
+    /// <returns>成员列表，withScores 为 true 时成员与分数交替返回</returns>
+    public virtual String[]? ExZRange(String key, Int32 start, Int32 stop, Boolean withScores = false)
+        => withScores
+            ? Execute(key, (rc, k) => rc.Execute<String[]>("EXZRANGE", k, start, stop, "WITHSCORES"))
+            : Execute(key, (rc, k) => rc.Execute<String[]>("EXZRANGE", k, start, stop));
+
+    /// <summary>TairZSet：按排名区间逆序获取成员（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="start">起始排名</param>
+    /// <param name="stop">结束排名</param>
+    /// <param name="withScores">是否同时返回分数</param>
+    /// <returns>成员列表，withScores 为 true 时成员与分数交替返回</returns>
+    public virtual String[]? ExZRevRange(String key, Int32 start, Int32 stop, Boolean withScores = false)
+        => withScores
+            ? Execute(key, (rc, k) => rc.Execute<String[]>("EXZREVRANGE", k, start, stop, "WITHSCORES"))
+            : Execute(key, (rc, k) => rc.Execute<String[]>("EXZREVRANGE", k, start, stop));
+
+    /// <summary>TairZSet：按分数区间获取成员（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="min">最小分数</param>
+    /// <param name="max">最大分数</param>
+    /// <param name="withScores">是否同时返回分数</param>
+    /// <param name="offset">跳过数量</param>
+    /// <param name="count">返回数量，-1 表示不限制</param>
+    /// <returns>成员列表，withScores 为 true 时成员与分数交替返回</returns>
+    public virtual String[]? ExZRangeByScore(String key, String min, String max, Boolean withScores = false, Int32 offset = 0, Int32 count = -1)
+    {
+        var args = new List<Object> { GetKey(key), min, max };
+        if (withScores) args.Add("WITHSCORES");
+        if (offset > 0 || count >= 0)
+        {
+            args.Add("LIMIT");
+            args.Add(offset);
+            args.Add(count);
+        }
+        return Execute(key, (rc, k) => rc.Execute<String[]>("EXZRANGEBYSCORE", args.ToArray()));
+    }
+
+    /// <summary>TairZSet：按分数区间逆序获取成员（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="min">最小分数</param>
+    /// <param name="max">最大分数</param>
+    /// <param name="withScores">是否同时返回分数</param>
+    /// <param name="offset">跳过数量</param>
+    /// <param name="count">返回数量，-1 表示不限制</param>
+    /// <returns>成员列表，withScores 为 true 时成员与分数交替返回</returns>
+    public virtual String[]? ExZRevRangeByScore(String key, String min, String max, Boolean withScores = false, Int32 offset = 0, Int32 count = -1)
+    {
+        var args = new List<Object> { GetKey(key), min, max };
+        if (withScores) args.Add("WITHSCORES");
+        if (offset > 0 || count >= 0)
+        {
+            args.Add("LIMIT");
+            args.Add(offset);
+            args.Add(count);
+        }
+        return Execute(key, (rc, k) => rc.Execute<String[]>("EXZREVRANGEBYSCORE", args.ToArray()));
+    }
+
+    /// <summary>TairZSet：按字典区间获取成员（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="min">最小成员</param>
+    /// <param name="max">最大成员</param>
+    /// <param name="offset">跳过数量</param>
+    /// <param name="count">返回数量，-1 表示不限制</param>
+    /// <returns>成员列表</returns>
+    public virtual String[]? ExZRangeByLex(String key, String min, String max, Int32 offset = 0, Int32 count = -1)
+    {
+        var args = new List<Object> { GetKey(key), min, max };
+        if (offset > 0 || count >= 0)
+        {
+            args.Add("LIMIT");
+            args.Add(offset);
+            args.Add(count);
+        }
+        return Execute(key, (rc, k) => rc.Execute<String[]>("EXZRANGEBYLEX", args.ToArray()));
+    }
+
+    /// <summary>TairZSet：按字典区间逆序获取成员（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="min">最小成员</param>
+    /// <param name="max">最大成员</param>
+    /// <param name="offset">跳过数量</param>
+    /// <param name="count">返回数量，-1 表示不限制</param>
+    /// <returns>成员列表</returns>
+    public virtual String[]? ExZRevRangeByLex(String key, String min, String max, Int32 offset = 0, Int32 count = -1)
+    {
+        var args = new List<Object> { GetKey(key), min, max };
+        if (offset > 0 || count >= 0)
+        {
+            args.Add("LIMIT");
+            args.Add(offset);
+            args.Add(count);
+        }
+        return Execute(key, (rc, k) => rc.Execute<String[]>("EXZREVRANGEBYLEX", args.ToArray()));
+    }
+
+    /// <summary>TairZSet：删除成员（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="members">成员列表</param>
+    /// <returns>删除数量</returns>
+    public virtual Int32 ExZRem(String key, params String[] members)
+    {
+        var args = new List<Object> { GetKey(key) };
+        args.AddRange(members.Cast<Object>());
+        return Execute(key, (rc, k) => rc.Execute<Int32>("EXZREM", args.ToArray()), true);
+    }
+
+    /// <summary>TairZSet：按分数区间删除成员（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="min">最小分数</param>
+    /// <param name="max">最大分数</param>
+    /// <returns>删除数量</returns>
+    public virtual Int32 ExZRemRangeByScore(String key, String min, String max) => Execute(key, (rc, k) => rc.Execute<Int32>("EXZREMRANGEBYSCORE", k, min, max), true);
+
+    /// <summary>TairZSet：按排名区间删除成员（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="start">起始排名</param>
+    /// <param name="stop">结束排名</param>
+    /// <returns>删除数量</returns>
+    public virtual Int32 ExZRemRangeByRank(String key, Int32 start, Int32 stop) => Execute(key, (rc, k) => rc.Execute<Int32>("EXZREMRANGEBYRANK", k, start, stop), true);
+
+    /// <summary>TairZSet：按字典区间删除成员（阿里云 Tair 扩展）</summary>
+    /// <param name="key">键</param>
+    /// <param name="min">最小成员</param>
+    /// <param name="max">最大成员</param>
+    /// <returns>删除数量</returns>
+    public virtual Int32 ExZRemRangeByLex(String key, String min, String max) => Execute(key, (rc, k) => rc.Execute<Int32>("EXZREMRANGEBYLEX", k, min, max), true);
     #endregion
 }

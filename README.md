@@ -558,6 +558,9 @@ var stats = rds.Counter.GetAll();   // Get ops/s, latency, error rate
 // APM distributed tracing (compatible with NewLife.Stardust / OpenTelemetry)
 rds.Tracer = DefaultTracer.Instance;
 // All Execute / queue produce-consume operations are automatically instrumented, with key as tag
+
+// OpenTelemetry native tracing (net8.0+): subscribe to the built-in ActivitySource
+// builder.Services.AddOpenTelemetry().WithTracing(t => t.AddSource(Redis.ActivitySourceName));
 ```
 
 ---
@@ -658,6 +661,7 @@ See: [Garnet Compatibility Documentation (中文)](Doc/Garnet兼容性.md)
 | Native Cluster | ✅ |
 | kvrocks Auto-Adapt | ✅ |
 | Garnet Auto-Detect | ✅ |
+| Valkey Auto-Detect | ✅ |
 
 ### Protocol & Advanced Features
 
@@ -742,7 +746,7 @@ A: Basic operations, List/Hash/Set/ZSet/HLL/Geo, and queues are all supported. S
 - [ ] Pattern subscription PSUBSCRIBE full implementation
 - [ ] UNLINK async delete
 - [ ] Prometheus metrics export adapter
-- [x] Alibaba Cloud Tair Extension (TairString / TairHash supported, TairZSet planned)
+- [x] Alibaba Cloud Tair Extension (TairString / TairHash / TairZSet supported)
 - [ ] Huawei Cloud DCS cluster edition node address mapping adapter
 - [x] ~~Pub/Sub~~ (Completed)
 - [x] ~~RedisStream multi-consumer-group~~ (Completed)
@@ -758,13 +762,14 @@ Feedback and feature requests welcome via Issue / PR.
 |------------|--------------|---------------------|-----------|-------|
 | .NET Framework 4.5 | ✅ | ❌ (4.6.1+) | ❌ | Critical for industrial/gov legacy systems |
 | Connection Model | Connection Pool | Multiplexing | Connection Pool | Each has its use cases |
-| Command Coverage | ~75% | ~95% | ~98% | Planned to reach 90%+ |
+| Command Coverage | ~98% | ~95% | ~98% | All documented commands except explicitly unplanned ones |
 | Built-in Message Queue Wrappers | ✅ Complete | ❌ | 🔄 Partial | Unique reliable/delay queues |
 | Built-in Serialization | ✅ | ❌ Manual | ❌ Manual | Reduces boilerplate code |
 | Cloud Provider Specialized Adapters | ✅ (Alibaba/Tencent/Huawei) | Generic | Generic | Dedicated documentation |
 | Garnet Explicit Adapter | ✅ | ❌ | ❌ | Type detection + graceful degradation |
 | kvrocks Adapter | ✅ | ❌ | ❌ | Auto-detection |
-| APM Tracing | ITracer interface | ActivitySource | ❌ | Integrable with OpenTelemetry |
+| Valkey Auto-Detect | ✅ | ❌ | ❌ | INFO `server=valkey` / `valkey_version` |
+| APM Tracing | ITracer + ActivitySource (net8.0+) | ActivitySource | ❌ | Native OpenTelemetry integration |
 | RESP3 | ✅ | ✅ | ✅ | Verified via RESP3 test suite |
 
 See [Competitive Analysis Document (中文)](Doc/竞品分析.md) for details.

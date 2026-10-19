@@ -542,6 +542,9 @@ var stats = rds.Counter.GetAll();   // 获取 ops/s、延迟、错误率
 // APM 链路追踪（与 NewLife.Stardust / OpenTelemetry 兼容）
 rds.Tracer = DefaultTracer.Instance;
 // 所有 Execute / 队列生产消费均自动埋点，key 作为 Tag
+
+// OpenTelemetry 原生埋点（net8.0+）：订阅内置 ActivitySource
+// builder.Services.AddOpenTelemetry().WithTracing(t => t.AddSource(Redis.ActivitySourceName));
 ```
 
 ---
@@ -639,6 +642,7 @@ Console.WriteLine($"服务器版本：{redis.Version}");
 | Cluster 原生集群 | ✅ |
 | kvrocks 自动适配 | ✅ |
 | Garnet 自动检测 | ✅ |
+| Valkey 自动检测 | ✅ |
 
 ### 协议与高级特性
 
@@ -719,7 +723,7 @@ A: 基础操作、List/Hash/Set/ZSet/HLL/Geo/队列均支持；Stream 暂不支�
 - [ ] 模式订阅 PSUBSCRIBE 完整实现
 - [ ] UNLINK 异步删除
 - [ ] Prometheus 指标导出适配器
-- [x] 阿里云 Tair 扩展（TairString / TairHash 已支持，TairZSet 规划中）
+- [x] 阿里云 Tair 扩展（TairString / TairHash / TairZSet 已支持）
 - [ ] 华为云 DCS 集群版节点地址映射适配
 - [x] ~~发布订阅 PubSub~~（已完成）
 - [x] ~~RedisStream 多消费组~~（已完成）
@@ -734,13 +738,14 @@ A: 基础操作、List/Hash/Set/ZSet/HLL/Geo/队列均支持；Stream 暂不支�
 |------|--------------|--------------------|-----------|----|
 | .NET Framework 4.5 | ✅ | ❌（4.6.1+）| ❌ | 工控 / 政务遗留系统关键 |
 | 连接模型 | 连接池 | 多路复用 | 连接池 | 各有适用场景 |
-| 命令覆盖率 | ~75% | ~95% | ~98% | 规划提升至 90%+ |
+| 命令覆盖率 | ~98% | ~95% | ~98% | 文档收录命令除明确不计划项外全部支持 |
 | 内置消息队列封装 | ✅ 完整 | ❌ | 🔄 部分 | 可靠 / 延迟队列独有 |
 | 内置序列化 | ✅ | ❌ 手动 | ❌ 手动 | 降低样板代码 |
 | 云厂商专项适配 | ✅（阿里/腾讯/华为）| 通用 | 通用 | 有专项文档 |
 | Garnet 显式适配 | ✅ | ❌ | ❌ | 类型检测 + 降级 |
 | kvrocks 适配 | ✅ | ❌ | ❌ | 自动识别 |
-| APM 追踪 | ITracer 接口 | ActivitySource | ❌ | 可对接 OpenTelemetry |
+| Valkey 自动检测 | ✅ | ❌ | ❌ | INFO `server=valkey` / `valkey_version` |
+| APM 追踪 | ITracer 接口 + ActivitySource（net8.0+）| ActivitySource | ❌ | 原生对接 OpenTelemetry |
 | RESP3 | ✅ | ✅ | ✅ | 已通过 RESP3 测试套件验证 |
 
 详细分析见 [竞品分析文档](Doc/竞品分析.md)。
