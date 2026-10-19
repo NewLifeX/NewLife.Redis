@@ -52,7 +52,7 @@ public class RedisSentinel : RedisBase, IRedisCluster, IDisposable
     public virtual IList<RedisNode>? GetNodes()
     {
         var showLog = Nodes == null;
-        if (showLog) WriteLog("分析[{0}]哨兵节点：", Redis.Name);
+        if (showLog) WriteLog("Analyzing sentinel nodes:");
 
         // 哨兵节点查询始终显式走原始哨兵地址，避免主节点切换（SetHostServer）后误查数据节点
         var rs = "";
@@ -104,7 +104,7 @@ public class RedisSentinel : RedisBase, IRedisCluster, IDisposable
         if (_replication == null && _cluster == null || svrs != _lastServers)
         {
             if (!_lastServers.IsNullOrEmpty())
-                WriteLog("哨兵监测到节点改变，旧节点：{0}，新节点：{1}", _lastServers, svrs);
+                WriteLog("Sentinel detected a node change. Old nodes: {0}, new nodes: {1}", _lastServers, svrs);
 
             _replication = null;
             _cluster = null;
@@ -169,14 +169,14 @@ public class RedisSentinel : RedisBase, IRedisCluster, IDisposable
         var str = nodes.Join("\n", e => $"{e.EndPoint}-{e.Slave}");
         if (_lastNodes != str)
         {
-            WriteLog("得到[{0}]哨兵节点：", Redis.Name);
+            WriteLog("Sentinel nodes discovered:");
             showLog = true;
             changed = true;
             _lastNodes = str;
         }
         foreach (var node in nodes)
         {
-            if (showLog) WriteLog("节点：{0} {1}", node.Slave ? "slave" : "master", node.EndPoint);
+            if (showLog) WriteLog("Node: {0} {1}", node.Slave ? "slave" : "master", node.EndPoint);
         }
 
         if (changed) NodeChanged?.Invoke(this, EventArgs.Empty);
@@ -208,6 +208,6 @@ public class RedisSentinel : RedisBase, IRedisCluster, IDisposable
     /// <summary>写日志</summary>
     /// <param name="format"></param>
     /// <param name="args"></param>
-    public void WriteLog(String format, params Object[] args) => Log?.Info(format, args);
+    public void WriteLog(String format, params Object[] args) => Log?.InfoPrefixed(Redis.Name.IsNullOrEmpty() ? null : "[" + Redis.Name + "]", format, args);
     #endregion
 }

@@ -155,7 +155,7 @@ public class MultipleConsumerGroupsQueue<[DynamicallyAccessedMembers(Dynamically
 
         if (_Redis == null || _Queue == null)
         {
-            OnDisconnected("订阅时列队对像为Null。");
+            OnDisconnected(L.T("The queue object is null when subscribing."));
             return;
         }
 
@@ -203,13 +203,13 @@ public class MultipleConsumerGroupsQueue<[DynamicallyAccessedMembers(Dynamically
     {
         if (_Redis == null)
         {
-            OnDisconnected("Redis对像为Null。");
+            OnDisconnected(L.T("The Redis object is null."));
             return;
         }
         if (_Queue == null)
         {
             _Cts?.Cancel();
-            OnDisconnected("消息列队对像为Null");
+            OnDisconnected(L.T("The message queue object is null."));
             return;
         }
 

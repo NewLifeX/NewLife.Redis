@@ -179,7 +179,7 @@ public static class QueueExtensions
                 {
                     // 埋点
                     span = tracer?.NewSpan($"redismq:{topic}:Consume", mqMsg);
-                    log?.Info($"[{topic}]消息内容为：{mqMsg}");
+                    log?.InfoPrefixed("[" + topic + "]", "Message content: {0}", mqMsg);
 
                     // 解码
                     var dic = rds.JsonHost.Decode(mqMsg)!;
@@ -225,7 +225,7 @@ public static class QueueExtensions
                 if (!mqMsg.IsNullOrEmpty())
                 {
                     if (msgId.IsNullOrEmpty()) msgId = mqMsg.MD5();
-                    errLog?.Error("[{0}/{1}]消息处理异常：{2} {3}", topic, msgId, mqMsg, ex);
+                    errLog?.ErrorPrefixed("[" + topic + "/" + msgId + "]", "Error processing message: {0} {1}", mqMsg, ex);
                     var key = $"{topic}:Error:{msgId}";
 
                     var rs = rds2.Increment(key, 1);
@@ -235,7 +235,7 @@ public static class QueueExtensions
                     {
                         queue.Acknowledge(mqMsg);
 
-                        errLog?.Error("[{0}/{1}]错误过多，删除消息", topic, msgId);
+                        errLog?.ErrorPrefixed("[" + topic + "/" + msgId + "]", "Too many errors; deleting message");
                     }
                 }
             }
@@ -307,7 +307,7 @@ public static class QueueExtensions
                 {
                     // 埋点
                     span = tracer?.NewSpan($"redismq:{topic}:Consume", mqMsg);
-                    log?.Info($"[{topic}]消息内容为：{mqMsg}");
+                    log?.InfoPrefixed("[" + topic + "]", "Message content: {0}", mqMsg);
 
                     // 处理消息
                     onMessage(mqMsg);
@@ -331,7 +331,7 @@ public static class QueueExtensions
                 if (!mqMsg.IsNullOrEmpty())
                 {
                     var msgId = mqMsg.MD5();
-                    errLog?.Error("[{0}/{1}]消息处理异常：{2} {3}", topic, msgId, mqMsg, ex);
+                    errLog?.ErrorPrefixed("[" + topic + "/" + msgId + "]", "Error processing message: {0} {1}", mqMsg, ex);
                     var key = $"{topic}:Error:{msgId}";
 
                     var rs = rds2.Increment(key, 1);
@@ -341,7 +341,7 @@ public static class QueueExtensions
                     {
                         queue.Acknowledge(mqMsg);
 
-                        errLog?.Error("[{0}/{1}]错误过多，删除消息", topic, msgId);
+                        errLog?.ErrorPrefixed("[" + topic + "/" + msgId + "]", "Too many errors; deleting message");
                     }
                 }
             }

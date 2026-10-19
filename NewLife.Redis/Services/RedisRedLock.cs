@@ -1,5 +1,6 @@
 using NewLife.Log;
 using NewLife.Security;
+using NewLife;
 
 namespace NewLife.Caching;
 
@@ -64,8 +65,8 @@ public class RedisRedLock : IDisposable
     {
         if (instances == null || instances.Length == 0) throw new ArgumentNullException(nameof(instances));
         if (key.IsNullOrEmpty()) throw new ArgumentNullException(nameof(key));
-        if (msTimeout <= 0) throw new ArgumentOutOfRangeException(nameof(msTimeout), "超时时间必须大于0");
-        if (msExpire <= 0) throw new ArgumentOutOfRangeException(nameof(msExpire), "过期时间必须大于0");
+        if (msTimeout <= 0) throw new ArgumentOutOfRangeException(nameof(msTimeout), L.T("The timeout must be greater than 0."));
+        if (msExpire <= 0) throw new ArgumentOutOfRangeException(nameof(msExpire), L.T("The expiration must be greater than 0."));
 
         var token = Rand.NextString(22);
         var rl = new RedisRedLock(key, token);
@@ -176,6 +177,6 @@ end";
     /// <summary>写日志</summary>
     /// <param name="format"></param>
     /// <param name="args"></param>
-    public void WriteLog(String format, params Object?[] args) => Log?.Info(format, args);
+    public void WriteLog(String format, params Object?[] args) => Log?.InfoPrefixed("[RedLock]", format, args);
     #endregion
 }

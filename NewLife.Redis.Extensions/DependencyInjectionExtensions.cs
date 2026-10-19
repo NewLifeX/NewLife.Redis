@@ -176,14 +176,14 @@ public static class DependencyInjectionExtensions
         services.TryAddSingleton<Redis>(p =>
         {
             var redis = p.GetRequiredService<ICacheProvider>().Cache as Redis;
-            if (redis == null) throw new InvalidOperationException("未配置Redis，可在配置文件或配置中心指定名为RedisCache的连接字符串");
+            if (redis == null) throw new InvalidOperationException("Redis is not configured. Specify a connection string named RedisCache in the configuration file or configuration center.");
 
             return redis;
         });
         services.TryAddSingleton<FullRedis>(p =>
         {
             var redis = p.GetRequiredService<ICacheProvider>().Cache as FullRedis;
-            if (redis == null) throw new InvalidOperationException("未配置Redis，可在配置文件或配置中心指定名为RedisCache的连接字符串");
+            if (redis == null) throw new InvalidOperationException("Redis is not configured. Specify a connection string named RedisCache in the configuration file or configuration center.");
 
             return redis;
         });

@@ -516,8 +516,8 @@ public class RedisClient : DisposeBase
                 throw new RedisException(str);
             else
             {
-                XTrace.WriteLine("无法解析响应[{0:X2}] {1}", (Byte)header, ms.ReadBytes(-1).ToHex("-"));
-                throw new InvalidDataException($"无法解析响应 [{header}]");
+                XTrace.WriteLine("Unable to parse response [{0:X2}] {1}", (Byte)header, ms.ReadBytes(-1).ToHex("-"));
+                throw new InvalidDataException(L.T("Unable to parse response [{0}]", header));
             }
         }
 
@@ -611,8 +611,8 @@ public class RedisClient : DisposeBase
                     throw new RedisException(str);
                 else
                 {
-                    XTrace.WriteLine("无法解析响应[{0:X2}] {1}", (Byte)header, ms.ReadBytes(-1).ToHex("-"));
-                    throw new InvalidDataException($"无法解析响应 [{header}]");
+                    XTrace.WriteLine("Unable to parse response [{0:X2}] {1}", (Byte)header, ms.ReadBytes(-1).ToHex("-"));
+                    throw new InvalidDataException(L.T("Unable to parse response [{0}]", header));
                 }
             }
         }
@@ -651,7 +651,7 @@ public class RedisClient : DisposeBase
                 memory = memory[..p];
 
                 var max = Host.MaxMessageSize;
-                if (max > 0 && memory.Length >= max) throw new InvalidOperationException($"命令[{cmd}]的数据包大小[{memory.Length}]超过最大限制[{max}]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。");
+                if (max > 0 && memory.Length >= max) throw new InvalidOperationException(L.T("The packet size [{1}] of command [{0}] exceeds the limit [{2}]. Large keys can degrade the entire Redis instance; adjust Redis.MaxMessageSize.", cmd, memory.Length, max));
 
                 if (memory.Length > 0) ns.Write(memory);
 
@@ -700,7 +700,7 @@ public class RedisClient : DisposeBase
                 memory = memory[..p];
 
                 var max = Host.MaxMessageSize;
-                if (max > 0 && memory.Length >= max) throw new InvalidOperationException($"命令[{cmd}]的数据包大小[{memory.Length}]超过最大限制[{max}]，大key会拖累整个Redis实例，可通过Redis.MaxMessageSize调节。");
+                if (max > 0 && memory.Length >= max) throw new InvalidOperationException(L.T("The packet size [{1}] of command [{0}] exceeds the limit [{2}]. Large keys can degrade the entire Redis instance; adjust Redis.MaxMessageSize.", cmd, memory.Length, max));
 
                 if (memory.Length > 0) await ns.WriteAsync(memory, cancellationToken).ConfigureAwait(false);
 
@@ -852,7 +852,7 @@ public class RedisClient : DisposeBase
             }
             else
             {
-                throw new RedisException($"Invalid [{header}] on blocks[{i}/{len}]");
+                throw new RedisException(L.T("Invalid [{0}] in blocks [{1}/{2}].", header, i, len));
             }
         }
 
@@ -918,7 +918,7 @@ public class RedisClient : DisposeBase
             }
             else
             {
-                throw new RedisException($"Invalid [{header}] in map[{i}/{total}]");
+                throw new RedisException(L.T("Invalid [{0}] in map [{1}/{2}].", header, i, total));
             }
         }
         return arr;
@@ -1385,7 +1385,7 @@ public class RedisClient : DisposeBase
             catch (Exception ex)
             {
                 //if (type.GetTypeCode() != TypeCode.Object)
-                throw new Exception($"不能把字符串[{str}]转为类型[{type.FullName}]", ex);
+                throw new Exception(L.T("Cannot convert string [{0}] to type [{1}]", str, type.FullName), ex);
             }
         }
 
@@ -1722,6 +1722,6 @@ public class RedisClient : DisposeBase
     /// <summary>写日志</summary>
     /// <param name="format"></param>
     /// <param name="args"></param>
-    public void WriteLog(String format, params Object[] args) => Log?.Info(format, args);
+    public void WriteLog(String format, params Object[] args) => Log?.InfoPrefixed(Name.IsNullOrEmpty() ? null : "[" + Name + "]", format, args);
     #endregion
 }

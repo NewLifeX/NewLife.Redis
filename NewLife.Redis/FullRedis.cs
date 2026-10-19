@@ -12,6 +12,7 @@ using NewLife.Log;
 using NewLife.Messaging;
 using NewLife.Model;
 using NewLife.Security;
+using NewLife;
 
 namespace NewLife.Caching;
 
@@ -63,7 +64,7 @@ public class FullRedis : Redis
     {
         var minVer = new Version(requiredVersion);
         if (Version < minVer)
-            throw new RedisException($"命令 {commandName} 需要 Redis {requiredVersion}+ 版本，当前服务器版本: {Version}。请升级 Redis 或使用兼容版本。");
+            throw new RedisException(L.T("Command {0} requires Redis {1}+, but the current server version is {2}. Please upgrade Redis or use a compatible version.", commandName, requiredVersion, Version));
     }
     #endregion
 
@@ -182,7 +183,7 @@ public class FullRedis : Redis
                 }
                 else
                 {
-                    WriteLog("Init[{0}]：mode={1}, role={2}", Name, mode, role);
+                    WriteLog("Init[{0}]: mode={1}, role={2}", Name, mode, role);
 
                     // 集群模式初始化节点
                     if (mode == "cluster")
@@ -234,7 +235,7 @@ public class FullRedis : Redis
     {
         return _pools.GetOrAdd(node.EndPoint, k =>
         {
-            WriteLog("使用Redis节点：{0}", k);
+            WriteLog("Using Redis node: {0}", k);
 
             return CreatePool(() => new RedisClient(this, k) { Name = k.Replace(':', '-'), Log = ClientLog });
         });
@@ -1581,7 +1582,7 @@ public class FullRedis : Redis
                     member = (T?)Convert.ChangeType(strM, typeof(T));
                 else
                 {
-                    WriteLog("ZMPop[{0}] member类型未知: {1}", i, arr[i]?.GetType().Name);
+                    WriteLog("ZMPop[{0}] unknown member type: {1}", i, arr[i]?.GetType().Name);
                     continue;
                 }
 
@@ -1592,7 +1593,7 @@ public class FullRedis : Redis
                     score = strS.ToDouble();
                 else
                 {
-                    WriteLog("ZMPop[{0}] score类型未知: {1}", i + 1, arr[i + 1]?.GetType().Name);
+                    WriteLog("ZMPop[{0}] unknown score type: {1}", i + 1, arr[i + 1]?.GetType().Name);
                     score = 0;
                 }
 
@@ -1601,7 +1602,7 @@ public class FullRedis : Redis
         }
         else if (rs[1] != null)
         {
-            WriteLog("ZMPop rs[1]类型非数组: {0}", rs[1].GetType().Name);
+            WriteLog("ZMPop rs[1] is not an array: {0}", rs[1].GetType().Name);
         }
 
         return new Tuple<String, IDictionary<T, Double>?>(keyName, dic);

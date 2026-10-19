@@ -267,7 +267,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         if (config == _configOld) return;
 
         if (!_configOld.IsNullOrEmpty() && XTrace.Log.Level <= LogLevel.Debug)
-            XTrace.WriteLine("Redis[{0}]连接字符串改变！", Name);
+            XTrace.WriteLine("Redis[{0}] connection string changed!", Name);
 
         // 解密连接字符串中被保护的密码。解密密钥位于配置文件ProtectedKey，或者环境变量中
         var connStr = config;
@@ -471,7 +471,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
 
         if (idx != _idxLast)
         {
-            WriteLog("使用Redis服务器：{0}", svrs[idx % svrs.Length]);
+            WriteLog("Using Redis server: {0}", svrs[idx % svrs.Length]);
 
             _idxLast = idx;
         }
@@ -1176,7 +1176,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     /// <param name="batch">批量操作</param>
     public override Int64 Bench(Boolean rand = true, Int32 batch = 1000)
     {
-        XTrace.WriteLine($"目标服务器：{Server}/{Db}");
+        XTrace.WriteLine("Target server: {0}/{1}", Server, Db);
 
         //if (AutoPipeline == 0) AutoPipeline = 1000;
         // 顺序操作时，打开自动管道
@@ -1249,7 +1249,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
     {
         DefaultSpan.Current?.AppendTag(String.Format(format, args));
 
-        Log?.Info(format, args);
+        Log?.InfoPrefixed(Name.IsNullOrEmpty() ? null : "[" + Name + "]", format, args);
     }
     #endregion
 }

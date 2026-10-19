@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using NewLife.Data;
 using NewLife.Log;
+using NewLife;
 using NewLife.Security;
 using NewLife.Serialization;
 using NewLife.Threading;
@@ -143,9 +144,9 @@ public class RedisStream<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTy
         if (!IsSupported)
         {
             if (Redis.ServerType == ServerType.Garnet)
-                throw new NotSupportedException($"Garnet 服务器暂不支持 Redis Stream 功能。请使用 RedisQueue 等其他队列实现。服务器信息：{Redis.Server}");
+                throw new NotSupportedException(L.T("Garnet server does not support Redis Stream. Use another queue implementation such as RedisQueue. Server: {0}", Redis.Server));
             else
-                throw new NotSupportedException($"当前 Redis 服务器版本 {Redis.Version} 不支持 Stream 功能（需要 5.0+）。请升级服务器或使用 RedisQueue 等其他队列实现。");
+                throw new NotSupportedException(L.T("The current Redis server version {0} does not support Stream (5.0+ required). Upgrade the server or use another queue implementation such as RedisQueue.", Redis.Version));
         }
     }
     #endregion
@@ -256,7 +257,7 @@ public class RedisStream<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTy
                 rs = Execute((rc, k) => rc.Execute<String>("XADD", args.ToArray()), true);
                 if (!retryOnFailed || !rs.IsNullOrEmpty()) return rs;
 
-                span?.SetError(new InvalidOperationException($"发布到队列[{Topic}]失败！"), null);
+                span?.SetError(new InvalidOperationException(L.T("Failed to publish to queue [{0}]!", Topic)), null);
 
                 if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
             }
@@ -333,7 +334,7 @@ public class RedisStream<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTy
                 if (rs2 != null && rs2.Count > 0)
                 {
                     _claims -= rs2.Count;
-                    Redis.WriteLog("[{0}]优先处理历史：{1}", group, rs2.Join(",", e => e.Id));
+                    Redis.WriteLog("Processing pending history first for group {0}: {1}", group, rs2.Join(",", e => e.Id));
 
                     foreach (var item in rs2)
                     {
@@ -418,7 +419,7 @@ public class RedisStream<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTy
                 if (rs2 != null && rs2.Count > 0)
                 {
                     _claims -= rs2.Count;
-                    Redis.WriteLog("[{0}]优先处理历史：{1}", group, rs2.Join(",", e => e.Id));
+                    Redis.WriteLog("Processing pending history first for group {0}: {1}", group, rs2.Join(",", e => e.Id));
 
                     return rs2;
                 }
@@ -445,7 +446,7 @@ public class RedisStream<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTy
                 rs = await ReadGroupAsync(group, Consumer, count, 3_000, "0", cancellationToken).ConfigureAwait(false);
                 if (rs == null || rs.Count == 0) return null;
 
-                Redis.WriteLog("[{0}]处理历史：{1}", group, rs.Join(",", e => e.Id));
+                Redis.WriteLog("Processing history for group {0}: {1}", group, rs.Join(",", e => e.Id));
 
                 return rs;
             }
@@ -530,7 +531,7 @@ public class RedisStream<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTy
                             var msg = item.ToJson();
                             using var span2 = tracer?.NewSpan($"redismq:{Key}:Delete", msg);
 
-                            Redis.WriteLog("[{0}]删除多次失败死信（当前消费者）：{1}", group, msg);
+                            Redis.WriteLog("Deleting repeatedly failed dead letter for group {0} (current consumer): {1}", group, msg);
                             Ack(group, item.Id);
                         }
                     }
@@ -541,7 +542,7 @@ public class RedisStream<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTy
                             var msg = item.ToJson();
                             using var span2 = tracer?.NewSpan($"redismq:{Key}:Delete", msg);
 
-                            Redis.WriteLog("[{0}]删除多次失败死信：{1}", group, msg);
+                            Redis.WriteLog("Deleting repeatedly failed dead letter for group {0}: {1}", group, msg);
                             Claim(group, Consumer, item.Id, msIdle);
                             Ack(group, item.Id);
                         }
@@ -550,7 +551,7 @@ public class RedisStream<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTy
                             var msg = item.ToJson();
                             using var span2 = tracer?.NewSpan($"redismq:{Key}:Rollback", msg);
 
-                            Redis.WriteLog("[{0}]定时回滚：{1}", group, msg);
+                            Redis.WriteLog("Scheduled rollback for group {0}: {1}", group, msg);
                             // 抢夺消息，所有者更改为当前消费者，Idle从零开始计算。这些消息需要尽快得到处理，否则会再次过期
                             Claim(group, Consumer, item.Id, msIdle);
 
@@ -579,7 +580,7 @@ public class RedisStream<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTy
                     if (item.Name.IsNullOrEmpty()) continue;
                     if (item.Pending == 0 && item.Idle > 3600_000)
                     {
-                        Redis.WriteLog("[{0}]删除空闲消费者：{1}", group, item.ToJson());
+                        Redis.WriteLog("Deleting idle consumer for group {0}: {1}", group, item.ToJson());
                         GroupDeleteConsumer(group, item.Name);
                     }
                 }
@@ -601,7 +602,7 @@ public class RedisStream<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTy
                         // 第一次发现，记录时间
                         if (item.LastDelivered.Year > 1970 || _idleGroups.TryGetValue(item.Name, out var time) && time <= now)
                         {
-                            Redis.WriteLog("[{0}]删除空闲消费组：{1}", Key, item.ToJson());
+                            Redis.WriteLog("Deleting idle consumer group for queue {0}: {1}", Key, item.ToJson());
                             GroupDestroy(item.Name);
                         }
                         else
@@ -1074,17 +1075,17 @@ XREAD count 3 streams stream_key 0-0
             var topic = Key;
             var sinf = GetInfo();
             if (sinf != null)
-                Redis.WriteLog("队列[{0}]现有数据：{1}，消费组：{2}，最后消息时间：{3}", topic, sinf.Length, sinf.Groups, sinf.LastGenerated);
+                Redis.WriteLog("Queue [{0}] has {1} messages, {2} consumer groups, last message at {3}.", topic, sinf.Length, sinf.Groups, sinf.LastGenerated);
 
             var group = Group;
             var ginf = GetGroups()?.FirstOrDefault(e => e.Name.EqualIgnoreCase(group));
             if (ginf != null)
-                Redis.WriteLog("消费组[{0}]现有消费者：{1}，最后消费时间：{2}，挂起：{3}", ginf.Name, ginf.Consumers, ginf.LastDelivered, ginf.Pending);
+                Redis.WriteLog("Consumer group [{0}] has {1} consumers, last delivered at {2}, pending: {3}.", ginf.Name, ginf.Consumers, ginf.LastDelivered, ginf.Pending);
         }
         catch (Exception ex)
         {
             DefaultSpan.Current?.SetError(ex, null);
-            Redis.WriteLog("显示队列[{0}]信息异常：{1}", Key, ex.Message);
+            Redis.WriteLog("Failed to display queue [{0}] info: {1}", Key, ex.Message);
         }
     }
     #endregion
@@ -1111,7 +1112,7 @@ XREAD count 3 streams stream_key 0-0
         // 消费开始埋点，包裹初始化操作
         using (Redis.Tracer?.NewSpan($"redismq:{topic}:ConsumeBegin", new { topic, group, timeout, MaxRetry, Expire }))
         {
-            Redis.WriteLog("开始消费[{0}]，消费组：{1}，阻塞时间：{2}秒，最大重试消费：{3}次，消息保存：{4}", topic, group, timeout, MaxRetry, Expire);
+            Redis.WriteLog("Start consuming [{0}] with group {1}, block timeout {2}s, max retries {3}, message retention {4}.", topic, group, timeout, MaxRetry, Expire);
 
             // 自动创建消费组
             if (!group.IsNullOrEmpty()) SetGroup(group);
@@ -1190,7 +1191,7 @@ XREAD count 3 streams stream_key 0-0
         // 消费结束埋点，记录退出原因
         using (Redis.Tracer?.NewSpan($"redismq:{topic}:ConsumeEnd", new { topic, group, reason }))
         {
-            Redis.WriteLog("消费[{0}]结束，退出原因：{1}", topic, reason);
+            Redis.WriteLog("Consuming [{0}] ended: {1}", topic, reason);
         }
     }
 
@@ -1229,7 +1230,7 @@ XREAD count 3 streams stream_key 0-0
         // 消费开始埋点，包裹初始化操作
         using (Redis.Tracer?.NewSpan($"redismq:{topic}:ConsumeBegin", new { topic, group, timeout, MaxRetry, Expire, batchSize }))
         {
-            Redis.WriteLog("开始批量消费[{0}]，消费组：{1}，阻塞时间：{2}秒，最大重试消费：{3}次，消息保存：{4}，批大小：{5}", topic, group, timeout, MaxRetry, Expire, batchSize);
+            Redis.WriteLog("Start batch consuming [{0}] with group {1}, block timeout {2}s, max retries {3}, message retention {4}, batch size {5}.", topic, group, timeout, MaxRetry, Expire, batchSize);
 
             // 自动创建消费组
             if (!group.IsNullOrEmpty()) SetGroup(group);
@@ -1307,7 +1308,7 @@ XREAD count 3 streams stream_key 0-0
         // 消费结束埋点，记录退出原因
         using (Redis.Tracer?.NewSpan($"redismq:{topic}:ConsumeEnd", new { topic, group, reason }))
         {
-            Redis.WriteLog("批量消费[{0}]结束，退出原因：{1}", topic, reason);
+            Redis.WriteLog("Batch consuming [{0}] ended: {1}", topic, reason);
         }
     }
 

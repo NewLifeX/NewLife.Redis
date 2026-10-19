@@ -115,7 +115,7 @@ public class RedisCacheProvider : CacheProvider
             {
                 queue = _redisQueue.GetQueue<T>(topic);
 
-                XTrace.WriteLine("[{0}]队列消息数：{1}", topic, queue.Count);
+                XTrace.Log?.InfoPrefixed("[" + topic + "]", "Queue message count: {0}", queue.Count);
             }
             else
             {
@@ -124,7 +124,7 @@ public class RedisCacheProvider : CacheProvider
                 rs.SetGroup(group);
                 queue = rs;
 
-                XTrace.WriteLine("[{0}/{2}]队列消息数：{1}", topic, queue.Count, group);
+                XTrace.Log?.InfoPrefixed("[" + topic + "/" + group + "]", "Queue message count: {0}", queue.Count);
             }
 
             return queue;

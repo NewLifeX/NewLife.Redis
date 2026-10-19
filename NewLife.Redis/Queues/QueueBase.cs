@@ -1,5 +1,6 @@
 ﻿using NewLife.Log;
 using NewLife.Net;
+using NewLife;
 
 namespace NewLife.Caching.Queues;
 
@@ -58,7 +59,7 @@ public abstract class QueueBase : RedisBase
     /// <param name="span"></param>
     protected void ValidWhenSendFailed(ISpan? span)
     {
-        var ex = new InvalidOperationException($"发布到队列[{Topic}]失败！");
+        var ex = new InvalidOperationException(L.T("Failed to publish to queue [{0}]!", Topic));
         span?.SetError(ex, null);
 
         if (ThrowOnFailure) throw ex;

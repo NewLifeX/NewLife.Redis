@@ -56,7 +56,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
     public void ParseNodes(String nodes)
     {
         var showLog = Nodes == null;
-        if (showLog) WriteLog("分析[{0}]集群节点：", Redis.Name);
+        if (showLog) WriteLog("Analyzing cluster nodes:");
 
         var list = new List<ClusterNode>();
         foreach (var item in nodes.Split("\r", "\n"))
@@ -81,7 +81,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
         var str = list.Join("\n", n => n + " " + n?.Slots.Join(","));
         if (str != _lastNodes)
         {
-            if (!showLog) WriteLog("分析[{0}]集群节点：", Redis.Name);
+            if (!showLog) WriteLog("Analyzing cluster nodes:");
             showLog = true;
             changed = true;
             _lastNodes = str;
@@ -92,7 +92,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
 
         foreach (var node in list)
         {
-            if (showLog) WriteLog("节点：{0} {1} {2}", node, node.Flags, node.Slots.Join(" "));
+            if (showLog) WriteLog("Node: {0} {1} {2}", node, node.Flags, node.Slots.Join(" "));
 
             if (node.Slaves != null)
             {
@@ -175,7 +175,7 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
             }
         }
 
-        throw new XException($"集群[{Redis.Name}]的[{slot}]槽没有可用节点（key={key}）");
+        throw new XException("No available node for slot [{1}] of cluster [{0}] (key={2}).", Redis.Name, slot, key);
         //return null;
     }
 
@@ -214,9 +214,9 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
             if (node is RedisNode redisNode && ++redisNode.Error >= Redis.Retry)
             {
                 redisNode.NextTime = now.AddSeconds(Redis.ShieldingTime);
-                msg = $"屏蔽 {redisNode.EndPoint} 到 {redisNode.NextTime.ToFullString()}";
+                msg = $"Shielding {redisNode.EndPoint} until {redisNode.NextTime.ToFullString()}";
                 span?.AppendTag(msg);
-                Redis.WriteLog(msg);
+                Redis.WriteLog("Shielding {0} until {1}", redisNode.EndPoint, redisNode.NextTime.ToFullString());
             }
         }
 
@@ -377,6 +377,6 @@ public class RedisCluster : RedisBase, IRedisCluster, IDisposable
     /// <summary>写日志</summary>
     /// <param name="format"></param>
     /// <param name="args"></param>
-    public void WriteLog(String format, params Object?[] args) => Log?.Info(format, args);
+    public void WriteLog(String format, params Object?[] args) => Log?.InfoPrefixed(Redis.Name.IsNullOrEmpty() ? null : "[" + Redis.Name + "]", format, args);
     #endregion
 }

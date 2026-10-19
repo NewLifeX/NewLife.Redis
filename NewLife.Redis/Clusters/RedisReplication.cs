@@ -70,7 +70,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     public virtual IList<RedisNode> GetNodes()
     {
         var showLog = _initNodes++ == 0;
-        if (showLog) WriteLog("分析[{0}]主从节点：", Redis.Name);
+        if (showLog) WriteLog("Analyzing replication nodes:");
 
         // 可能配置了多个地址，主从混合，需要探索式查找
         var servers = Redis.GetServices().ToList();
@@ -111,14 +111,14 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         var str = nodes.Join("\n", e => $"{e.EndPoint}-{e.Slave}");
         if (_lastNodes != str)
         {
-            WriteLog("得到[{0}]主从节点：", Redis.Name);
+            WriteLog("Replication nodes discovered:");
             showLog = true;
             changed = true;
             _lastNodes = str;
         }
         foreach (var node in nodes)
         {
-            if (showLog) WriteLog("节点：{0} {1}", node.Slave ? "slave" : "master", node.EndPoint);
+            if (showLog) WriteLog("Node: {0} {1}", node.Slave ? "slave" : "master", node.EndPoint);
         }
 
         if (changed) NodeChanged?.Invoke(this, EventArgs.Empty);
@@ -195,7 +195,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
         catch (Exception ex)
         {
             span?.SetError(ex, null);
-            XTrace.WriteLine("探索[{0}]异常 {1}", server.EndPoint, ex.Message);
+            XTrace.WriteLine("Error probing [{0}]: {1}", server.EndPoint, ex.Message);
 
             // 目前节点不可达，可能是内网节点，屏蔽一段时间
             repNode ??= new RedisNode { EndPoint = server.EndPoint + "" };
@@ -316,7 +316,7 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
             }
         }
 
-        throw new XException($"主从[{Redis.Name}]没有可用节点（key={key}）");
+        throw new XException("No available node for replication [{0}] (key={1}).", Redis.Name, key);
         //return null;
     }
 
@@ -340,9 +340,9 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
             if (node is RedisNode redisNode && ++redisNode.Error >= Redis.Retry)
             {
                 redisNode.NextTime = now.AddSeconds(Redis.ShieldingTime);
-                var msg = $"屏蔽 {redisNode.EndPoint} 到 {redisNode.NextTime.ToFullString()}";
+                var msg = $"Shielding {redisNode.EndPoint} until {redisNode.NextTime.ToFullString()}";
                 span?.AppendTag(msg);
-                Redis.WriteLog(msg);
+                Redis.WriteLog("Shielding {0} until {1}", redisNode.EndPoint, redisNode.NextTime.ToFullString());
             }
         }
 
@@ -364,6 +364,6 @@ public class RedisReplication : RedisBase, IRedisCluster, IDisposable
     /// <summary>写日志</summary>
     /// <param name="format"></param>
     /// <param name="args"></param>
-    public void WriteLog(String format, params Object[] args) => Log?.Info(format, args);
+    public void WriteLog(String format, params Object[] args) => Log?.InfoPrefixed(Redis.Name.IsNullOrEmpty() ? null : "[" + Redis.Name + "]", format, args);
     #endregion
 }

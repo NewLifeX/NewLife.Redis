@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using NewLife.Log;
 using NewLife.Security;
+using NewLife;
 using NewLife.Serialization;
 
 namespace NewLife.Caching.Queues;
@@ -122,7 +123,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
                 rs = Execute((rc, k) => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
                 if (rs > 0) return rs;
 
-                span?.SetError(new InvalidOperationException($"发布到队列[{Topic}]失败！"), null);
+                span?.SetError(new InvalidOperationException(L.T("Failed to publish to queue [{0}]!", Topic)), null);
 
                 if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
             }
@@ -428,18 +429,18 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
             {
                 if (rds.ContainsKey(ackKey))
                 {
-                    Redis.WriteLog("发现死信队列：{0}", ackKey);
+                    Redis.WriteLog("Dead letter queue found: {0}", ackKey);
 
                     var list = RollbackAck(_Key, ackKey);
                     foreach (var item in list)
-                        Redis.WriteLog("全局回滚死信：{0}", item);
+                        Redis.WriteLog("Rolling back dead letter globally: {0}", item);
 
                     count += list.Count;
                 }
 
                 // 删除状态
                 rds.Remove(key);
-                Redis.WriteLog("删除队列状态：{0} {1}", key, st.ToJson());
+                Redis.WriteLog("Deleting queue state: {0} {1}", key, st.ToJson());
             }
         }
 
@@ -450,7 +451,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
             {
                 var queue = rds.GetList<String>(key) as RedisList<String>;
                 var msgs = queue.GetAll();
-                Redis.WriteLog("全局清理死信：{0} {1}", key, msgs.ToJson());
+                Redis.WriteLog("Cleaning dead letters globally: {0} {1}", key, msgs.ToJson());
                 rds.Remove(key);
             }
         }
@@ -472,7 +473,7 @@ public class RedisReliableQueue<T> : QueueBase, IProducerConsumer<T>, IDisposabl
             var list = RollbackAck(_Key, AckKey);
             foreach (var item in list)
             {
-                Redis.WriteLog("定时回滚死信：{0}", item);
+                Redis.WriteLog("Scheduled dead letter rollback: {0}", item);
             }
 
             // 更新状态

@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using NewLife;
 using NewLife.Data;
 
 namespace NewLife.Caching;
@@ -78,7 +79,7 @@ public class RedisList<T> : RedisBase, IList<T>
             var idx = Array.IndexOf(arr, item);
             if (idx >= 0) return p + idx;
 
-            if (p >= 1_000_000) throw new NotSupportedException($"[{Key}]的元素个数过多，不支持遍历！");
+            if (p >= 1_000_000) throw new NotSupportedException(L.T("Too many elements in [{0}]; traversal is not supported!", Key));
 
             p += batch;
         }

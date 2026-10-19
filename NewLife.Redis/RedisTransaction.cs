@@ -1,3 +1,5 @@
+using NewLife;
+
 namespace NewLife.Caching;
 
 /// <summary>Redis事务。独占一条连接执行 MULTI/EXEC，事务期间占用该连接直到提交或释放</summary>
@@ -60,7 +62,7 @@ public class RedisTransaction : DisposeBase
     /// <returns>成功返回true</returns>
     public Boolean Watch(params String[] keys)
     {
-        if (_began) throw new InvalidOperationException("必须在Begin之前调用WATCH");
+        if (_began) throw new InvalidOperationException(L.T("WATCH must be called before Begin."));
         if (keys == null || keys.Length == 0) return false;
 
         var ps = new List<Object>(keys.Length);
@@ -80,7 +82,7 @@ public class RedisTransaction : DisposeBase
     /// <returns>当前事务</returns>
     public RedisTransaction Begin()
     {
-        if (_began) throw new InvalidOperationException("事务已开启");
+        if (_began) throw new InvalidOperationException(L.T("The transaction has already begun."));
 
         _client.Execute<String>("MULTI");
         _began = true;
@@ -95,8 +97,8 @@ public class RedisTransaction : DisposeBase
     /// <returns>排队结果，通常为 QUEUED</returns>
     public T? Execute<T>(String command, params Object[] args)
     {
-        if (!_began) throw new InvalidOperationException("请先调用 Begin");
-        if (_finished) throw new InvalidOperationException("事务已结束");
+        if (!_began) throw new InvalidOperationException(L.T("Call Begin first."));
+        if (_finished) throw new InvalidOperationException(L.T("The transaction has already ended."));
 
         return _client.Execute<T>(command, args);
     }
@@ -105,8 +107,8 @@ public class RedisTransaction : DisposeBase
     /// <returns>各命令的执行结果数组；被监视键已修改导致事务中止时返回空结果</returns>
     public Object[]? Commit()
     {
-        if (!_began) throw new InvalidOperationException("请先调用 Begin");
-        if (_finished) throw new InvalidOperationException("事务已结束");
+        if (!_began) throw new InvalidOperationException(L.T("Call Begin first."));
+        if (_finished) throw new InvalidOperationException(L.T("The transaction has already ended."));
 
         var rs = _client.Execute<Object[]>("EXEC");
         _finished = true;

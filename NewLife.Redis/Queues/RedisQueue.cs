@@ -1,4 +1,5 @@
 ﻿using NewLife.Data;
+using NewLife;
 
 namespace NewLife.Caching.Queues;
 
@@ -46,7 +47,7 @@ public class RedisQueue<T> : QueueBase, IProducerConsumer<T>
                 rs = Execute((rc, k) => rc.Execute<Int32>("LPUSH", Key, val), true);
                 if (rs > 0) return rs;
 
-                span?.SetError(new InvalidOperationException($"发布到队列[{Topic}]失败！"), null);
+                span?.SetError(new InvalidOperationException(L.T("Failed to publish to queue [{0}]!", Topic)), null);
 
                 if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
             }
@@ -86,7 +87,7 @@ public class RedisQueue<T> : QueueBase, IProducerConsumer<T>
                 rs = Execute((rc, k) => rc.Execute<Int32>("LPUSH", args.ToArray()), true);
                 if (rs > 0) return rs;
 
-                span?.SetError(new InvalidOperationException($"发布到队列[{Topic}]失败！"), null);
+                span?.SetError(new InvalidOperationException(L.T("Failed to publish to queue [{0}]!", Topic)), null);
 
                 if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
             }

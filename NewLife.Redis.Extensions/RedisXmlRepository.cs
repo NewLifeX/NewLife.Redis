@@ -20,7 +20,7 @@ public class RedisXmlRepository : IXmlRepository
         _redis = redis;
         _key = key;
 
-        XTrace.WriteLine("DataProtection使用Redis持久化密钥，Key={0}", key);
+        XTrace.WriteLine("DataProtection is using Redis to persist keys, Key={0}.", key);
     }
 
     /// <summary>实例化</summary>
@@ -31,7 +31,7 @@ public class RedisXmlRepository : IXmlRepository
         _redisFactory = redisFactory;
         _key = key;
 
-        XTrace.WriteLine("DataProtection使用Redis持久化密钥，Key={0}", key);
+        XTrace.WriteLine("DataProtection is using Redis to persist keys, Key={0}.", key);
     }
 
     /// <summary>获取所有元素</summary>

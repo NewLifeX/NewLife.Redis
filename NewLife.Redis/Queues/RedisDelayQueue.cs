@@ -1,4 +1,5 @@
 ﻿using NewLife.Log;
+using NewLife;
 
 namespace NewLife.Caching.Queues;
 
@@ -49,7 +50,7 @@ public class RedisDelayQueue<T> : QueueBase, IProducerConsumer<T>
                 rs = _sort.Add(value, target);
                 if (rs >= 0) return rs;
 
-                span?.SetError(new InvalidOperationException($"发布到队列[{Topic}]失败！"), null);
+                span?.SetError(new InvalidOperationException(L.T("Failed to publish to queue [{0}]!", Topic)), null);
 
                 if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
             }
@@ -82,7 +83,7 @@ public class RedisDelayQueue<T> : QueueBase, IProducerConsumer<T>
                 rs = _sort.Add(values, target);
                 if (rs > 0) return rs;
 
-                span?.SetError(new InvalidOperationException($"发布到队列[{Topic}]失败！"), null);
+                span?.SetError(new InvalidOperationException(L.T("Failed to publish to queue [{0}]!", Topic)), null);
 
                 if (i < RetryTimesWhenSendFailed) Thread.Sleep(RetryIntervalWhenSendFailed);
             }

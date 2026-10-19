@@ -1065,7 +1065,7 @@ public class BasicTest
             Assert.NotNull(rs.Item2);
             Assert.Equal(2, rs.Item2.Length);
         }
-        catch (RedisException ex) when (ex.Message.Contains("unknown command") || ex.Message.Contains("需要 Redis"))
+        catch (RedisException ex) when (ex.Message.Contains("unknown command") || ex.Message.Contains("requires Redis") || ex.Message.Contains("需要 Redis"))
         {
             XTrace.WriteLine("LMPOP需要Redis 7.0+，当前版本: {0}，跳过测试。{1}", ic.Version, ex.Message);
         }
@@ -1096,7 +1096,7 @@ public class BasicTest
                 Assert.Single(rs.Item2);
             }
         }
-        catch (RedisException ex) when (ex.Message.Contains("unknown command") || ex.Message.Contains("需要 Redis"))
+        catch (RedisException ex) when (ex.Message.Contains("unknown command") || ex.Message.Contains("requires Redis") || ex.Message.Contains("需要 Redis"))
         {
             XTrace.WriteLine("ZMPOP需要Redis 7.0+，当前版本: {0}，跳过测试。{1}", ic.Version, ex.Message);
         }
@@ -1120,7 +1120,7 @@ public class BasicTest
         {
             XTrace.WriteLine("Redis ACL限制：无FUNCTION权限，跳过测试。{0}", ex.Message);
         }
-        catch (RedisException ex) when (ex.Message.Contains("unknown command") || ex.Message.Contains("需要 Redis"))
+        catch (RedisException ex) when (ex.Message.Contains("unknown command") || ex.Message.Contains("requires Redis") || ex.Message.Contains("需要 Redis"))
         {
             XTrace.WriteLine("FUNCTION需要Redis 7.0+，当前版本: {0}，跳过测试。{1}", ic.Version, ex.Message);
         }
@@ -1144,7 +1144,7 @@ public class BasicTest
         {
             XTrace.WriteLine("Redis ACL限制：无FUNCTION权限，跳过测试。{0}", ex.Message);
         }
-        catch (RedisException ex) when (ex.Message.Contains("unknown command") || ex.Message.Contains("需要 Redis"))
+        catch (RedisException ex) when (ex.Message.Contains("unknown command") || ex.Message.Contains("requires Redis") || ex.Message.Contains("需要 Redis"))
         {
             XTrace.WriteLine("FUNCTION需要Redis 7.0+，当前版本: {0}，跳过测试。{1}", ic.Version, ex.Message);
         }
