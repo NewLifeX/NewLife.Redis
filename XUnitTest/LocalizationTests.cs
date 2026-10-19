@@ -8,6 +8,16 @@ using Xunit;
 
 namespace XUnitTest;
 
+/// <summary>本地化测试标记特性。invariant 全球化模式下自动跳过</summary>
+public class LocalizationFactAttribute : FactAttribute
+{
+    public LocalizationFactAttribute()
+    {
+        if (!LocalizationTests.CulturesAvailable)
+            Skip = "当前运行时仅支持 invariant 全球化，跳过依赖命名区域的本地化测试。";
+    }
+}
+
 /// <summary>本地化集合。串行执行，避免修改全局语言影响并行用例</summary>
 [CollectionDefinition("Localization", DisableParallelization = true)]
 public class LocalizationCollection { }
@@ -16,6 +26,23 @@ public class LocalizationCollection { }
 [Collection("Localization")]
 public class LocalizationTests
 {
+    internal static Boolean CulturesAvailable { get; } = CheckCultures();
+
+    private static Boolean CheckCultures()
+    {
+        try
+        {
+            _ = new CultureInfo("zh-Hans");
+            _ = new CultureInfo("en-US");
+            _ = new CultureInfo("tlh");
+            return true;
+        }
+        catch (CultureNotFoundException)
+        {
+            return false;
+        }
+    }
+
     private sealed class CaptureLog : Logger
     {
         public List<String> Messages { get; } = [];
@@ -29,7 +56,7 @@ public class LocalizationTests
         Localization.LogCulture = logCulture == null ? null : new CultureInfo(logCulture);
     }
 
-    [Fact]
+    [LocalizationFact]
     public void ExceptionMessageIsTranslated()
     {
         UseCulture("zh-Hans", null);
@@ -46,7 +73,7 @@ public class LocalizationTests
         }
     }
 
-    [Fact]
+    [LocalizationFact]
     public void LogMessageIsTranslatedWithPrefix()
     {
         UseCulture("zh-Hans", "zh-Hans");
@@ -66,7 +93,7 @@ public class LocalizationTests
         }
     }
 
-    [Fact]
+    [LocalizationFact]
     public void LogCultureIsIndependentFromUICulture()
     {
         UseCulture("zh-Hans", "en-US");
@@ -86,7 +113,7 @@ public class LocalizationTests
         }
     }
 
-    [Fact]
+    [LocalizationFact]
     public void PrefixedLogKeepsPrefixOutOfTranslation()
     {
         UseCulture("zh-Hans", "zh-Hans");
@@ -105,7 +132,7 @@ public class LocalizationTests
         }
     }
 
-    [Fact]
+    [LocalizationFact]
     public void ExtensionsMessagesAreTranslated()
     {
         UseCulture("zh-Hans", null);
@@ -124,7 +151,7 @@ public class LocalizationTests
         }
     }
 
-    [Fact]
+    [LocalizationFact]
     public void UnknownCultureFallsBackToEnglish()
     {
         UseCulture("tlh", "tlh");
