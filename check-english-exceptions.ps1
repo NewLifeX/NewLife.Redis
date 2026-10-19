@@ -10,7 +10,7 @@ param(
     [String]$Root = $PSScriptRoot,
     [String[]]$Dir,
     [String[]]$Exclude = @(),
-    [String]$MessageCall = 'throw new|: base\(|Console\.Write|MessageBox\.Show|AppendTag\(|NewError\(|NewSpan\(|Debug\.Fail\(|WriteLog\(|OnWrite\(|XTrace\.|Log\??\.(Write|Error|Info|Debug|Warn|Fatal)|WriteInfoEvent\(|WriteErrorEvent\(|BadRequest\(|WriteResultAsync\(|AppendFormat\(|L\.T\(|ex\s*\?\?=\s*new|ex\s*=\s*new',
+    [String]$MessageCall = 'throw new|new\s+[A-Za-z0-9_.]*Exception\(|: base\(|Console\.Write|MessageBox\.Show|AppendTag\(|NewError\(|NewSpan\(|Debug\.Fail\(|WriteLog\(|OnWrite\(|OnDisconnected\(|XTrace\.|Log\??\.(Write|Error|Info|Debug|Warn|Fatal)|WriteInfoEvent\(|WriteErrorEvent\(|BadRequest\(|WriteResultAsync\(|AppendFormat\(|L\.T\(|ex\s*\?\?=\s*new|ex\s*=\s*new',
     [Switch]$List,
     [String]$Csv
 )
