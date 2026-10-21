@@ -1,4 +1,6 @@
 # Tiếng Việt 词表（vi）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"NewLife Redis Client": "Máy khách NewLife Redis"
+"High-performance Redis client for .NET: RESP2/RESP3, all Redis 2.8-7.x data structures and commands, message queues, cluster, sentinel and cloud adapters.": "Máy khách Redis hiệu năng cao cho .NET: RESP2/RESP3, toàn bộ cấu trúc dữ liệu và lệnh của Redis 2.8-7.x, hàng đợi tin nhắn, cụm, sentinel và bộ chuyển đổi đám mây."
 "Failed to connect to the Redis server.": "Không thể kết nối tới máy chủ Redis."
 "Fetching all keys is not allowed when the count is large; use FullRedis.Search instead.": "Không được phép lấy tất cả khóa khi số lượng lớn; hãy dùng FullRedis.Search."
 "This feature requires FullRedis.": "Tính năng này yêu cầu FullRedis."

@@ -1,4 +1,6 @@
 # 繁體中文譯文。鍵為英文源文，缺失時執行期回退英文。
+"NewLife Redis Client": "NewLife Redis 用戶端"
+"High-performance Redis client for .NET: RESP2/RESP3, all Redis 2.8-7.x data structures and commands, message queues, cluster, sentinel and cloud adapters.": "高效能 .NET Redis 用戶端：支援 RESP2/RESP3、Redis 2.8～7.x 全部資料結構與命令、訊息佇列、叢集、哨兵與雲端廠商適配。"
 "Failed to connect to the Redis server.": "連接Redis服務器失敗。"
 "Fetching all keys is not allowed when the count is large; use FullRedis.Search instead.": "數量過大時，禁止獲取所有鍵，請使用FullRedis.Search"
 "This feature requires FullRedis.": "Redis未支持該功能，需要new FullRedis"

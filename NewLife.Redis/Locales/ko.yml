@@ -1,4 +1,6 @@
 # 한국어 词表（ko）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"NewLife Redis Client": "NewLife Redis 클라이언트"
+"High-performance Redis client for .NET: RESP2/RESP3, all Redis 2.8-7.x data structures and commands, message queues, cluster, sentinel and cloud adapters.": ".NET용 고성능 Redis 클라이언트: RESP2/RESP3, Redis 2.8~7.x의 모든 데이터 구조와 명령, 메시지 큐, 클러스터, 센티널 및 클라우드 어댑터를 지원합니다."
 "Failed to connect to the Redis server.": "Redis 서버에 연결하지 못했습니다."
 "Fetching all keys is not allowed when the count is large; use FullRedis.Search instead.": "개수가 많을 때는 모든 키를 가져올 수 없습니다. 대신 FullRedis.Search를 사용하세요."
 "This feature requires FullRedis.": "이 기능은 FullRedis가 필요합니다."

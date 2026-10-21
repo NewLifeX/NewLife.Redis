@@ -1,4 +1,6 @@
 # Italiano 词表（it）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"NewLife Redis Client": "Client NewLife Redis"
+"High-performance Redis client for .NET: RESP2/RESP3, all Redis 2.8-7.x data structures and commands, message queues, cluster, sentinel and cloud adapters.": "Client Redis ad alte prestazioni per .NET: RESP2/RESP3, tutte le strutture dati e i comandi di Redis 2.8-7.x, code di messaggi, cluster, sentinel e adattatori cloud."
 "Failed to connect to the Redis server.": "Connessione al server Redis non riuscita."
 "Fetching all keys is not allowed when the count is large; use FullRedis.Search instead.": "Non è consentito recuperare tutte le chiavi quando il numero è elevato; usare FullRedis.Search."
 "This feature requires FullRedis.": "Questa funzionalità richiede FullRedis."

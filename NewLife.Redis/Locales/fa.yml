@@ -1,4 +1,6 @@
 # فارسی 词表（fa）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"NewLife Redis Client": "کلاینت NewLife Redis"
+"High-performance Redis client for .NET: RESP2/RESP3, all Redis 2.8-7.x data structures and commands, message queues, cluster, sentinel and cloud adapters.": "کلاینت Redis با کارایی بالا برای .NET: پروتکل RESP2/RESP3، همه ساختارها و دستورهای Redis 2.8-7.x، صف‌های پیام، خوشه، Sentinel و آداپتورهای ابری."
 "Failed to connect to the Redis server.": "اتصال به سرور Redis ناموفق بود."
 "Fetching all keys is not allowed when the count is large; use FullRedis.Search instead.": "هنگامی که تعداد زیاد است، دریافت همه کلیدها مجاز نیست؛ به جای آن از FullRedis.Search استفاده کنید."
 "This feature requires FullRedis.": "این ویژگی به FullRedis نیاز دارد."

@@ -1,4 +1,6 @@
 # हिन्दी 词表（hi）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"NewLife Redis Client": "NewLife Redis क्लाइंट"
+"High-performance Redis client for .NET: RESP2/RESP3, all Redis 2.8-7.x data structures and commands, message queues, cluster, sentinel and cloud adapters.": "उच्च-प्रदर्शन .NET Redis क्लाइंट: RESP2/RESP3, Redis 2.8-7.x की सभी डेटा संरचनाएँ और कमांड, संदेश कतारें, क्लस्टर, सेंटिनल और क्लाउड एडाप्टर।"
 "Failed to connect to the Redis server.": "Redis सर्वर से कनेक्ट नहीं हो सका।"
 "Fetching all keys is not allowed when the count is large; use FullRedis.Search instead.": "जब संख्या अधिक हो तो सभी कुंजियाँ लाना अनुमत नहीं है; इसके बजाय FullRedis.Search का उपयोग करें।"
 "This feature requires FullRedis.": "इस सुविधा के लिए FullRedis आवश्यक है।"

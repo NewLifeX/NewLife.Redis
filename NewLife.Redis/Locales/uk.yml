@@ -1,4 +1,6 @@
 # Українська 词表（uk）。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"NewLife Redis Client": "Клієнт NewLife Redis"
+"High-performance Redis client for .NET: RESP2/RESP3, all Redis 2.8-7.x data structures and commands, message queues, cluster, sentinel and cloud adapters.": "Високопродуктивний клієнт Redis для .NET: RESP2/RESP3, усі структури даних і команди Redis 2.8-7.x, черги повідомлень, кластер, sentinel і хмарні адаптери."
 "Failed to connect to the Redis server.": "Не вдалося підключитися до сервера Redis."
 "Fetching all keys is not allowed when the count is large; use FullRedis.Search instead.": "За великої кількості отримання всіх ключів не дозволено; використовуйте FullRedis.Search."
 "This feature requires FullRedis.": "Ця функція потребує FullRedis."
