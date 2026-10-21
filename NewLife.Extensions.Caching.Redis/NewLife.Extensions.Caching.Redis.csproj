@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFrameworks>net461;netstandard2.0;netstandard2.1</TargetFrameworks>
-    <AssemblyTitle>新生命Redis缓存组件</AssemblyTitle>
-    <Description>Redis缓存扩展库，便于注入Redis</Description>
+    <AssemblyTitle>NewLife Redis Caching Extensions</AssemblyTitle>
+    <Description>Redis-backed caching extensions that make it easy to inject a Redis cache. Deprecated: migrate to NewLife.Redis.Extensions.</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2026 新生命开发团队</Copyright>
     <VersionPrefix>5.5</VersionPrefix>
@@ -23,7 +23,7 @@
   <PropertyGroup>
     <PackageId>$(AssemblyName)</PackageId>
     <Authors>$(Company)</Authors>
-    <PackageProjectUrl>https://newlifex.com/core/redis</PackageProjectUrl>
+    <PackageDescription>Redis-backed caching extensions that make it easy to inject a Redis cache. Deprecated: migrate to NewLife.Redis.Extensions. Redis缓存扩展库，便于注入Redis。本包已标记为废弃，推荐迁移至NewLife.Redis.Extensions。</PackageDescription>
     <PackageIcon>leaf.png</PackageIcon>
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Redis</RepositoryUrl>
     <RepositoryType>git</RepositoryType>

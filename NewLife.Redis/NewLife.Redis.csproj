@@ -3,8 +3,8 @@
     <TargetFrameworks>net45;net461;netstandard2.0;netstandard2.1;net8.0</TargetFrameworks>
     <AssemblyName>NewLife.Redis</AssemblyName>
     <RootNamespace>NewLife.Caching</RootNamespace>
-    <AssemblyTitle>新生命Redis客户端</AssemblyTitle>
-    <Description>高性能Redis客户端，支持RESP2/RESP3协议，覆盖Redis 2.8～7.x全部数据结构与命令，内置消息队列（简单/可靠/延迟/Stream），支持集群/哨兵/云厂商适配，经日均80+亿次调用验证</Description>
+    <AssemblyTitle>NewLife Redis Client</AssemblyTitle>
+    <Description>High-performance Redis client for .NET: RESP2/RESP3 protocol, all Redis 2.8-7.x data structures and commands, built-in message queues (simple/reliable/delayed/Stream), cluster, sentinel and cloud-provider adapters, validated by 80+ billion command calls per day.</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2026 新生命开发团队</Copyright>
     <VersionPrefix>6.6</VersionPrefix>
@@ -32,6 +32,7 @@
   <PropertyGroup>
     <PackageId>$(AssemblyName)</PackageId>
     <Authors>$(Company)</Authors>
+    <PackageDescription>High-performance Redis client for .NET: RESP2/RESP3 protocol, all Redis 2.8-7.x data structures and commands, built-in message queues (simple/reliable/delayed/Stream), cluster, sentinel and cloud-provider adapters, validated by 80+ billion command calls per day. 高性能Redis客户端，支持RESP2/RESP3协议，覆盖Redis 2.8～7.x全部数据结构与命令，内置消息队列（简单/可靠/延迟/Stream），支持集群/哨兵/云厂商适配，经日均80+亿次调用验证。</PackageDescription>
     <PackageProjectUrl>https://newlifex.com/core/redis</PackageProjectUrl>
     <PackageIcon>leaf.png</PackageIcon>
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Redis</RepositoryUrl>
