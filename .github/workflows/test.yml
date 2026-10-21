@@ -134,7 +134,7 @@ jobs:
         Get-ChildItem -Path . -Recurse -Directory -Filter Locales | ForEach-Object {
           if (Test-Path (Join-Path $_.FullName 'zh-Hans.yml')) {
             $src = Split-Path $_.FullName -Parent
-            pwsh -File ./check-locales.ps1 -LocaleDir $_.FullName -Baseline zh-Hans.yml -SourceDir $src
+            pwsh -File ./tools/check-locales.ps1 -LocaleDir $_.FullName -Baseline zh-Hans.yml -SourceDir $src
             if ($LASTEXITCODE -ne 0) { $failed = $true }
           }
         }
@@ -143,13 +143,13 @@ jobs:
       shell: pwsh
       run: |
         $failed = $false
-        pwsh -File ./check-english-exceptions.ps1 -Dir NewLife.Redis -LocaleDir NewLife.Redis/Locales
+        pwsh -File ./tools/check-english-exceptions.ps1 -Dir NewLife.Redis -LocaleDir NewLife.Redis/Locales
         if ($LASTEXITCODE -ne 0) { $failed = $true }
-        pwsh -File ./check-english-exceptions.ps1 -Dir NewLife.Redis.Extensions -LocaleDir NewLife.Redis.Extensions/Locales
+        pwsh -File ./tools/check-english-exceptions.ps1 -Dir NewLife.Redis.Extensions -LocaleDir NewLife.Redis.Extensions/Locales
         if ($LASTEXITCODE -ne 0) { $failed = $true }
-        pwsh -File ./check-english-exceptions.ps1 -Dir NewLife.Extensions.Caching.Redis -LocaleDir NewLife.Redis/Locales
+        pwsh -File ./tools/check-english-exceptions.ps1 -Dir NewLife.Extensions.Caching.Redis -LocaleDir NewLife.Redis/Locales
         if ($LASTEXITCODE -ne 0) { $failed = $true }
         if ($failed) { exit 1 }
     - name: Check README languages
       shell: pwsh
-      run: pwsh -File ./sync-readme-languages.ps1 -Check
+      run: pwsh -File ./tools/sync-readme-languages.ps1 -Check

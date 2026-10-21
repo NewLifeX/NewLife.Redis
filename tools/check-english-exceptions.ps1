@@ -3,12 +3,12 @@
 # 说明：英文原文是词表键，译文放在各组件 Locales/*.yml；日志经 Logger.Format 自动翻译，异常用 L.T(...) 显式翻译。
 #
 # 用法：
-#   pwsh -File check-english-exceptions.ps1                       # 本仓默认目录，失败退出码 1
-#   pwsh -File check-english-exceptions.ps1 -Dir src -List        # 盘点中文消息，不失败
-#   pwsh -File check-english-exceptions.ps1 -Dir src -Csv hits.csv # 导出待翻译清单
-#   pwsh -File check-english-exceptions.ps1 -Dir src -LocaleDir src/Locales # 同时校验运行时消息均已登记词表
+#   pwsh -File tools/check-english-exceptions.ps1                       # 本仓默认目录，失败退出码 1
+#   pwsh -File tools/check-english-exceptions.ps1 -Dir src -List        # 盘点中文消息，不失败
+#   pwsh -File tools/check-english-exceptions.ps1 -Dir src -Csv hits.csv # 导出待翻译清单
+#   pwsh -File tools/check-english-exceptions.ps1 -Dir src -LocaleDir src/Locales # 同时校验运行时消息均已登记词表
 param(
-    [String]$Root = $PSScriptRoot,
+    [String]$Root = (Split-Path -Parent $PSScriptRoot),
     [String[]]$Dir,
     [String[]]$Exclude = @(),
     [String]$MessageCall = 'throw new|new\s+[A-Za-z0-9_.]*Exception\(|: base\(|Console\.Write|MessageBox\.Show|AppendTag\(|NewError\(|NewSpan\(|Debug\.Fail\(|WriteLog\(|OnWrite\(|OnDisconnected\(|XTrace\.|Log\??\.(Write|Error|Info|Debug|Warn|Fatal)|WriteInfoEvent\(|WriteErrorEvent\(|BadRequest\(|WriteResultAsync\(|AppendFormat\(|L\.T\(|ex\s*\?\?=\s*new|ex\s*=\s*new',
