@@ -160,8 +160,10 @@ if (!$SkipOrphan) {
         if ([IO.Path]::IsPathRooted($_)) { $_ } else { Join-Path $root $_ }
     } | Where-Object { Test-Path $_ })
 
-    $sourceText = ($sourceDirs | ForEach-Object { Get-ChildItem $_ -Recurse -Filter *.cs } |
-        Where-Object { $_.FullName -notmatch '\\(obj|bin|Locales)\\' } |
+    # 源码不只有 C#：程序集标题与描述（AssemblyTitle/Description）写在项目文件里，同样登记为词表键
+    $sourceText = ($sourceDirs | ForEach-Object {
+        Get-ChildItem $_ -Recurse -File -Include *.cs, *.csproj, *.props, *.targets
+    } | Where-Object { $_.FullName -notmatch '\\(obj|bin|Locales)\\' } |
         ForEach-Object { [IO.File]::ReadAllText($_.FullName) }) -join "`n"
 
     foreach ($key in $reference.Entries.Keys) {
