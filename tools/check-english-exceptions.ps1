@@ -1,5 +1,6 @@
 ﻿# 检查运行时消息（异常、日志、控制台、界面提示、埋点标签）是否全部为英文
 # 规则：调用点字符串中不得出现 CJK 字符；注释与特性参数（Description/DisplayName/Justification）不受限制。
+# 项目文件的 <AssemblyTitle>/<Description> 同样不得含中文（PackageDescription 允许中英混排，不检查）。
 # 说明：英文原文是词表键，译文放在各组件 Locales/*.yml；日志经 Logger.Format 自动翻译，异常用 L.T(...) 显式翻译。
 #
 # 用法：
@@ -121,6 +122,23 @@ foreach ($dir in $dirs) {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    # 程序集标题与描述面向 NuGet 页面和关于窗口，统一用英文；PackageDescription 允许中英混排，不在此检查范围
+    foreach ($proj in Get-ChildItem $dir -Recurse -Filter *.csproj) {
+        $rel = if ($proj.FullName.StartsWith($Root, [StringComparison]::OrdinalIgnoreCase)) {
+            $proj.FullName.Substring($Root.Length).TrimStart("\", "/")
+        }
+        else { $proj.FullName }
+        if ($rel -match '\\(obj|bin)\\') { continue }
+
+        $lines = @(Get-Content $proj.FullName -Encoding UTF8)
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            $line = $lines[$i]
+            if ($line -match '<(?:AssemblyTitle|Description)>(.*?)</(?:AssemblyTitle|Description)>' -and $Matches[1] -match '[\u4e00-\u9fa5]') {
+                $hits += [pscustomobject]@{ File = $rel; Line = $i + 1; Text = $line.Trim() }
             }
         }
     }
