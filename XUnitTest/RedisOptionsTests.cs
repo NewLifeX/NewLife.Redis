@@ -48,4 +48,20 @@ public class RedisOptionsTests
         Assert.Equal("Test:", options.Prefix);
         Assert.Equal(3, options.ProtocolVersion);
     }
+
+    [Fact(DisplayName = "配置元数据为英文")]
+    public void MetadataIsEnglish()
+    {
+        // 配置界面展示用英文元数据，中文只保留在 XML 注释里
+        var display = typeof(RedisOptions).GetCustomAttributes(typeof(System.ComponentModel.DisplayNameAttribute), false);
+        var displayName = Assert.Single(display) as System.ComponentModel.DisplayNameAttribute;
+        Assert.Equal("Redis settings", displayName!.DisplayName);
+
+        foreach (var property in typeof(RedisOptions).GetProperties())
+        {
+            var att = Assert.Single(property.GetCustomAttributes(typeof(System.ComponentModel.DescriptionAttribute), false)) as System.ComponentModel.DescriptionAttribute;
+            Assert.False(String.IsNullOrWhiteSpace(att!.Description));
+            Assert.DoesNotMatch("[\u4e00-\u9fa5]", att.Description);
+        }
+    }
 }
