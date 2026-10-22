@@ -9,7 +9,8 @@ class Program
     {
         XTrace.UseConsole();
 
-        var connStr = "server=redis.newlifex.com;password=Pass@word;db=7";
+        // 默认连接本机 Redis；需要其它实例时设置 REDIS_CONNECTION 环境变量
+        var connStr = Environment.GetEnvironmentVariable("REDIS_CONNECTION") ?? "server=127.0.0.1:6379;db=7";
 
         // 初始化Redis
         var redis = new FullRedis { Timeout = 15_000 };

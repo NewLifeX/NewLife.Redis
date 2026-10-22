@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Sockets;
 using NewLife;
 using NewLife.Caching;
@@ -43,7 +44,10 @@ public class BasicTest
     /// <summary>是否输出Redis客户端命令日志。默认关闭以避免拖慢测试，设置环境变量 REDIS_TEST_LOG=1 开启</summary>
     public static Boolean EnableClientLog { get; } = Environment.GetEnvironmentVariable("REDIS_TEST_LOG").ToBoolean();
 
-    /// <summary>获取Redis连接配置。优先级：环境变量 REDIS_CONNECTION > config\redis.config 文件 > 默认127.0.0.1:6379</summary>
+    /// <summary>获取Redis连接配置。优先级：环境变量 REDIS_CONNECTION > 程序集目录 config\redis.config > 默认 127.0.0.1:6379</summary>
+    /// <remarks>
+    /// 测试统一连接本机 Redis，避免共享远端服务器的往返抖动与用例相互污染；CI 会在测试前拉起 127.0.0.1:6379。
+    /// </remarks>
     /// <returns></returns>
     public static String GetConfig()
     {
@@ -62,18 +66,28 @@ public class BasicTest
                 return _config = config;
             }
 
-            // 次选配置文件
-            var file = @"config\redis.config";
-            if (File.Exists(file)) config = File.ReadAllText(file.GetFullPath())?.Trim();
+            // 次选配置文件。以程序集目录为基准，从仓库根或任意目录运行 dotnet test 都能找到
+            var file = Path.Combine(AppContext.BaseDirectory, "config", "redis.config");
+            if (File.Exists(file)) config = File.ReadAllText(file)?.Trim();
 
-            // 最后用默认地址
+            // 兼容工作目录下的相对路径（历史用法）
+            if (config.IsNullOrEmpty() && File.Exists(@"config\redis.config")) config = File.ReadAllText(@"config\redis.config".GetFullPath())?.Trim();
+
+            // 最后用本机默认地址
             if (config.IsNullOrEmpty()) config = "server=127.0.0.1:6379;db=3";
+
+            // 测试统一走本机，指向远端时给出提示，避免误用共享服务器
+            var (host, port) = ParseServer(config);
+            if (!IsLoopback(host)) XTrace.WriteLine("Redis配置指向非本机地址 {0}:{1}，测试建议使用 127.0.0.1:6379", host, port);
 
             XTrace.WriteLine("Redis配置：{0}", config);
 
             return _config = config;
         }
     }
+
+    /// <summary>是否本机地址</summary>
+    private static Boolean IsLoopback(String host) => host.EqualIgnoreCase("localhost") || (IPAddress.TryParse(host, out var ip) && IPAddress.IsLoopback(ip));
     #endregion
 
     #region Redis可用性检测
