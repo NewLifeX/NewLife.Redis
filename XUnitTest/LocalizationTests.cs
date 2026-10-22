@@ -231,6 +231,33 @@ public class LocalizationTests
     }
 
     [LocalizationFact]
+    public void AssemblyMetadataIsTranslated()
+    {
+        // 程序集标题与描述登记在项目文件的 AssemblyTitle/Description，词表键与它们逐字一致
+        const String title = "NewLife Redis Client";
+        const String extTitle = "NewLife Redis Extensions";
+        const String description = "High-performance Redis client for .NET: RESP2/RESP3, all Redis 2.8-7.x data structures and commands, message queues, cluster, sentinel and cloud adapters.";
+
+        // 触发扩展程序集加载，确保两套词表都已注册
+        Assert.NotNull(typeof(NewLife.Redis.Extensions.RedisXmlRepository).Assembly);
+
+        foreach (var culture in _cultures)
+        {
+            UseCulture(culture, null);
+            try
+            {
+                Assert.NotEqual(title, Localization.Translate(title));
+                Assert.NotEqual(extTitle, Localization.Translate(extTitle));
+                Assert.NotEqual(description, Localization.Translate(description));
+            }
+            finally
+            {
+                UseCulture(null, null);
+            }
+        }
+    }
+
+    [LocalizationFact]
     public void UnknownCultureFallsBackToEnglish()
     {
         UseCulture("tlh", "tlh");

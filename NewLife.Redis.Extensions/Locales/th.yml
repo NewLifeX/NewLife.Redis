@@ -1,3 +1,5 @@
 # th 词表。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"NewLife Redis Extensions": "ส่วนขยาย NewLife Redis"
+"Redis integration for ASP.NET Core: dependency injection, IDistributedCache distributed caching and IDataProtection key storage, simplifying application integration.": "การผสานรวม Redis สำหรับ ASP.NET Core: การฉีดอินเจ็กชันแบบ DI, แคชแบบกระจายด้วย IDistributedCache และการจัดเก็บคีย์ IDataProtection ช่วยให้การผสานรวมแอปพลิเคชันง่ายขึ้น"
 "Redis is not configured. Specify a connection string named RedisCache in the configuration file or configuration center.": "ยังไม่ได้กำหนดค่า Redis โปรดระบุสตริงการเชื่อมต่อชื่อ RedisCache ในไฟล์กำหนดค่าหรือศูนย์กำหนดค่า"
 "DataProtection is using Redis to persist keys, Key={0}.": "DataProtection ใช้ Redis เพื่อเก็บคีย์ถาวร, Key={0}"

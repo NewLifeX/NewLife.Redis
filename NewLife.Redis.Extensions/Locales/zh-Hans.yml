@@ -1,3 +1,5 @@
 # zh-Hans 词表。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"NewLife Redis Extensions": "NewLife Redis 扩展组件"
+"Redis integration for ASP.NET Core: dependency injection, IDistributedCache distributed caching and IDataProtection key storage, simplifying application integration.": "ASP.NET Core 的 Redis 集成：依赖注入、IDistributedCache 分布式缓存与 IDataProtection 密钥存储，简化应用集成。"
 "Redis is not configured. Specify a connection string named RedisCache in the configuration file or configuration center.": "未配置 Redis。请在配置文件或配置中心指定名为 RedisCache 的连接字符串。"
 "DataProtection is using Redis to persist keys, Key={0}.": "DataProtection 使用 Redis 持久化密钥，Key={0}。"

@@ -1,3 +1,5 @@
 # ko 词表。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"NewLife Redis Extensions": "NewLife Redis 확장"
+"Redis integration for ASP.NET Core: dependency injection, IDistributedCache distributed caching and IDataProtection key storage, simplifying application integration.": "ASP.NET Core용 Redis 통합: 종속성 주입, IDistributedCache 분산 캐시, IDataProtection 키 저장을 제공하여 애플리케이션 통합을 간소화합니다."
 "Redis is not configured. Specify a connection string named RedisCache in the configuration file or configuration center.": "Redis가 구성되지 않았습니다. 구성 파일 또는 구성 센터에서 RedisCache라는 연결 문자열을 지정하세요."
 "DataProtection is using Redis to persist keys, Key={0}.": "DataProtection이 Redis를 사용하여 키를 영구 저장합니다. Key={0}."

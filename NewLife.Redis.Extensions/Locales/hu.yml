@@ -1,3 +1,5 @@
 # hu 词表。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"NewLife Redis Extensions": "NewLife Redis-bővítmények"
+"Redis integration for ASP.NET Core: dependency injection, IDistributedCache distributed caching and IDataProtection key storage, simplifying application integration.": "Redis-integráció ASP.NET Core-hoz: függőséginjektálás, elosztott gyorsítótár az IDistributedCache segítségével és IDataProtection-kulcstárolás, ami leegyszerűsíti az alkalmazásintegrációt."
 "Redis is not configured. Specify a connection string named RedisCache in the configuration file or configuration center.": "A Redis nincs konfigurálva. Adjon meg egy RedisCache nevű kapcsolati karakterláncot a konfigurációs fájlban vagy a konfigurációs központban."
 "DataProtection is using Redis to persist keys, Key={0}.": "A DataProtection a Redist használja a kulcsok megőrzésére, Key={0}."

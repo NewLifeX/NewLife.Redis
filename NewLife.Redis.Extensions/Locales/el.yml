@@ -1,3 +1,5 @@
 # el 词表。键为英文源文，与源码字符串逐字一致；缺少的键运行时回退英文。
+"NewLife Redis Extensions": "Επεκτάσεις NewLife Redis"
+"Redis integration for ASP.NET Core: dependency injection, IDistributedCache distributed caching and IDataProtection key storage, simplifying application integration.": "Ενσωμάτωση Redis για ASP.NET Core: έγχυση εξαρτήσεων, κατανεμημένη προσωρινή μνήμη με IDistributedCache και αποθήκευση κλειδιών IDataProtection, απλοποιώντας την ενσωμάτωση στην εφαρμογή."
 "Redis is not configured. Specify a connection string named RedisCache in the configuration file or configuration center.": "Το Redis δεν έχει ρυθμιστεί. Καθορίστε μια συμβολοσειρά σύνδεσης με όνομα RedisCache στο αρχείο ρυθμίσεων ή στο κέντρο ρυθμίσεων."
 "DataProtection is using Redis to persist keys, Key={0}.": "Το DataProtection χρησιμοποιεί το Redis για τη διατήρηση κλειδιών, Key={0}."
