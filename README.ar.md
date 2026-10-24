@@ -936,7 +936,7 @@ dotnet test XUnitTest -c Release
 
 ### الإصدار
 
-ادفع وسمًا يبدأ بـ `v` (مثل `v6.7.2026.1024`) لتشغيل `.github/workflows/publish.yml`. تحزم سير العمل `NewLife.Redis` و`NewLife.Redis.Extensions` وتنشرهما على NuGet.org وGitHub Packages، وتُنشئ GitHub Release بمحتوى القسم المطابق من `ChangeLog.md`؛ أما التشغيل اليدوي فينشر الحزم فقط.
+ادفع وسمًا يبدأ بـ `v` (مثل `v7.0.2026.1024`) لتشغيل `.github/workflows/publish.yml`. تحزم سير العمل `NewLife.Redis` و`NewLife.Redis.Extensions` وتنشرهما على NuGet.org وGitHub Packages، وتُنشئ GitHub Release بمحتوى القسم المطابق من `ChangeLog.md`؛ أما التشغيل اليدوي فينشر الحزم فقط.
 
 ### الملاحظات
 

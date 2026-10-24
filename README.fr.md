@@ -936,7 +936,7 @@ dotnet test XUnitTest -c Release
 
 ### Publication
 
-Poussez un tag préfixé par `v` (par exemple `v6.7.2026.1024`) pour déclencher `.github/workflows/publish.yml`. Le workflow empaquette `NewLife.Redis` et `NewLife.Redis.Extensions`, les publie sur NuGet.org et GitHub Packages et crée une GitHub Release dont les notes proviennent de la section correspondante de `ChangeLog.md` ; une exécution manuelle ne publie que les paquets.
+Poussez un tag préfixé par `v` (par exemple `v7.0.2026.1024`) pour déclencher `.github/workflows/publish.yml`. Le workflow empaquette `NewLife.Redis` et `NewLife.Redis.Extensions`, les publie sur NuGet.org et GitHub Packages et crée une GitHub Release dont les notes proviennent de la section correspondante de `ChangeLog.md` ; une exécution manuelle ne publie que les paquets.
 
 ### Retours
 

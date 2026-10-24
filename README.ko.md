@@ -936,7 +936,7 @@ dotnet test XUnitTest -c Release
 
 ### 릴리스
 
-`v` 접두사 태그(예: `v6.7.2026.1024`)를 푸시하면 `.github/workflows/publish.yml`이 실행됩니다. 워크플로는 `NewLife.Redis`와 `NewLife.Redis.Extensions`를 패키징하여 NuGet.org와 GitHub Packages에 게시하고, `ChangeLog.md`의 해당 버전 절로 GitHub Release를 생성합니다. 수동 실행은 패키지 게시만 수행합니다.
+`v` 접두사 태그(예: `v7.0.2026.1024`)를 푸시하면 `.github/workflows/publish.yml`이 실행됩니다. 워크플로는 `NewLife.Redis`와 `NewLife.Redis.Extensions`를 패키징하여 NuGet.org와 GitHub Packages에 게시하고, `ChangeLog.md`의 해당 버전 절로 GitHub Release를 생성합니다. 수동 실행은 패키지 게시만 수행합니다.
 
 ### 피드백
 

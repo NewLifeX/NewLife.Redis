@@ -1,5 +1,59 @@
 # NewLife.Redis ChangeLog
 
+## v7.0.2026.1024 (2026-10-24)
+
+### Breaking Changes (Upgrade Notes)
+- **NewLife.Core 12.0.2026.1024**: the first release crossing the Core major version, adopting the v12 packet ownership model (`OwnerPacket` reference counting, `Slice` semantics) plus localization and NativeAOT. Callers compiled against Core v11 must recompile; mixing with components still pinned to Core 11 causes dependency conflicts
+- **`Message.GetBody<T>()` signature change**: now `GetBody<T>(String? primitiveKey = null)`; source-compatible but not binary-compatible, so callers that are not recompiled fail at runtime
+- **Assembly version**: `AssemblyVersion` moves from `6.x.yyyy.MMdd` to `7.0.yyyy.MMdd`; strong-name binding and declarative authorization must be updated accordingly
+- **Target framework resolution**: a new `net8.0` asset is included, so net8.0+ hosts load it instead of `netstandard2.1` (with AOT support); Core 12 dropped the netcoreapp3.1/net5.0/net7.0 assets, so `net5.0` and `netcoreapp3.1` hosts fall back to `netstandard2.1` and `net7.0` hosts fall back to `net6.0`
+
+### New Features
+- **Redis transactions**: added `RedisTransaction` with `MULTI`/`EXEC`/`DISCARD`/`WATCH`/`UNWATCH`, running transactional commands on a dedicated connection
+- **Broader command coverage**: added persistence commands `SAVE`/`BGSAVE`/`BGREWRITEAOF`/`LASTSAVE`, Stream `XAUTOCLAIM`, sorted-set reverse and lexicographic families, `LPUSHX`/`RPUSHX`, `GETDEL`/`PSETEX`/`MSETNX`/`SUBSTR`, and the `MOVE`/`RANDOMKEY`/`SORT`/`PTTL`/`EXPIREAT` family
+- **Operations and scripting commands**: completed the `ECHO`/`RESET`/`CLIENT`/`CONFIG`/`SCRIPT`/`EVALSHA`/`ACL` groups for day-to-day operations and staged rollouts
+- **Observability**: built-in OpenTelemetry `ActivitySource` so command execution can join OTel traces
+- **Cloud and compatible implementations**: Valkey server-type detection, Alibaba Cloud TairZSet (`EXZ*`), and Redis 8.x core commands (`MSETEX`/`DELEX`/`DIGEST`/`XDELEX`/`XACKDEL`/`SUNIONCARD`/`SDIFFCARD`)
+- **AOT and net8.0**: added the `net8.0` target with NativeAOT/trimming support, and `IsAotCompatible` keeps the analyzer gate always on
+- **Runtime localization**: runtime exception and log message tables extended to 31 languages, with log prefixes kept out of translation; the extension package carries its own table
+
+### Bug Fixes
+- **[fix]** Fixed `HGETEX`/`HGETDEL` argument assembly and array response decoding
+- **[fix]** Fixed out-of-order consumption caused by the delay-queue transfer loop starting twice
+- **[fix]** Fixed cluster MOVED redirect endpoint parsing and sentinel primary failover
+- **[fix]** Fixed pooled connections being polluted when PubSub cancellation skipped unsubscribe
+- **[fix]** Fixed `RedisStream` decoding failures for primitive payloads with extra fields by injecting metadata at the tail consistently
+- **[fix]** Fixed command arguments missing from exception tracing
+
+### Architecture & Improvements
+- **Solution migrated to `.slnx`**: switched to the new solution format
+- **Removed AOT annotation shims**: dropped local shims duplicated with NewLife.Core public stubs to avoid type conflicts
+- **Cluster logs carry instance prefix**: slot-operation errors now point at the specific node
+- **Package metadata in English**: assembly titles and descriptions standardized to English, package descriptions kept bilingual
+
+### Testing & Quality
+- Unit tests parallelized with full-database operations isolated, and shared-Redis leftovers cleaned up in statistics tests
+- Added 23 AotSmoke scenarios (including cluster and sentinel topologies); CI now also smokes Android/iOS, riscv64/s390x and LoongArch LA64
+- Added an English runtime-message gate and locale table checks that block hard-coded Chinese exceptions and orphan keys
+
+### Documentation & Localization
+- **README rebuilt**: complete coverage of 11 languages, with the ecosystem map and team section matching NewLife.Core verbatim
+- Added requirements, feature list, architecture, competitor analysis and AOT compatibility documents as a traceable baseline
+
+### Dependencies
+- `NewLife.Core` upgraded to `12.0.2026.1024`, with `NewLife.UnitTest`/`NewLife.Stardust`/`BenchmarkDotNet` raised in sync
+
+---
+
+## v6.6.2026.0901 (2026-09-01)
+
+### Bug Fixes
+- **[fix]** `FullRedis` `Eval`/`FCall`/`FCallRO` now assemble arguments as arrays, avoiding argument-count errors and improving primary-key routing for distributed scripts; added boundary tests for read-only functions, Lua argument expansion and empty arguments
+
+### Security & Dependencies
+- **Dependency upgrades**: `Microsoft.Extensions` packages raised to the latest patch of each target framework, `net10.0` DataProtection from 10.0.9 to 10.0.11, removing high-severity `System.Security.Cryptography.Xml` vulnerabilities; `NewLife.Core`, SourceLink and test tooling upgraded in sync
+
+---
 ## v6.6.2026.0802 (2026-08-02)
 
 ### New Features

@@ -936,7 +936,7 @@ dotnet test XUnitTest -c Release
 
 ### リリース
 
-`v` で始まるタグ（例: `v6.7.2026.1024`）をプッシュすると `.github/workflows/publish.yml` が起動します。ワークフローは `NewLife.Redis` と `NewLife.Redis.Extensions` をパックして NuGet.org と GitHub Packages に公開し、`ChangeLog.md` の該当バージョン節から GitHub Release を作成します。手動実行の場合はパッケージの公開のみを行います。
+`v` で始まるタグ（例: `v7.0.2026.1024`）をプッシュすると `.github/workflows/publish.yml` が起動します。ワークフローは `NewLife.Redis` と `NewLife.Redis.Extensions` をパックして NuGet.org と GitHub Packages に公開し、`ChangeLog.md` の該当バージョン節から GitHub Release を作成します。手動実行の場合はパッケージの公開のみを行います。
 
 ### フィードバック
 

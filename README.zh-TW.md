@@ -936,7 +936,7 @@ dotnet test XUnitTest -c Release
 
 ### 發行
 
-推送以 `v` 開頭的標籤（例如 `v6.7.2026.1024`）即可觸發 `.github/workflows/publish.yml`。此工作流程會封裝 `NewLife.Redis` 與 `NewLife.Redis.Extensions`，發佈至 NuGet.org 與 GitHub Packages，並依 `ChangeLog.md` 對應版本段落建立 GitHub Release；手動執行僅發佈套件。
+推送以 `v` 開頭的標籤（例如 `v7.0.2026.1024`）即可觸發 `.github/workflows/publish.yml`。此工作流程會封裝 `NewLife.Redis` 與 `NewLife.Redis.Extensions`，發佈至 NuGet.org 與 GitHub Packages，並依 `ChangeLog.md` 對應版本段落建立 GitHub Release；手動執行僅發佈套件。
 
 ### 意見反應
 

@@ -1,5 +1,49 @@
 # NewLife.Redis 变更日志
 
+## v7.0.2026.1024 (2026-10-24)
+
+### 破坏性变更（升级须知）
+- **依赖升级到 NewLife.Core 12.0.2026.1024**：本版首次跨越 Core 主版本，全面承接 v12 数据包所有权模型（`OwnerPacket` 引用计数、`Slice` 语义）与多语言、NativeAOT 能力；基于 Core v11 编译的调用方需随大版本重新编译，与仍锁定 Core 11 的组件混用会出现依赖冲突
+- **`Message.GetBody<T>()` 签名变更**：改为 `GetBody<T>(String? primitiveKey = null)`，源码兼容但二进制不兼容，未重新编译的调用方运行时会找不到方法
+- **程序集版本提升**：`AssemblyVersion` 由 `6.x.yyyy.MMdd` 变为 `7.0.yyyy.MMdd`，强名称绑定与声明式授权需按新版本调整
+- **目标框架解析变化**：新增 `net8.0` 资产，net8.0 及以上宿主由原 `netstandard2.1` 改为加载 `net8.0` 资产（含 AOT 支持）；Core 12 已移除 netcoreapp3.1/net5.0/net7.0 资产，`net5.0` 与 `netcoreapp3.1` 宿主回退 `netstandard2.1`，`net7.0` 宿主回退 `net6.0`
+
+### 新特性
+- **Redis 事务**：新增 `RedisTransaction`，支持 `MULTI`/`EXEC`/`DISCARD`/`WATCH`/`UNWATCH`，事务命令独占连接执行
+- **命令覆盖补齐**：新增持久化 `SAVE`/`BGSAVE`/`BGREWRITEAOF`/`LASTSAVE`、Stream `XAUTOCLAIM`、有序集合逆序与字典区间族、`LPUSHX`/`RPUSHX`、`GETDEL`/`PSETEX`/`MSETNX`/`SUBSTR`、`MOVE`/`RANDOMKEY`/`SORT`/`PTTL`/`EXPIREAT` 族
+- **运维与脚本命令**：补齐 `ECHO`/`RESET`/`CLIENT`/`CONFIG`/`SCRIPT`/`EVALSHA`/`ACL` 系列，满足日常运维与灰度脚本需求
+- **可观测性**：内置 OpenTelemetry `ActivitySource`，命令执行可接入 OTel 链路追踪
+- **云与兼容实现**：新增 Valkey 服务器类型检测、阿里云 TairZSet（`EXZ*`），补齐 Redis 8.x 核心命令（`MSETEX`/`DELEX`/`DIGEST`/`XDELEX`/`XACKDEL`/`SUNIONCARD`/`SDIFFCARD`）
+- **AOT 与 net8.0**：新增 `net8.0` 目标并完成 NativeAOT/裁剪适配，`IsAotCompatible` 常驻启用分析器门禁
+- **运行时多语言**：运行时异常与日志消息词表扩展至 31 种语言，日志前缀不参与翻译；扩展组件接入独立词表
+
+### Bug 修复
+- **[fix]** 修复 `HGETEX`/`HGETDEL` 参数组装与数组响应解码
+- **[fix]** 修复延迟队列转移循环重复启动导致的乱序消费
+- **[fix]** 修复集群 MOVED 重定向端点解析错误与哨兵主节点切换失效
+- **[fix]** 修复 PubSub 取消后未退订导致的连接池污染
+- **[fix]** 修复 `RedisStream` 元数据未统一尾部注入导致基本类型带附加字段解码失败
+- **[fix]** 修复异常追踪未记录命令参数
+
+### 架构与优化
+- **解决方案迁移 `.slnx`**：采用新格式解决方案文件
+- **删除 AOT 注解垫片**：移除与 NewLife.Core 公开存根重复的本地垫片，避免类型冲突
+- **集群日志带实例前缀**：槽操作错误日志可定位到具体节点
+- **包元数据英文化**：程序集标题与描述统一英文，包描述保留双语
+
+### 测试与质量
+- 单元测试并行化并隔离整库操作，统计类用例清理共享 Redis 遗留状态
+- 新增 AotSmoke 23 场景（含集群与哨兵拓扑），CI 增补 Android/iOS、riscv64/s390x 与龙芯 LA64 冒烟
+- 新增运行时消息英文化门禁与词表校验，拦截硬编码中文异常与孤儿词表键
+
+### 文档与本地化
+- **README 重构**：11 种语言全覆盖，生态版图与团队介绍与 NewLife.Core 逐字对齐
+- 新增需求文档、功能清单、架构文档、竞品分析与 AOT 兼容性分析，形成可追踪的研发基线
+
+### 依赖升级
+- `NewLife.Core` 升级至 `12.0.2026.1024`，`NewLife.UnitTest`/`NewLife.Stardust`/`BenchmarkDotNet` 同步升级
+
+---
 ## v6.6.2026.0901 (2026-09-01)
 
 ### Bug 修复

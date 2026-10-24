@@ -7,7 +7,7 @@
     <Description>High-performance Redis client for .NET: RESP2/RESP3, all Redis 2.8-7.x data structures and commands, message queues, cluster, sentinel and cloud adapters.</Description>
     <Company>新生命开发团队</Company>
     <Copyright>©2002-2026 新生命开发团队</Copyright>
-    <VersionPrefix>6.6</VersionPrefix>
+    <VersionPrefix>7.0</VersionPrefix>
     <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
     <Version>$(VersionPrefix).$(VersionSuffix)</Version>
     <FileVersion>$(Version)</FileVersion>
@@ -38,7 +38,7 @@
     <RepositoryUrl>https://github.com/NewLifeX/NewLife.Redis</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>新生命团队;X组件;NewLife;$(AssemblyName)</PackageTags>
-    <PackageReleaseNotes>修复FullRedis Eval/FCall/FCallRO参数组装与主key路由，提升分布式准确性；升级Microsoft.Extensions系列依赖并修复DataProtection传递漏洞，消除System.Security.Cryptography.Xml高危漏洞</PackageReleaseNotes>
+    <PackageReleaseNotes>升级至NewLife.Core 12（跨主版本，基于Core v11编译的调用方需重新编译）；新增Redis事务（MULTI/EXEC/WATCH）与持久化、Stream XAUTOCLAIM、有序集合、键命令等20余条命令；内置OpenTelemetry埋点，支持Valkey检测与阿里云TairZSet；新增net8.0目标并适配NativeAOT；运行时消息支持31种语言；修复集群MOVED与哨兵切换、PubSub退订泄漏、延迟队列乱序、Stream元数据解码等问题</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -62,7 +62,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NewLife.Core" Version="12.0.2026.1021-beta0321" />
+    <PackageReference Include="NewLife.Core" Version="12.0.2026.1024" />
   </ItemGroup>
 
   <ItemGroup>

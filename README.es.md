@@ -936,7 +936,7 @@ dotnet test XUnitTest -c Release
 
 ### Publicación
 
-Empuje una etiqueta con prefijo `v` (por ejemplo `v6.7.2026.1024`) para activar `.github/workflows/publish.yml`. El flujo de trabajo empaqueta `NewLife.Redis` y `NewLife.Redis.Extensions`, los publica en NuGet.org y GitHub Packages y crea una GitHub Release con las notas de la sección correspondiente de `ChangeLog.md`; una ejecución manual solo publica los paquetes.
+Empuje una etiqueta con prefijo `v` (por ejemplo `v7.0.2026.1024`) para activar `.github/workflows/publish.yml`. El flujo de trabajo empaqueta `NewLife.Redis` y `NewLife.Redis.Extensions`, los publica en NuGet.org y GitHub Packages y crea una GitHub Release con las notas de la sección correspondiente de `ChangeLog.md`; una ejecución manual solo publica los paquetes.
 
 ### Comentarios
 

@@ -26,7 +26,7 @@ jobs:
           9.x
           10.x
     - name: Get Version
-      # tag 推送（v6.7.2026.1024）以 tag 为准，包版本与 tag 严格一致；
+      # tag 推送（v7.0.2026.1024）以 tag 为准，包版本与 tag 严格一致；
       # 手工触发没有 tag，退回 csproj 内置的日期版本（VersionPrefix + yyyy.MMdd）。
       run: |
         if [[ "${GITHUB_REF_TYPE}" != "tag" ]]; then
@@ -82,7 +82,7 @@ jobs:
           exit 0
         }
 
-        # 发布说明优先取 ChangeLog.md 中当前版本段落（标题形如 "## v6.7.2026.1024 (2026-10-24)"）
+        # 发布说明优先取 ChangeLog.md 中当前版本段落（标题形如 "## v7.0.2026.1024 (2026-10-24)"）
         $version = $tag.TrimStart('v')
         $pattern = '^##\s+v?' + [regex]::Escape($version) + '(\s|\(|$)'
         $lines = Get-Content -LiteralPath 'ChangeLog.md'

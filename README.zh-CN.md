@@ -935,7 +935,7 @@ dotnet test XUnitTest -c Release
 
 ### 发版
 
-推送 `v` 前缀标签（如 `v6.7.2026.1024`）触发 `.github/workflows/publish.yml`。工作流打包 `NewLife.Redis` 与 `NewLife.Redis.Extensions`，发布到 NuGet.org 与 GitHub Packages，并按 `ChangeLog.md` 对应版本段落创建 GitHub Release；手动运行只发布包、不创建 Release。
+推送 `v` 前缀标签（如 `v7.0.2026.1024`）触发 `.github/workflows/publish.yml`。工作流打包 `NewLife.Redis` 与 `NewLife.Redis.Extensions`，发布到 NuGet.org 与 GitHub Packages，并按 `ChangeLog.md` 对应版本段落创建 GitHub Release；手动运行只发布包、不创建 Release。
 
 ### 反馈
 
