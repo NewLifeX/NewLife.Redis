@@ -232,7 +232,7 @@ NewLife 生态按依赖分层，各项目独立版本、独立发版。下面的
 | [GitCandy](https://github.com/NewLifeX/GitCandy) | 自托管 Git 源代码管理系统。 | — |
 | [LuckyClover](https://github.com/NewLifeX/LuckyClover) | 从低版本宿主启动时，自动安装匹配的 .NET 运行时。 | — |
 
-> 徽章取各项目主包；主题包、扩展包与卫星包见对应 NuGet 页面。未在表中列出的 30 多个包（FTP、LoRa、Office 扩展、各类协议驱动等）见 [NewLifeX 组织](https://github.com/NewLifeX) 与 [newlifex.com](https://newlifex.com)。本表以 NewLife.Core README 为维护源。
+> 徽章取各项目主包；主题包、扩展包与卫星包见对应 NuGet 页面。未在表中列出的 30 多个包（FTP、LoRa、Office 扩展、各类协议驱动等）见 [NewLifeX 组织](https://github.com/NewLifeX) 与 [newlifex.com](https://newlifex.com)。
 
 ## 文档
 
@@ -935,7 +935,7 @@ dotnet test XUnitTest -c Release
 
 ### 发版
 
-推送 `v` 前缀标签（如 `v6.6.2026.0802`）触发 `.github/workflows/publish.yml`。工作流打包 `NewLife.Redis` 与 `NewLife.Redis.Extensions` 并发布到 NuGet.org 与 GitHub Packages；手动运行只发布包、不打标签。
+推送 `v` 前缀标签（如 `v6.7.2026.1024`）触发 `.github/workflows/publish.yml`。工作流打包 `NewLife.Redis` 与 `NewLife.Redis.Extensions`，发布到 NuGet.org 与 GitHub Packages，并按 `ChangeLog.md` 对应版本段落创建 GitHub Release；手动运行只发布包、不创建 Release。
 
 ### 反馈
 
