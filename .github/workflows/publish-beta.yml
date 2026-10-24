@@ -8,6 +8,11 @@ on:
         - 'NewLife.Redis.Extensions/**'
   workflow_dispatch:
 
+# 必须声明 packages: write，否则 GitHub Packages 推送 403
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build-publish:
 
@@ -30,7 +35,11 @@ jobs:
       run: |
         dotnet pack --version-suffix ${{ env.VERSION }} -c Release -o out NewLife.Redis/NewLife.Redis.csproj
         dotnet pack --version-suffix ${{ env.VERSION }} -c Release -o out NewLife.Redis.Extensions/NewLife.Redis.Extensions.csproj
-    - name: Publish
+    - name: Publish to GitHub Packages
+      # 备用镜像渠道，失败只告警，不阻断 NuGet.org
+      continue-on-error: true
       run: |
-        # dotnet nuget push ./out/*.nupkg --skip-duplicate --source https://nuget.pkg.github.com/NewLifeX/index.json --api-key ${{ github.token }}
+        dotnet nuget push ./out/*.nupkg --skip-duplicate --source https://nuget.pkg.github.com/NewLifeX/index.json --api-key ${{ github.token }}
+    - name: Publish to NuGet.org
+      run: |
         dotnet nuget push ./out/*.nupkg --skip-duplicate --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.nugetKey }}
