@@ -599,7 +599,6 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         {
             // 每次重试都需要重新从池里借出连接
             var client = Pool.Get();
-            var disposed = false;
             try
             {
                 return func(client, key);
@@ -607,11 +606,11 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             catch (RedisException) { throw; }
             catch (Exception ex)
             {
-                if (++i >= Retry) throw;
-
-                // 销毁连接，不再归还池
+                // 先销毁，再判断是否已到重试上限。顺序反过来时，最后一次失败会在销毁前抛出，finally 把坏连接归还进空闲池。
+                // 销毁后仍要 Return：ObjectPool 见到 Disposed 只释放槽位，不会放回空闲集合。
                 client.TryDispose();
-                disposed = true;
+
+                if (++i >= Retry) throw;
 
                 // 网络异常时，自动切换到其它节点
                 if (ex is AggregateException ae) ex = ae.InnerException;
@@ -625,7 +624,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             }
             finally
             {
-                if (!disposed) Pool.Return(client);
+                Pool.Return(client);
 
                 Counter?.StopCount(sw);
             }
@@ -653,7 +652,6 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             // 每次重试都需要重新从池里借出连接
             var pool = Pool;
             var client = pool.Get();
-            var disposed = false;
             try
             {
                 return func(client);
@@ -661,11 +659,11 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             catch (RedisException) { throw; }
             catch (Exception ex)
             {
-                if (++i >= Retry) throw;
-
-                // 销毁连接，不再归还池
+                // 先销毁，再判断是否已到重试上限。顺序反过来时，最后一次失败会在销毁前抛出，finally 把坏连接归还进空闲池。
+                // 销毁后仍要 Return：ObjectPool 见到 Disposed 只释放槽位，不会放回空闲集合。
                 client.TryDispose();
-                disposed = true;
+
+                if (++i >= Retry) throw;
 
                 // 网络异常时，自动切换到其它节点
                 if (ex is AggregateException ae) ex = ae.InnerException;
@@ -679,7 +677,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             }
             finally
             {
-                if (!disposed) pool.Return(client);
+                pool.Return(client);
 
                 Counter?.StopCount(sw);
             }
@@ -727,7 +725,6 @@ public class Redis : Cache, IConfigMapping, ILogFeature
         {
             // 每次重试都需要重新从池里借出连接
             var client = await Pool.GetAsync().ConfigureAwait(false);
-            var disposed = false;
             try
             {
                 return await func(client, key).ConfigureAwait(false);
@@ -735,11 +732,11 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             catch (RedisException) { throw; }
             catch (Exception ex)
             {
-                if (++i >= Retry) throw;
-
-                // 销毁连接，不再归还池
+                // 先销毁，再判断是否已到重试上限。顺序反过来时，最后一次失败会在销毁前抛出，finally 把坏连接归还进空闲池。
+                // 销毁后仍要 Return：ObjectPool 见到 Disposed 只释放槽位，不会放回空闲集合。
                 client.TryDispose();
-                disposed = true;
+
+                if (++i >= Retry) throw;
 
                 // 网络异常时，自动切换到其它节点
                 if (ex is AggregateException ae) ex = ae.InnerException;
@@ -754,7 +751,7 @@ public class Redis : Cache, IConfigMapping, ILogFeature
             }
             finally
             {
-                if (!disposed) Pool.Return(client);
+                Pool.Return(client);
 
                 Counter?.StopCount(sw);
             }

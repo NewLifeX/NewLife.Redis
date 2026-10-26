@@ -1,5 +1,16 @@
 # NewLife.Redis 变更日志
 
+## v7.0.2026.1026 (2026-10-26)
+
+### Bug 修复
+- **[fix]** 修复连接异常销毁后跳过 `Pool.Return`，槽位泄漏并最终抛出 `PoolFullException`（如 AllPool 已有 100,000 达到最大值）
+- 去掉 `disposed`。原先销毁后把它设为 true，`finally` 里 `if (!disposed)` 就不再 `Return`。槽位只在 `Return` 时释放，这个开关等于把槽位漏掉。`ObjectPool.Return` 见到 `Disposed` 只释放槽位，不放回空闲集合，因此不需要这个标志，`finally` 始终 `Return`
+- `TryDispose` 移到「`++i >= Retry` 则抛出」之前。顺序反过来时，最后一次失败来不及销毁，`finally` 会把坏连接归还进空闲池。`RedisException`、以及非网络异常仍归还活连接
+- `Redis.Execute` / `ExecuteAsync`、`FullRedis` 节点执行与 `ExecuteAsync`、PubSub 退订失败、事务 `DISCARD` 失败都是这一处：先销毁不可复用的连接，再 `Return`
+- **测试**：`PoolFullExceptionReproTests` 使用名为 All 的池，连续失败次数超过 `PoolMax`。修复前抛出池满异常，修复后繁忙数仍为 0
+
+---
+
 ## v7.0.2026.1024 (2026-10-24)
 
 ### 破坏性变更（升级须知）
