@@ -10,6 +10,7 @@ on:
 
 # 必须声明 packages: write，否则 GitHub Packages 推送 403
 permissions:
+  id-token: write
   contents: read
   packages: write
 
@@ -40,6 +41,11 @@ jobs:
       continue-on-error: true
       run: |
         dotnet nuget push ./out/*.nupkg --skip-duplicate --source https://nuget.pkg.github.com/NewLifeX/index.json --api-key ${{ github.token }}
+    - name: NuGet login (OIDC)
+      id: nuget-login
+      uses: NuGet/login@v1
+      with:
+        user: NewLife
     - name: Publish to NuGet.org
       run: |
-        dotnet nuget push ./out/*.nupkg --skip-duplicate --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.nugetKey }}
+        dotnet nuget push ./out/*.nupkg --skip-duplicate --source https://api.nuget.org/v3/index.json --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
