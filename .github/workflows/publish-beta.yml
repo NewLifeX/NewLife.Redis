@@ -45,7 +45,7 @@ jobs:
       id: nuget-login
       uses: NuGet/login@v1
       with:
-        user: NewLife
+        user: BigStone
     - name: Publish to NuGet.org
       run: |
         dotnet nuget push ./out/*.nupkg --skip-duplicate --source https://api.nuget.org/v3/index.json --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
