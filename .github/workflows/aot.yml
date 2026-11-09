@@ -130,10 +130,24 @@ jobs:
       env:
         AOT_REQUIRE_TOPO: ${{ matrix.topo }}
       run: ./out/${{ matrix.bin }}
+    - name: NativeAOT 本地化冒烟（linux-x64，关闭 InvariantGlobalization 实跑 31 种语言词表）
+      if: matrix.rid == 'linux-x64'
+      shell: bash
+      env:
+        # 置 1 后 invariant 发布会直接失败，防止属性丢失后退化为只校验英文
+        AOT_CHECK_LOCALES: '1'
+      run: |
+        set -o pipefail
+        dotnet publish AotSmoke/AotSmoke.csproj -c Release -r linux-x64 -p:InvariantGlobalization=false -o out-loc 2>&1 | tee publish-loc.log
+        if grep -E "warning IL[0-9]+" publish-loc.log; then
+          echo "::error::本地化冒烟发布存在 ILC 告警，必须清零"
+          exit 1
+        fi
+        ./out-loc/AotSmoke
 
   # linux-la64（龙芯，必选覆盖）：官方无 NativeAOT 支持（ILCompiler 无官方 loongarch64 运行时包），亦无托管 runner。
   # 方案：QEMU 用户态仿真（binfmt）+ 龙芯 SDK（github.com/loongson/dotnet，pack 走 lnuget.loongnix.cn）。
-  # 主信号：LA64 进程 JIT 冒烟 23 场景（含集群/哨兵拓扑——Redis 由宿主 x64 提供，QEMU 用户态共享宿主回环网络）；
+  # 主信号：LA64 进程 JIT 冒烟 24 场景（含集群/哨兵拓扑——Redis 由宿主 x64 提供，QEMU 用户态共享宿主回环网络）；
   # 探索：NativeAOT 发布尝试（容错，失败不阻断）。
   la64:
     name: smoke (linux-la64 qemu)
@@ -162,7 +176,7 @@ jobs:
       env:
         DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1
         DOTNET_CLI_TELEMETRY_OPTOUT: 1
-    - name: JIT 冒烟（AotSmoke 23 场景，拓扑强制实跑）
+    - name: JIT 冒烟（AotSmoke 24 场景，拓扑强制实跑）
       env:
         # 宿主 x64 无 LA64 原生 ICU，仿真进程无法加载；冒烟场景不依赖区域性数据，以 invariant 模式运行
         DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1

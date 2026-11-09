@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using NewLife;
@@ -73,7 +74,57 @@ Console.WriteLine("== NewLife.Redis NativeAOT 冒烟 ==");
 Console.WriteLine($"IsDynamicCodeSupported = {RuntimeFeature.IsDynamicCodeSupported}");
 Console.WriteLine($"JSON 主机 = {new RedisJsonEncoder().JsonHost?.GetType().FullName}");
 
+// InvariantGlobalization 下命名区域不可用，词表源生成器跳过注册，仅保留英文回退
+var cultureAvailable = true;
+try { _ = new CultureInfo("zh-Hans"); } catch (CultureNotFoundException) { cultureAvailable = false; }
+Console.WriteLine($"InvariantGlobalization = {!cultureAvailable}");
+
 var redis = new FullRedis("127.0.0.1:6379", null!, 14) { Timeout = 3000 };
+
+Check("运行时词表 本地化", () =>
+{
+    var text = Localization.Translate("Using Redis server: {0}", "127.0.0.1:6379");
+    if (!cultureAvailable)
+    {
+        // CI 用非 invariant 发布实跑译文，这里防止设置丢失后静默退化为只验英文
+        if (Environment.GetEnvironmentVariable("AOT_CHECK_LOCALES") == "1")
+            throw new InvalidOperationException("AOT_CHECK_LOCALES=1 需要关闭 InvariantGlobalization");
+
+        if (text != "Using Redis server: 127.0.0.1:6379") throw new InvalidOperationException($"英文回退不符：{text}");
+        return;
+    }
+
+    Localization.Culture = new CultureInfo("zh-Hans");
+    try
+    {
+        text = Localization.Translate("Using Redis server: {0}", "127.0.0.1:6379");
+        if (!text.Contains("使用 Redis 服务器")) throw new InvalidOperationException($"译文不符：{text}");
+    }
+    finally
+    {
+        Localization.Culture = null;
+    }
+
+    // 逐一校验 31 种语言词表在原生编译下均已注册，任意一种未命中即失败
+    String[] cultures =
+    [
+        "ar", "bn", "cs", "da", "de", "el", "es", "fa", "fi", "fr", "he", "hi", "hu", "id", "it", "ja",
+        "ko", "ms", "nb", "nl", "pl", "pt", "ro", "ru", "sv", "th", "tr", "uk", "vi", "zh-Hans", "zh-Hant",
+    ];
+    foreach (var culture in cultures)
+    {
+        Localization.Culture = new CultureInfo(culture);
+        try
+        {
+            text = Localization.Translate("Using Redis server: {0}", "127.0.0.1:6379");
+            if (text == "Using Redis server: 127.0.0.1:6379") throw new InvalidOperationException($"{culture} 未命中译文");
+        }
+        finally
+        {
+            Localization.Culture = null;
+        }
+    }
+});
 
 Check("连接与服务器信息", () =>
 {

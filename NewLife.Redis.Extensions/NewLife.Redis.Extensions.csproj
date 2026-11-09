@@ -117,6 +117,7 @@
     <ProjectReference Include="..\NewLife.Redis\NewLife.Redis.csproj" />
   </ItemGroup>
 
+  <!-- NewLife.Core 的 build 属性只对直接引用生效，本工程经项目引用间接获得 Core，需要显式登记词表 -->
   <ItemGroup>
     <AdditionalFiles Include="Locales\*.yml" />
   </ItemGroup>

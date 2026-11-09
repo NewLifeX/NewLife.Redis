@@ -11,12 +11,14 @@
 > 复验：2026-10-19｜NewLife.Core 升级至 12.0.2026.1019-beta0659｜全解决方案 0 错误；XUnitTest 411 通过 / 10 跳过 / 0 失败，invariant 模式 404 通过 / 17 跳过 / 0 失败；AOT 分析器 0 条 IL 告警；win-x64 NativeAOT 21 PASS / 2 SKIP（本机无集群/哨兵拓扑，CI 严格模式 23/23）；Android/iOS 与 linux-riscv64 / arm / arm64 / musl-x64 / osx-arm64 / win-arm64 RID 构建通过。
 >
 > 增量复验：2026-10-19｜新增 OTel ActivitySource、Valkey 检测、TairZSet 与 Redis 8.x 核心命令后：全解决方案 0 错误；XUnitTest 429 通过 / 10 跳过 / 0 失败；AOT 分析器 0 条 IL 告警；win-x64 NativeAOT 发布并运行 21 PASS / 2 SKIP。
+>
+> 复验：2026-11-09｜NewLife.Core 升级至 12.0.2026.1109-beta0553｜新增冒烟场景「运行时词表 本地化」，同时验证 InvariantGlobalization 英文回退与 NativeAOT 下的 31 种语言词表；全解决方案 0 错误；XUnitTest 431 通过 / 10 跳过 / 0 失败；AOT 分析器与 ILC 均 0 条 IL 告警（Core 新增 `Cache.CreateEventBus<TEvent>` 注解使重写出现 IL2095，已按同注解匹配清零）；win-x64 JIT 与 NativeAOT 各 22 PASS / 2 SKIP，关闭 InvariantGlobalization 的 NativeAOT 本地化冒烟 PASS。
 
 ---
 
 ## 1. 现状摘要
 
-- **库侧已达标**：主库与扩展包在 net8.0 目标常驻 `IsAotCompatible`，分析器扫描与 ILC 发布均 **0 条 AOT 告警**；核心链路 **23 场景三形态（JIT/裁剪/AOT）全通**（连接、RESP3、字符串、计数、哈希、列表、队列、可靠队列、泛型弹列、延迟队列、Stream、事件总线、多消费组队列、PubSub、JSON 对象/数组/字典、Message 字段解码、集群路由、哨兵主从寻址）。
+- **库侧已达标**：主库与扩展包在 net8.0 目标常驻 `IsAotCompatible`，分析器扫描与 ILC 发布均 **0 条 AOT 告警**；核心链路 **24 场景三形态（JIT/裁剪/AOT）全通**（连接、RESP3、字符串、计数、哈希、列表、队列、可靠队列、泛型弹列、延迟队列、Stream、事件总线、多消费组队列、PubSub、JSON 对象/数组/字典、Message 字段解码、运行时词表本地化、集群路由、哨兵主从寻址）。
 - **工程化配套就绪**：`AotSmoke` 冒烟工程入仓（JIT/AOT 双跑、非 0 退出码即失败），`aot.yml` CI 防回归（分析器告警阻断 + 多 RID 原生发布运行冒烟矩阵），边缘 RID（win-x86 / linux-arm）随同一工作流观察期覆盖，普通单元测试同步覆盖四平台（详见 §6）。
 - **改造前基线**：主库原目标框架 net45/net461/netstandard2.0/netstandard2.1，不含 net8.0+ 且未启用分析器；net8.0 + IsAotCompatible 实测 **6 条 AOT 告警**（已全部处置，见 §2.2 处置档案）。
 - **已知边界**：AOT 下 JSON 主机按动态代码能力显式选择（JIT=SystemJson / AOT=FastJson，属有意设计，见 §2.4）；运行期类型与嵌套类型的反射解码要求调用方以泛型入口或静态引用保根（§3）。
@@ -25,7 +27,7 @@
 
 ## 2. 实测数据
 
-### 2.1 冒烟矩阵（23 场景，JIT/裁剪/AOT 三形态）
+### 2.1 冒烟矩阵（24 场景，JIT/裁剪/AOT 三形态）
 
 | # | 场景 | # | 场景 |
 |---|------|---|------|
@@ -41,10 +43,12 @@
 | 10 | 自定义对象 Redis 存取（编码器链路） | 21 | PubSub 发布/订阅（`PubSub`） |
 | 11 | 复杂类型字典 JSON 存取（`Dictionary<String,Int32>`） | 22 | 集群模式 路由存取（`FullRedis` 集群发现 + MOVED 重定向 + 同槽批量） |
 |  |  | 23 | 哨兵 节点发现与主从寻址（`RedisSentinel` 发现/切换/数据面） |
+|  |  | 24 | 运行时词表 本地化（InvariantGlobalization 英文回退；非 invariant 发布校验中文译文） |
 
 > 冒烟工程：仓库 `AotSmoke/`（`<PublishAot>true</PublishAot>`，JIT/AOT 运行均固定严格 AOT 姿态：`IsDynamicCodeSupported=False`）。
 > 环境：.NET SDK 10.0.401 + win-x64 NativeAOT + 本机 Redis 6.2.5；逐场景 PASS/FAIL，非 0 退出码即失败。
 > 拓扑场景（22/23）自带 `CheckTopo` TCP 探测：无拓扑时自动 SKIP；CI（`aot.yml`）自动搭建集群/哨兵拓扑，并以 `AOT_REQUIRE_TOPO=1` 严格实跑（拓扑缺失按场景失败处理，防静默 SKIP 丢失防回归）。
+> 本地化场景（24）在 `InvariantGlobalization=true` 时校验英文回退；CI 的 linux-x64 额外以 `-p:InvariantGlobalization=false` 发布并设置 `AOT_CHECK_LOCALES=1` 实跑 31 种语言词表，属性丢失会直接失败而不是静默退化为只验英文。
 
 ### 2.2 分析器扫描（库侧，net8.0 + IsAotCompatible）
 
@@ -59,7 +63,8 @@
 | 5 | `Queues/Message.cs:82`（Message.GetBody&lt;T&gt;） | IL2072 | 属性类型经反射（`PropertyInfo.PropertyType`）进入 `JsonHelper.ToJsonEntity(String, Type)`，无法静态传导 | 方法级 `UnconditionalSuppressMessage` 声明边界（运行期属性类型无法静态表达；主链路经泛型 T 保根） |
 | 6 | `RedisClient.cs:1408`（TryConvert 数组分支） | IL3050 | `Array.CreateInstance(elmType, n)` 属 `RequiresDynamicCode` | 常见元素类型（String/Object/Int32/Int64/Double/Boolean/IPacket）静态数组构造，其余回退 + 边界抑制 |
 
-- 级联传导：`RedisStream<T>`、`MultipleConsumerGroupsQueue<T>`、`FullRedis.GetStream<T>`、`CacheExtensions.GetStream<T>`、`RedisEventBus<TEvent>` 同步补齐保留注解；`RedisCacheProvider.GetQueue<T>` 与 `FullRedis.CreateEventBus<TEvent>` 因 Core 宽面契约（`CacheProvider`/`Cache` 无注解、重写不可强化）改为实现边界显式声明。
+- 级联传导：`RedisStream<T>`、`MultipleConsumerGroupsQueue<T>`、`FullRedis.GetStream<T>`、`CacheExtensions.GetStream<T>`、`RedisEventBus<TEvent>` 同步补齐保留注解；`RedisCacheProvider.GetQueue<T>` 因 Core 宽面契约（`CacheProvider` 无注解、重写不可强化）改为实现边界显式声明。
+- 升级 NewLife.Core 12.0.2026.1109-beta0553 后，Core 给 `Cache.CreateEventBus<TEvent>` 增加 `DynamicallyAccessedMembers` 注解，`FullRedis.CreateEventBus<TEvent>` 同步匹配同一注解（PublicParameterlessConstructor | PublicFields | PublicProperties），IL2095 清零并移除原 IL2091 抑制；这是本次升级唯一新增的 AOT 告警。
 - 低版本目标框架的注解特性由 NewLife.Core 公开存根提供（net8.0+ 使用内置真实特性），源码可统一标注；本地 `Common/AotAnnotations.cs` 垫片与 Core 公开类型重复（旧 TFM 384 条 CS0436），已删除。
 
 ### 2.3 发布期（ILC）告警
@@ -77,15 +82,16 @@
 | 改造后 AOT / 动态代码不可用 | `FastJson` | `RuntimeFeature.IsDynamicCodeSupported` 显式守卫回退（有意设计） |
 
 - AOT 回退 FastJson 属有意设计：实测 SystemJson 在原生编译下对 `Dictionary<String,Int32>` 等泛型集合缺少转换器原生代码（`DictionaryOfTKeyTValueConverter` 抛 `NotSupportedException`），而 FastJson 对静态保根类型全通。
-- 23 场景在三种发布形态下实测均通过（JIT/裁剪/NativeAOT）；差异影响序列化细节（格式/性能），使用时以实际主机行为为准。
+- 24 场景在三种发布形态下实测均通过（JIT/裁剪/NativeAOT）；差异影响序列化细节（格式/性能），使用时以实际主机行为为准。
 
 ### 2.5 部署形态矩阵（同一冒烟工程）
 
 | 形态 | 发布方式 | 结果 | JSON 主机 | IL 告警 |
 |------|---------|------|-----------|---------|
-| JIT（严格 AOT 姿态） | `dotnet run -c Release` | 23/23 | FastJson | — |
-| 裁剪发布 | `PublishTrimmed`（项目属性内设定） | 23/23 | SystemJson | 0 |
-| NativeAOT | `dotnet publish -r win-x64` | 23/23 | FastJson | 0 |
+| JIT（严格 AOT 姿态） | `dotnet run -c Release` | 24/24 | FastJson | — |
+| 裁剪发布 | `PublishTrimmed`（项目属性内设定） | 24/24 | SystemJson | 0 |
+| NativeAOT | `dotnet publish -r win-x64` | 24/24 | FastJson | 0 |
+| NativeAOT（关闭 invariant，校验词表） | `dotnet publish -p:InvariantGlobalization=false` | 24/24 | FastJson | 0 |
 
 > 注意：`-p:PublishTrimmed=true` / `-p:PublishAot=true` 等发布属性**不能经命令行全局属性传入**——会波及主库 net45 等目标并报 NETSDK1124/NETSDK1207，必须写在应用工程属性组内（与 NewLife.Core 的口径一致）。
 
@@ -102,9 +108,10 @@
 ### 2.7 多语言词表与 InvariantGlobalization
 
 - 31 种语言的运行时词表由 NewLife.Core 源生成器在编译期写入程序集，不使用 `ResourceManager` 与卫星程序集；译文按需 Deflate 解压，NativeAOT 下无动态代码依赖。
-- 两套词表（主库 74 条、扩展组件 2 条）均通过模块初始化器注册；注册失败仅影响译文命中，运行时按英文回退。
+- 两套词表（主库 76 条、扩展组件 4 条）均通过模块初始化器注册；注册失败仅影响译文命中，运行时按英文回退。
 - 协议数字、日期与布尔值按 `InvariantCulture` 编码和解析，与 `AotSmoke` 的 `InvariantGlobalization=true` 姿态保持一致。
-- `AotSmoke` 固定 `InvariantGlobalization=true`：命名区域性不可用，源生成器捕获 `CultureNotFoundException` 后跳过注册，冒烟场景不依赖区域性数据，23 个场景实测通过。
+- `AotSmoke` 默认 `InvariantGlobalization=true`：命名区域性不可用，源生成器捕获 `CultureNotFoundException` 后跳过注册，冒烟场景不依赖区域性数据，24 个场景实测通过。
+- 场景 24「运行时词表 本地化」覆盖 AOT × 多语言：invariant 发布校验英文回退，关闭 invariant 的 NativeAOT 发布逐一校验 31 种语言均已注册；CI 的 linux-x64 以 `AOT_CHECK_LOCALES=1` 强制实跑，属性丢失即失败。
 - `LocalizationTests` 在 invariant 模式下由 `LocalizationFactAttribute` 自动跳过；正常环境逐一验证 31 种语言与扩展组件词表。
 - AOT/裁剪分析器对多语言代码保持 **0 条 IL 告警**。
 
@@ -133,6 +140,7 @@
 | 6 | 注解垫片清理 | 删除本地 `Common/AotAnnotations.cs`，旧 TFM 注解特性统一由 NewLife.Core 公开存根提供，384 条 CS0436 类型重复告警清零 | ✅ |
 | 7 | CI 拓扑实跑 | `aot.yml` 冒烟任务自动搭建集群（7000-7002）与哨兵（主 7480 / 哨兵 26379）；`AotSmoke` 支持 `AOT_REQUIRE_TOPO=1` 严格模式（拓扑缺失按场景失败处理），CI 23 场景全实跑不再 SKIP | ✅ |
 | 8 | 多 RID 矩阵 | `aot.yml` 扩展为 smoke 矩阵（win-x64 / win-arm64 / linux-x64 / linux-arm64 / osx-arm64 / osx-x64 原生 runner）+ la64（QEMU 仿真 + 龙芯 SDK）+ musl 双架构（alpine 容器）+ 边缘 RID（win-x86 / linux-arm，并入同一工作流）；`test.yml` 单测同步覆盖 win-x64 / linux-x64 / linux-arm64 / linux-la64；`mobile.yml` 覆盖 Android 模拟器与 iOS 模拟器；`arch.yml` 覆盖 QEMU riscv64 / s390x；全部随 push/PR 与手动触发（不设夜间任务）；仅 linux-x64 阻断，其余观察期 | ✅ |
+| 9 | AOT × 多语言冒烟 | `AotSmoke` 新增场景 24「运行时词表 本地化」；`aot.yml` 的 linux-x64 追加关闭 `InvariantGlobalization` 的原生发布并设 `AOT_CHECK_LOCALES=1` 实跑 31 种语言词表；随 Core 12.0.2026.1109 的 `Cache.CreateEventBus<TEvent>` 注解同步匹配，IL2095 清零 | ✅ |
 
 ---
 
@@ -153,6 +161,11 @@ redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 --cluste
 # 3) 冒烟（NativeAOT 真编译；期望 0 条 IL 告警）
 dotnet publish AotSmoke\AotSmoke.csproj -c Release -r win-x64 -o out
 .\out\AotSmoke.exe    # 逐场景 PASS/FAIL，非 0 退出码即失败
+
+# 3.1) 可选：AOT × 多语言。关闭 InvariantGlobalization 后实跑 31 种语言词表
+#      未设置 AOT_CHECK_LOCALES 时，invariant 发布只校验英文回退
+dotnet publish AotSmoke\AotSmoke.csproj -c Release -r win-x64 -p:InvariantGlobalization=false -o out-loc
+$env:AOT_CHECK_LOCALES='1'; .\out-loc\AotSmoke.exe; Remove-Item Env:AOT_CHECK_LOCALES
 ```
 
 > CI：`aot.yml` 多 RID 矩阵在原生 runner 上重复执行上述校验（linux-x64 / linux-arm64 / linux-la64 由工作流自动搭建集群/哨兵拓扑并以 `AOT_REQUIRE_TOPO=1` 严格实跑；Redis 6379 载体：Linux x64 = redis-github-action、Linux arm64 = apt、Windows = Chocolatey memurai-developer、macOS = brew、LA64 = 宿主容器镜像）。边缘 RID（win-x86 / linux-arm）同属 `aot.yml`（观察期，随 push/PR 与手动触发运行，不设夜间任务）。

@@ -688,8 +688,7 @@ public class FullRedis : Redis
     /// <param name="topic">事件主题</param>
     /// <param name="clientId">客户标识/消息分组</param>
     /// <returns></returns>
-    [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "TEvent 由 Cache 宽面契约进入，重写不可强化保留要求；事件类型通常已由调用方静态引用保根，未保根时由流解码按异常降级")]
-    public override IEventBus<TEvent> CreateEventBus<TEvent>(String topic, String clientId = "")
+    public override IEventBus<TEvent> CreateEventBus<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties)] TEvent>(String topic, String clientId = "")
     {
         var bus = new RedisEventBus<TEvent>(this, topic, clientId)
         {
