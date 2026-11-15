@@ -14,9 +14,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Setup dotNET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: |
           6.x
@@ -52,10 +52,10 @@ jobs:
             os: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Setup dotNET
       if: matrix.rid != 'linux-la64'
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: |
           10.x
@@ -114,7 +114,7 @@ jobs:
           || echo "单测在 QEMU-LA64 下失败或超时（观察期，不阻断；详见日志）"
     - name: Upload Test Results
       if: always() && matrix.rid == 'linux-la64'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: test-results-linux-la64
         path: TestResults/*.trx
@@ -126,7 +126,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Check locales
       shell: pwsh
       run: |

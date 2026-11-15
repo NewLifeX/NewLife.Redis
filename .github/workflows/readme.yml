@@ -32,7 +32,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Check README language switcher
       shell: pwsh
       run: pwsh -NoProfile -File ./tools/sync-readme-languages.ps1 -Check

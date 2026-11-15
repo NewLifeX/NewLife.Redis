@@ -25,9 +25,9 @@ jobs:
     continue-on-error: true
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Setup dotNET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.0.x
     - name: Install Android workload
@@ -47,7 +47,7 @@ jobs:
         script: pwsh ./Samples/MobileSmoke/run-android.ps1 -Configuration Release
     - name: Upload Android artifacts
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: mobile-android
         path: Bin/MobileSmoke/**/*.apk
@@ -61,9 +61,9 @@ jobs:
     continue-on-error: true
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Setup dotNET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.0.402
     - name: Select Xcode
@@ -74,7 +74,7 @@ jobs:
       run: bash ./Samples/MobileSmoke/run-ios.sh
     - name: Upload iOS artifacts
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: mobile-ios
         path: Bin/MobileSmoke/artifacts/**

@@ -12,9 +12,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Setup dotNET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: |
           10.x
@@ -67,9 +67,9 @@ jobs:
             experimental: true
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Setup dotNET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: |
           10.x
@@ -156,7 +156,7 @@ jobs:
     continue-on-error: true
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Redis 6379（容器镜像）
       uses: nnhy/redis-github-action@v1.0
     - name: Redis 集群与哨兵拓扑（Linux，集群 7000-7002 / 哨兵主 7480 / 哨兵 26379）
@@ -214,7 +214,7 @@ jobs:
             os: ubuntu-24.04-arm
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Publish & Run NativeAOT Smoke (alpine)
       run: |
         docker run --rm -v "$PWD:/src" -w /src alpine:3.20 sh -c '
@@ -242,9 +242,9 @@ jobs:
     continue-on-error: true
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Setup dotNET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.x
     - name: Redis 6379（Windows：Memurai Developer，Redis 7.0 兼容）
@@ -272,9 +272,9 @@ jobs:
     continue-on-error: true
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Setup QEMU (arm)
-      uses: docker/setup-qemu-action@v3
+      uses: docker/setup-qemu-action@v4
       with:
         platforms: arm
     - name: JIT Smoke in arm32 Container
@@ -291,7 +291,7 @@ jobs:
           dotnet run -c Release --project AotSmoke/AotSmoke.csproj
         '
     - name: Setup dotNET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.x
     - name: Cross Publish NativeAOT (linux-arm, 探索)
