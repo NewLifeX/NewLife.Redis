@@ -241,7 +241,7 @@ NewLife is a layered ecosystem of independently versioned open-source projects. 
 - **Clustering & HA**: Supports Standalone / Master-Replica / Sentinel / Native Cluster, with automatic failover.
 - **Cloud Provider Adapters**: Specialized configuration and adaptation for **Alibaba Cloud KVStore / Tencent Cloud Redis / Huawei Cloud DCS**, covering proxy mode, ACL authentication, SSL encryption, special auth formats, and other differences.
 - **Compatible Implementations**: Auto-detects Microsoft Garnet, kvrocks, and other Redis-compatible servers, gracefully degrades with clear alternatives when features are unsupported.
-- **Broad Framework Support**: A single package covers **.NET Framework 4.5 to .NET 10+**, suitable for industrial control, government, IoT, and other legacy scenarios.
+- **Broad Framework Support**: A single package covers **.NET Framework 4.5 to .NET 11+**, suitable for industrial control, government, IoT, and other legacy scenarios.
 
 ### Guides
 
@@ -929,7 +929,7 @@ dotnet test XUnitTest -c Release
 | `NewLife.Redis/` | Client sources: connection pool, RESP codec, data structures and queues |
 | `NewLife.Redis.Extensions/` | ASP.NET Core integration: `IDistributedCache`, DI and data protection |
 | `NewLife.Extensions.Caching.Redis/` | Legacy caching extension compatibility package |
-| `XUnitTest/` | xUnit test suite (net10.0) |
+| `XUnitTest/` | xUnit test suite (net11.0) |
 | `AotSmoke/` | NativeAOT smoke project |
 | `Samples/` | Benchmark, WebDemo, QueueDemo, RedisSwitch and mobile smoke samples |
 | `Doc/` | Requirements, architecture, feature list and topic documents |

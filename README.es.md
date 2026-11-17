@@ -241,7 +241,7 @@ NewLife es un ecosistema por capas de proyectos de código abierto con versionad
 - **Clustering y alta disponibilidad**: admite Standalone / Maestro-Réplica / Sentinel / Cluster nativo, con conmutación por error automática.
 - **Adaptadores para proveedores de nube**: configuración y adaptación específicas para **Alibaba Cloud KVStore / Tencent Cloud Redis / Huawei Cloud DCS**, que cubren el modo proxy, la autenticación ACL, el cifrado SSL, los formatos de autenticación especiales y otras diferencias.
 - **Implementaciones compatibles**: detecta automáticamente Microsoft Garnet, kvrocks y otros servidores compatibles con Redis, y degrada de forma controlada con alternativas claras cuando una funcionalidad no es compatible.
-- **Amplio soporte de frameworks**: un solo paquete cubre **.NET Framework 4.5 hasta .NET 10+**, adecuado para control industrial, gobierno, IoT y otros escenarios heredados.
+- **Amplio soporte de frameworks**: un solo paquete cubre **.NET Framework 4.5 hasta .NET 11+**, adecuado para control industrial, gobierno, IoT y otros escenarios heredados.
 
 ### Guías
 
@@ -929,7 +929,7 @@ dotnet test XUnitTest -c Release
 | `NewLife.Redis/` | Código fuente del cliente: grupo de conexiones, códec RESP, estructuras de datos y colas |
 | `NewLife.Redis.Extensions/` | Integración con ASP.NET Core: `IDistributedCache`, DI y protección de datos |
 | `NewLife.Extensions.Caching.Redis/` | Paquete de compatibilidad de la extensión de caché heredada |
-| `XUnitTest/` | Suite de pruebas xUnit (net10.0) |
+| `XUnitTest/` | Suite de pruebas xUnit (net11.0) |
 | `AotSmoke/` | Proyecto de prueba de humo de NativeAOT |
 | `Samples/` | Ejemplos de Benchmark, WebDemo, QueueDemo, RedisSwitch y pruebas de humo móviles |
 | `Doc/` | Documentos de requisitos, arquitectura, lista de funcionalidades y temas específicos |

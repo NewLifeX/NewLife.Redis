@@ -26,6 +26,7 @@ jobs:
           8.x
           9.x
           10.x
+          11.x
     - name: Get Version
       # tag 推送（v7.0.2026.1024）以 tag 为准，包版本与 tag 严格一致；
       # 手工触发没有 tag，退回 csproj 内置的日期版本（VersionPrefix + yyyy.MMdd）。

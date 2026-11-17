@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp3.1;net5.0;net6.0;net7.0;net8.0;net9.0;net10.0;netstandard2.0;netstandard2.1</TargetFrameworks>
+    <TargetFrameworks>netcoreapp3.1;net5.0;net6.0;net7.0;net8.0;net9.0;net10.0;netstandard2.0;netstandard2.1;net11.0</TargetFrameworks>
     <AssemblyTitle>NewLife Redis Extensions</AssemblyTitle>
     <Description>Redis integration for ASP.NET Core: dependency injection, IDistributedCache distributed caching and IDataProtection key storage, simplifying application integration.</Description>
     <Company>新生命开发团队</Company>
@@ -101,6 +101,12 @@
     <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.13" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.13" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.13" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)'=='net11.0'">
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="11.0.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -241,7 +241,7 @@ NewLife は、それぞれ独立してバージョン管理されるオープン
 - **クラスタリングと高可用性**: Standalone / Master-Replica / Sentinel / Native Cluster に対応し、自動フェイルオーバーを備える。
 - **クラウドプロバイダーアダプター**: **Alibaba Cloud KVStore / Tencent Cloud Redis / Huawei Cloud DCS** 向けの専用構成と適応。プロキシモード、ACL 認証、SSL 暗号化、特殊な認証形式などの差異に対応。
 - **互換実装**: Microsoft Garnet、kvrocks などの Redis 互換サーバーを自動検出し、未サポートの機能では明確な代替案を示してグレースフルデグラデーション。
-- **幅広いフレームワーク対応**: 1 つのパッケージで **.NET Framework 4.5 から .NET 10+** をカバー。産業制御、政府、IoT などのレガシーシナリオに適する。
+- **幅広いフレームワーク対応**: 1 つのパッケージで **.NET Framework 4.5 から .NET 11+** をカバー。産業制御、政府、IoT などのレガシーシナリオに適する。
 
 ### ガイド
 
@@ -929,7 +929,7 @@ dotnet test XUnitTest -c Release
 | `NewLife.Redis/` | クライアントのソース: 接続プール、RESP コーデック、データ構造、キュー |
 | `NewLife.Redis.Extensions/` | ASP.NET Core 統合: `IDistributedCache`、DI、データ保護 |
 | `NewLife.Extensions.Caching.Redis/` | 旧キャッシュ拡張の互換パッケージ |
-| `XUnitTest/` | xUnit テストスイート（net10.0） |
+| `XUnitTest/` | xUnit テストスイート（net11.0） |
 | `AotSmoke/` | NativeAOT スモークプロジェクト |
 | `Samples/` | Benchmark、WebDemo、QueueDemo、RedisSwitch、モバイルスモークのサンプル |
 | `Doc/` | 要件、アーキテクチャ、機能一覧、各種トピックのドキュメント |

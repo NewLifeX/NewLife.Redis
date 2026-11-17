@@ -243,7 +243,7 @@ NewLife 生态按依赖分层，各项目独立版本、独立发版。下面的
 - **集群高可用**：支持 Standalone / 主从复制 / Sentinel 哨兵 / Cluster 原生集群，自动故障切换。
 - **云厂商适配**：针对**阿里云 KVStore / 腾讯云 Redis / 华为云 DCS** 提供专项配置说明与适配，覆盖代理模式、ACL 认证、SSL 加密、特殊认证格式等差异。
 - **兼容实现**：自动识别 Microsoft Garnet、kvrocks 等 Redis 兼容实现，功能不支持时优雅降级并提供明确替代方案。
-- **宽框架支持**：一个包覆盖 **.NET Framework 4.5 ～ .NET 10+**，适配工控、政务、IoT 等遗留场景。
+- **宽框架支持**：一个包覆盖 **.NET Framework 4.5 ～ .NET 11+**，适配工控、政务、IoT 等遗留场景。
 
 ### 使用文档
 
@@ -928,7 +928,7 @@ dotnet test XUnitTest -c Release
 | `NewLife.Redis/` | 客户端源码：连接池、RESP 编解码、数据结构与队列 |
 | `NewLife.Redis.Extensions/` | ASP.NET Core 集成：`IDistributedCache`、DI 与数据保护 |
 | `NewLife.Extensions.Caching.Redis/` | 旧版缓存扩展兼容包 |
-| `XUnitTest/` | xUnit 测试套件（net10.0） |
+| `XUnitTest/` | xUnit 测试套件（net11.0） |
 | `AotSmoke/` | NativeAOT 冒烟工程 |
 | `Samples/` | Benchmark、WebDemo、QueueDemo、RedisSwitch 与移动端冒烟示例 |
 | `Doc/` | 需求、架构、功能清单与专题文档 |

@@ -241,7 +241,7 @@ NewLife 是按相依關係分層的生態系，各專案獨立版本、獨立發
 - **叢集與高可用性**：支援 Standalone / Master-Replica / Sentinel / Native Cluster，具備自動容錯移轉。
 - **雲端廠商介面卡**：針對 **阿里雲 KVStore / 騰訊雲 Redis / 華為雲 DCS** 提供專屬設定與適配，涵蓋代理模式、ACL 驗證、SSL 加密、特殊驗證格式等差異。
 - **相容實作**：自動偵測 Microsoft Garnet、kvrocks 等 Redis 相容伺服器，功能不支援時優雅降級並提供明確替代方案。
-- **廣泛框架支援**：單一套件涵蓋 **.NET Framework 4.5 至 .NET 10+**，適合工控、政府、物聯網等既有系統場景。
+- **廣泛框架支援**：單一套件涵蓋 **.NET Framework 4.5 至 .NET 11+**，適合工控、政府、物聯網等既有系統場景。
 
 ### 指南
 
@@ -929,7 +929,7 @@ dotnet test XUnitTest -c Release
 | `NewLife.Redis/` | 用戶端原始碼：連線池、RESP 編解碼器、資料結構與佇列 |
 | `NewLife.Redis.Extensions/` | ASP.NET Core 整合：`IDistributedCache`、DI 與資料保護 |
 | `NewLife.Extensions.Caching.Redis/` | 舊版快取擴充相容套件 |
-| `XUnitTest/` | xUnit 測試套件（net10.0） |
+| `XUnitTest/` | xUnit 測試套件（net11.0） |
 | `AotSmoke/` | NativeAOT 冒煙測試專案 |
 | `Samples/` | Benchmark、WebDemo、QueueDemo、RedisSwitch 與行動裝置冒煙範例 |
 | `Doc/` | 需求、架構、功能清單與專題文件 |

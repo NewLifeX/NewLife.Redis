@@ -24,6 +24,7 @@ jobs:
           8.x
           9.x
           10.x
+          11.x
     - name: Build
       run: |
         dotnet build -c Release
@@ -59,6 +60,7 @@ jobs:
       with:
         dotnet-version: |
           10.x
+          11.x
     - name: Redis 6379（Windows：Memurai Developer，Redis 7.0 兼容）
       if: matrix.rid == 'win-x64'
       shell: pwsh

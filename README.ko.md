@@ -241,7 +241,7 @@ NewLife는 각자 독립적으로 버전이 관리되는 오픈소스 프로젝�
 - **클러스터링 및 고가용성**: Standalone / Master-Replica / Sentinel / Native Cluster를 지원하며 자동 장애 조치를 제공합니다.
 - **클라우드 사업자 어댑터**: **Alibaba Cloud KVStore / Tencent Cloud Redis / Huawei Cloud DCS**에 특화된 구성과 적응을 제공하며, 프록시 모드, ACL 인증, SSL 암호화, 특수 인증 형식 등의 차이를 다룹니다.
 - **호환 구현체**: Microsoft Garnet, kvrocks 및 기타 Redis 호환 서버를 자동 감지하고, 기능이 지원되지 않을 때는 명확한 대안과 함께 우아하게 성능을 저하합니다.
-- **폭넓은 프레임워크 지원**: 단일 패키지로 **.NET Framework 4.5부터 .NET 10+까지** 지원하여 산업 제어, 공공, IoT 등 레거시 시나리오에 적합합니다.
+- **폭넓은 프레임워크 지원**: 단일 패키지로 **.NET Framework 4.5부터 .NET 11+까지** 지원하여 산업 제어, 공공, IoT 등 레거시 시나리오에 적합합니다.
 
 ### 가이드
 
@@ -929,7 +929,7 @@ dotnet test XUnitTest -c Release
 | `NewLife.Redis/` | 클라이언트 소스: 연결 풀, RESP 코덱, 데이터 구조 및 큐 |
 | `NewLife.Redis.Extensions/` | ASP.NET Core 통합: `IDistributedCache`, DI 및 데이터 보호 |
 | `NewLife.Extensions.Caching.Redis/` | 레거시 캐싱 확장 호환 패키지 |
-| `XUnitTest/` | xUnit 테스트 스위트(net10.0) |
+| `XUnitTest/` | xUnit 테스트 스위트(net11.0) |
 | `AotSmoke/` | NativeAOT 스모크 프로젝트 |
 | `Samples/` | Benchmark, WebDemo, QueueDemo, RedisSwitch 및 모바일 스모크 샘플 |
 | `Doc/` | 요구사항, 아키텍처, 기능 목록 및 주제별 문서 |
