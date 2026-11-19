@@ -1,7 +1,6 @@
 # NewLife.Redis — 고성능 Redis 클라이언트 컴포넌트
 
 ![GitHub top language](https://img.shields.io/github/languages/top/newlifex/newlife.redis?logo=github)
-
 ![GitHub License](https://img.shields.io/github/license/NewLifeX/NewLife.Redis?logo=github)
 ![NuGet Downloads](https://img.shields.io/nuget/dt/NewLife.Redis?logo=nuget)
 ![NuGet](https://img.shields.io/nuget/v/NewLife.Redis?logo=nuget)
