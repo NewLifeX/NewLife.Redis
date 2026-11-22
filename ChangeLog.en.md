@@ -1,5 +1,16 @@
 # NewLife.Redis ChangeLog
 
+## v7.0.2026.1026 (2026-10-26)
+
+### Bug Fixes
+- **[fix]** Fixed pool-slot leaks that threw `PoolFullException` after a broken client was destroyed and `Pool.Return` was skipped (for example AllPool reporting 100,000 busy items at the maximum)
+- Removed `disposed`. Setting it after disposal made `finally` skip `Return` via `if (!disposed)`. The slot is released only by `Return`, so that flag leaked the slot. `ObjectPool.Return` sees `Disposed` and only releases the slot, without placing the client back in the free list, so `finally` always calls `Return`
+- Moved `TryDispose` ahead of `if (++i >= Retry) throw`. The previous order threw on the last attempt before disposal, and `finally` returned the broken client to the free list. A `RedisException`, and any non-network exception, still returns a live client
+- `Redis.Execute` / `ExecuteAsync`, `FullRedis` node execution and `ExecuteAsync`, a failed PubSub unsubscribe, and a failed transaction `DISCARD` all follow the same rule: dispose an unusable client, then `Return`
+- **Tests**: `PoolFullExceptionReproTests` uses a pool named All and fails more times than `PoolMax`. Before the fix this throws a pool-full exception; after the fix the busy count stays 0
+
+---
+
 ## v7.0.2026.1024 (2026-10-24)
 
 ### Breaking Changes (Upgrade Notes)

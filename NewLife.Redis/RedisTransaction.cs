@@ -35,7 +35,6 @@ public class RedisTransaction : DisposeBase
             var ok = true;
             if (_began && !_finished)
             {
-                // 连接异常时不再归还池，交由池重建
                 try
                 {
                     _client.Execute<String>("DISCARD");
@@ -46,10 +45,9 @@ public class RedisTransaction : DisposeBase
                 }
             }
 
-            if (ok)
-                _redis.Pool.Return(_client);
-            else
-                _client.TryDispose();
+            // 放弃失败时连接不可复用，先销毁。Return 见到 Disposed 只释放槽位，不会放回空闲集合
+            if (!ok) _client.TryDispose();
+            _redis.Pool.Return(_client);
         }
 
         base.Dispose(disposing);

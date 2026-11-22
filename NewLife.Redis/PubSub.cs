@@ -58,7 +58,9 @@ public class PubSub : RedisBase
         }
         finally
         {
-            if (returnToPool) Redis.Pool.Return(client); else client.TryDispose();
+            // 退订失败时连接仍处于订阅态，先销毁。Return 见到 Disposed 只释放槽位，不会放回空闲集合
+            if (!returnToPool) client.TryDispose();
+            Redis.Pool.Return(client);
         }
     }
 
@@ -114,7 +116,9 @@ public class PubSub : RedisBase
         }
         finally
         {
-            if (returnToPool) Redis.Pool.Return(client); else client.TryDispose();
+            // 退订失败时连接仍处于订阅态，先销毁。Return 见到 Disposed 只释放槽位，不会放回空闲集合
+            if (!returnToPool) client.TryDispose();
+            Redis.Pool.Return(client);
         }
     }
     #endregion
@@ -178,7 +182,9 @@ public class PubSub : RedisBase
         }
         finally
         {
-            if (returnToPool) Redis.Pool.Return(client); else client.TryDispose();
+            // 退订失败时连接仍处于订阅态，先销毁。Return 见到 Disposed 只释放槽位，不会放回空闲集合
+            if (!returnToPool) client.TryDispose();
+            Redis.Pool.Return(client);
         }
     }
 

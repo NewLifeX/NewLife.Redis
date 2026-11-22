@@ -295,7 +295,6 @@ public class FullRedis : Redis
 
             // 每次重试都需要重新从池里借出连接
             var client = pool.Get();
-            var disposed = false;
             try
             {
                 client.Reset();
@@ -308,11 +307,11 @@ public class FullRedis : Redis
             //catch (RedisException) { throw; }
             catch (Exception ex)
             {
-                if (++i >= Retry) throw;
-
-                // 销毁连接，不再归还池
+                // 先销毁，再判断是否已到重试上限。顺序反过来时，最后一次失败会在销毁前抛出，finally 把坏连接归还进空闲池。
+                // 销毁后仍要 Return：ObjectPool 见到 Disposed 只释放槽位，不会放回空闲集合。
                 client.TryDispose();
-                disposed = true;
+
+                if (++i >= Retry) throw;
 
                 // 使用新的节点
                 var k = key is IList<String> ks ? ks[0] : key + "";
@@ -324,7 +323,7 @@ public class FullRedis : Redis
             }
             finally
             {
-                if (!disposed) pool.Return(client);
+                pool.Return(client);
 
                 Counter?.StopCount(sw);
             }
@@ -398,7 +397,6 @@ public class FullRedis : Redis
         // 每次重试都需要重新从池里借出连接
         var pool = node != null ? GetPool(node) : Pool;
         var client = pool.Get();
-        var disposed = false;
         try
         {
             client.Reset();
@@ -408,16 +406,15 @@ public class FullRedis : Redis
         {
             if (ex is SocketException or IOException)
             {
-                // 销毁连接，不再归还池
+                // 连接已不可复用。先销毁再归还：ObjectPool 见到 Disposed 只释放槽位，不会放回空闲集合
                 client.TryDispose();
-                disposed = true;
             }
 
             throw;
         }
         finally
         {
-            if (!disposed) pool.Return(client);
+            pool.Return(client);
         }
     }
 
@@ -451,7 +448,6 @@ public class FullRedis : Redis
 
             // 每次重试都需要重新从池里借出连接
             var client = pool.Get();
-            var disposed = false;
             try
             {
                 client.Reset();
@@ -462,11 +458,11 @@ public class FullRedis : Redis
             //catch (RedisException) { throw; }
             catch (Exception ex)
             {
-                if (++i >= Retry) throw;
-
-                // 销毁连接，不再归还池
+                // 先销毁，再判断是否已到重试上限。顺序反过来时，最后一次失败会在销毁前抛出，finally 把坏连接归还进空闲池。
+                // 销毁后仍要 Return：ObjectPool 见到 Disposed 只释放槽位，不会放回空闲集合。
                 client.TryDispose();
-                disposed = true;
+
+                if (++i >= Retry) throw;
 
                 // 使用新的节点
                 var node2 = Cluster.ReselectNode(key, write, node, ex);
@@ -478,7 +474,7 @@ public class FullRedis : Redis
             }
             finally
             {
-                if (!disposed) pool.Return(client);
+                pool.Return(client);
 
                 Counter?.StopCount(sw);
             }
